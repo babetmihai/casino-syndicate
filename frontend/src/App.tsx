@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from "react";
 import Web3Modal from "web3modal";
 import { ethers } from "ethers";
-import DepositContractABI from "../abi.json";
+import DepositContractJSON from "../../artifacts/contracts/DepositContracts.sol/DepositContract.json";
+
+const { abi: DepositContractABI } = DepositContractJSON;
 
 const CONTRACT_ADDRESS = "0xYourContractAddress"; // Replace with deployed address
-const MUMBAI_RPC_URL = "https://rpc-mumbai.maticvigil.com";
+
 
 const App: React.FC = () => {
   const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null);

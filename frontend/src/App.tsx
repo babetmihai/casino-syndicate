@@ -5,24 +5,21 @@ import DepositContractJSON from "../../artifacts/contracts/DepositContracts.sol/
 
 const { abi: DepositContractABI } = DepositContractJSON;
 
-
-// Replace this with the address from your local deployment (e.g., from deploy.ts output)
-const CONTRACT_ADDRESS = "0xYourLocalContractAddress"; // Example: "0x5FbDB2315678afecb367f032d93F642f64180aa3"
+const CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3"; // Your deployed address
 const LOCAL_RPC_URL = "http://127.0.0.1:8545";
 
 const App: React.FC = () => {
-  const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null);
-  const [signer, setSigner] = useState<ethers.Signer | null>(null);
+  // const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null);
+  // const [signer, setSigner] = useState<ethers.Signer | null>(null);
   const [contract, setContract] = useState<ethers.Contract | null>(null);
   const [account, setAccount] = useState<string | null>(null);
   const [balance, setBalance] = useState<string>("0");
   const [depositAmount, setDepositAmount] = useState<string>("");
 
-  // Connect to MetaMask using Web3Modal
   const connectWallet = async () => {
     try {
       const web3Modal = new Web3Modal({
-        network: "localhost", // Hardhat local network
+        network: LOCAL_RPC_URL,
         cacheProvider: true,
         providerOptions: {},
       });
@@ -31,8 +28,8 @@ const App: React.FC = () => {
       const signer = await provider.getSigner();
       const contract = new ethers.Contract(CONTRACT_ADDRESS, DepositContractABI, signer);
 
-      setProvider(provider);
-      setSigner(signer);
+      // setProvider(provider);
+      // setSigner(signer);
       setContract(contract);
       const address = await signer.getAddress();
       setAccount(address);
@@ -41,11 +38,11 @@ const App: React.FC = () => {
     }
   };
 
-  // Fetch the user's balance from the contract
   const fetchBalance = async () => {
     if (contract && account) {
       try {
         const balance = await contract.balances(account);
+        console.log("Balance:", balance);
         setBalance(ethers.formatEther(balance));
       } catch (error) {
         console.error("Failed to fetch balance:", error);
@@ -53,7 +50,6 @@ const App: React.FC = () => {
     }
   };
 
-  // Deposit funds into the contract
   const depositFunds = async () => {
     if (contract && depositAmount) {
       try {
@@ -69,7 +65,6 @@ const App: React.FC = () => {
     }
   };
 
-  // Fetch balance when account or contract changes
   useEffect(() => {
     if (account && contract) {
       fetchBalance();

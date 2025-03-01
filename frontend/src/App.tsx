@@ -27,6 +27,8 @@ const App: React.FC = () => {
       const provider = new ethers.BrowserProvider(instance);
       const signer = await provider.getSigner();
       const contract = new ethers.Contract(CONTRACT_ADDRESS, DepositContractABI, signer);
+      const code = await provider.getCode(CONTRACT_ADDRESS);
+      console.log("Code:", code);
 
       // setProvider(provider);
       // setSigner(signer);
@@ -41,7 +43,7 @@ const App: React.FC = () => {
   const fetchBalance = async () => {
     if (contract && account) {
       try {
-        const balance = await contract.balances(account);
+        const balance = await contract.getContractBalance();
         console.log("Balance:", balance);
         setBalance(ethers.formatEther(balance));
       } catch (error) {

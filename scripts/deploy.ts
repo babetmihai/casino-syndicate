@@ -37,7 +37,7 @@ async function main() {
       `VITE_CONTRACT_ADDRESS=${contractAddress}`
     );
   } else {
-    envContent += `\nCONTRACT_ADDRESS=${contractAddress}`;
+    envContent += `\VITE_CONTRACT_ADDRESS=${contractAddress}`;
   }
   
   // Write back to .env file

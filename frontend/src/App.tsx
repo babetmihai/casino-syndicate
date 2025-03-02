@@ -21,7 +21,7 @@ const App: React.FC = () => {
   const init = async () => {
     if (contract && account) {
       try {
-        const balance = await contract.getContractBalances();
+        const { balance } = await contract.getContractBalances();
         console.log("Balance:", balance);
         setBalance(ethers.formatEther(balance));
       } catch (error) {

@@ -1,19 +1,22 @@
 import { ethers } from "hardhat";
+import * as fs from 'fs';
+import * as path from 'path';
+
 
 async function main() {
   const [deployer] = await ethers.getSigners();
   console.log("Deploying with account:", deployer.address);
 
-  const DepositContract = await ethers.getContractFactory("DepositContract");
-  const depositContract = await DepositContract.deploy();
+  const MultiRoulette = await ethers.getContractFactory("MultiRoulette");
+  const multiRoulette = await MultiRoulette.deploy();
 
-  await depositContract.waitForDeployment();
-  console.log("DepositContract deployed to:", await depositContract.getAddress());
+  await multiRoulette.waitForDeployment();
+  console.log("MultiRoulette deployed to:", await multiRoulette.getAddress());
   // Save the contract address to .env file
   const fs = require('fs');
   const path = require('path');
   
-  const contractAddress = await depositContract.getAddress();
+  const contractAddress = await multiRoulette.getAddress();
   
   // Path to .env file
   const envPath = path.resolve(__dirname, '../frontend/.env');
@@ -40,7 +43,38 @@ async function main() {
   console.log(`Contract address saved to .env: CONTRACT_ADDRESS=${contractAddress}`);
 }
 
+// Function to extract and save ABI to frontend/public
+async function saveAbiToFrontend(contractName: string) {
+  try {
+    // Path to the artifact file
+    const artifactPath = path.resolve(__dirname, `../artifacts/contracts/${contractName}.sol/${contractName}.json`);
+    
+    // Read the artifact file
+    const artifactRaw = fs.readFileSync(artifactPath, 'utf8');
+    const artifact = JSON.parse(artifactRaw);
+    
+    // Extract the ABI
+    const abi = artifact.abi;
+    
+    // Create frontend/public directory if it doesn't exist
+    const publicDir = path.resolve(__dirname, '../frontend/public');
+    if (!fs.existsSync(publicDir)) {
+      fs.mkdirSync(publicDir, { recursive: true });
+    }
+    
+    // Save the ABI to frontend/public
+    const abiPath = path.resolve(publicDir, `${contractName}.json`);
+    fs.writeFileSync(abiPath, JSON.stringify(abi, null, 2));
+    
+    console.log(`ABI saved to: ${abiPath}`);
+  } catch (error) {
+    console.error(`Error saving ABI: ${error}`);
+  }
+}
+
+
 main()
+  .then(() => saveAbiToFrontend("MultiRoulette"))
   .then(() => process.exit(0))
   .catch((error) => {
     console.error(error);

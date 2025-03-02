@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from "react";
 import Web3Modal from "web3modal";
 import { ethers } from "ethers";
-import DepositContractJSON from "../../artifacts/contracts/DepositContracts.sol/DepositContract.json";
 
 
-const { abi: DepositContractABI } = DepositContractJSON;
-const { VITE_CONTRACT_ADDRESS, VITE_LOCAL_RPC_URL } = import.meta.env
 
+const { VITE_CONTRACT_ADDRESS, VITE_LOCAL_RPC_URL, VITE_CONTRACT_NAME } = import.meta.env
 
 
 const App: React.FC = () => {
@@ -36,6 +34,31 @@ const App: React.FC = () => {
     }
   }, [account, contract]);
 
+
+  const [depositEvents, setDepositEvents] = useState<Array<{ user: string; amount: string }>>([]);
+
+  useEffect(() => {
+    if (contract) {
+      // Set up event listener for Deposited events
+      contract.on("Deposited", (user, amount, event) => {
+        const deposit = {
+          user,
+          amount: ethers.formatEther(amount), // Convert wei to Ether
+          txHash: event.transactionHash,
+        };
+        setDepositEvents((prev) => [...prev, deposit]);
+        console.log(`Deposit from ${user}: ${ethers.formatEther(amount)} ETH`);
+      });
+
+      // Cleanup listener on component unmount
+      return () => {
+        contract.removeAllListeners("Deposited");
+      };
+    }
+  }, [contract]);
+
+
+  console.log("Deposit Events:", depositEvents);
   return (
     <div style={{ padding: "20px" }}>
       <h1>Deposit App (Hardhat Local)</h1>
@@ -48,10 +71,11 @@ const App: React.FC = () => {
                 cacheProvider: true,
                 providerOptions: {},
               });
+              const abi = await fetch(`/${VITE_CONTRACT_NAME}.json`).then(res => res.json());
               const instance = await web3Modal.connect();
               const provider = new ethers.BrowserProvider(instance);
               const signer = await provider.getSigner();
-              const contract = new ethers.Contract(VITE_CONTRACT_ADDRESS, DepositContractABI, signer);
+              const contract = new ethers.Contract(VITE_CONTRACT_ADDRESS, abi, signer);
               const code = await provider.getCode(VITE_CONTRACT_ADDRESS);
               console.log("Code:", code);
         

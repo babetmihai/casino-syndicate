@@ -5,8 +5,9 @@ import DepositContractJSON from "../../artifacts/contracts/DepositContracts.sol/
 
 const { abi: DepositContractABI } = DepositContractJSON;
 
-const CONTRACT_ADDRESS = "0x5FbDB2315678afecb367f032d93F642f64180aa3"; // Your deployed address
+const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS || "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512"
 const LOCAL_RPC_URL = "http://127.0.0.1:8545";
+
 
 const App: React.FC = () => {
   // const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null);
@@ -43,7 +44,7 @@ const App: React.FC = () => {
   const fetchBalance = async () => {
     if (contract && account) {
       try {
-        const balance = await contract.getContractBalance();
+        const balance = await contract.getContractBalances();
         console.log("Balance:", balance);
         setBalance(ethers.formatEther(balance));
       } catch (error) {

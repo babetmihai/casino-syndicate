@@ -9,6 +9,44 @@ async function main() {
 
   await depositContract.waitForDeployment();
   console.log("DepositContract deployed to:", await depositContract.getAddress());
+  // Save the contract address to .env file
+  const fs = require('fs');
+  const path = require('path');
+  
+  const contractAddress = await depositContract.getAddress();
+  
+  // Path to .env file
+  const envPath = path.resolve(__dirname, '../.env');
+  
+  // Check if .env file exists
+  let envContent = '';
+  if (fs.existsSync(envPath)) {
+    envContent = fs.readFileSync(envPath, 'utf8');
+  }
+  
+  // Update or add CONTRACT_ADDRESS to .env
+  // Path to frontend .env.local file
+  const frontendEnvPath = path.resolve(__dirname, '../frontend/.env.local');
+  
+  // Check if frontend .env.local file exists
+  let frontendEnvContent = '';
+  if (fs.existsSync(frontendEnvPath)) {
+    frontendEnvContent = fs.readFileSync(frontendEnvPath, 'utf8');
+  }
+  
+  // Update or add CONTRACT_ADDRESS to frontend .env.local
+  if (frontendEnvContent.includes('VITE_CONTRACT_ADDRESS=')) {
+    frontendEnvContent = frontendEnvContent.replace(
+      /VITE_CONTRACT_ADDRESS=.*/,
+      `VITE_CONTRACT_ADDRESS=${contractAddress}`
+    );
+  } else {
+    envContent += `\nCONTRACT_ADDRESS=${contractAddress}`;
+  }
+  
+  // Write back to .env file
+  fs.writeFileSync(envPath, envContent);
+  console.log(`Contract address saved to .env: CONTRACT_ADDRESS=${contractAddress}`);
 }
 
 main()

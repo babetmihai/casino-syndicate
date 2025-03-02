@@ -15,4 +15,9 @@ contract DepositContract {
     function getContractBalance() external view returns (uint256) {
         return address(this).balance;
     }
+
+
+    function getContractBalances() external view returns (uint256) {
+        return balances[msg.sender];
+    }
 }

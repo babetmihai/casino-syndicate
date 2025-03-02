@@ -7,16 +7,16 @@ async function main() {
   const [deployer] = await ethers.getSigners();
   console.log("Deploying with account:", deployer.address);
 
-  const MultiRoulette = await ethers.getContractFactory("MultiRoulette");
-  const multiRoulette = await MultiRoulette.deploy();
+  const DepositContract = await ethers.getContractFactory("DepositContract");
+  const depositContract = await DepositContract.deploy();
 
-  await multiRoulette.waitForDeployment();
-  console.log("MultiRoulette deployed to:", await multiRoulette.getAddress());
+  await depositContract.waitForDeployment();
+  console.log("DepositContract deployed to:", await depositContract.getAddress());
   // Save the contract address to .env file
   const fs = require('fs');
   const path = require('path');
   
-  const contractAddress = await multiRoulette.getAddress();
+  const contractAddress = await depositContract.getAddress();
   
   // Path to .env file
   const envPath = path.resolve(__dirname, '../frontend/.env');
@@ -74,7 +74,7 @@ async function saveAbiToFrontend(contractName: string) {
 
 
 main()
-  .then(() => saveAbiToFrontend("MultiRoulette"))
+  .then(() => saveAbiToFrontend("DepositContract"))
   .then(() => process.exit(0))
   .catch((error) => {
     console.error(error);

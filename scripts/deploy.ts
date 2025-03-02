@@ -16,7 +16,7 @@ async function main() {
   const contractAddress = await depositContract.getAddress();
   
   // Path to .env file
-  const envPath = path.resolve(__dirname, '../.env');
+  const envPath = path.resolve(__dirname, '../frontend/.env.local');
   
   // Check if .env file exists
   let envContent = '';
@@ -24,14 +24,10 @@ async function main() {
     envContent = fs.readFileSync(envPath, 'utf8');
   }
   
-  // Update or add CONTRACT_ADDRESS to .env
-  // Path to frontend .env.local file
-  const frontendEnvPath = path.resolve(__dirname, '../frontend/.env.local');
-  
   // Check if frontend .env.local file exists
   let frontendEnvContent = '';
-  if (fs.existsSync(frontendEnvPath)) {
-    frontendEnvContent = fs.readFileSync(frontendEnvPath, 'utf8');
+  if (fs.existsSync(envPath)) {
+    frontendEnvContent = fs.readFileSync(envPath, 'utf8');
   }
   
   // Update or add CONTRACT_ADDRESS to frontend .env.local

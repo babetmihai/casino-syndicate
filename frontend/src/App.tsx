@@ -3,10 +3,10 @@ import Web3Modal from "web3modal";
 import { ethers } from "ethers";
 import DepositContractJSON from "../../artifacts/contracts/DepositContracts.sol/DepositContract.json";
 
-const { abi: DepositContractABI } = DepositContractJSON;
 
-const CONTRACT_ADDRESS = import.meta.env.VITE_CONTRACT_ADDRESS
-const LOCAL_RPC_URL = "http://127.0.0.1:8545";
+const { abi: DepositContractABI } = DepositContractJSON;
+const { VITE_CONTRACT_ADDRESS, VITE_LOCAL_RPC_URL } = import.meta.env
+
 
 
 const App: React.FC = () => {
@@ -17,31 +17,8 @@ const App: React.FC = () => {
   const [balance, setBalance] = useState<string>("0");
   const [depositAmount, setDepositAmount] = useState<string>("");
 
-  const connectWallet = async () => {
-    try {
-      const web3Modal = new Web3Modal({
-        network: LOCAL_RPC_URL,
-        cacheProvider: true,
-        providerOptions: {},
-      });
-      const instance = await web3Modal.connect();
-      const provider = new ethers.BrowserProvider(instance);
-      const signer = await provider.getSigner();
-      const contract = new ethers.Contract(CONTRACT_ADDRESS, DepositContractABI, signer);
-      const code = await provider.getCode(CONTRACT_ADDRESS);
-      console.log("Code:", code);
 
-      // setProvider(provider);
-      // setSigner(signer);
-      setContract(contract);
-      const address = await signer.getAddress();
-      setAccount(address);
-    } catch (error) {
-      console.error("Failed to connect wallet:", error);
-    }
-  };
-
-  const fetchBalance = async () => {
+  const init = async () => {
     if (contract && account) {
       try {
         const balance = await contract.getContractBalances();
@@ -52,25 +29,10 @@ const App: React.FC = () => {
       }
     }
   };
-
-  const depositFunds = async () => {
-    if (contract && depositAmount) {
-      try {
-        const tx = await contract.deposit({
-          value: ethers.parseEther(depositAmount),
-        });
-        await tx.wait();
-        fetchBalance();
-        setDepositAmount("");
-      } catch (error) {
-        console.error("Failed to deposit:", error);
-      }
-    }
-  };
-
+ 
   useEffect(() => {
     if (account && contract) {
-      fetchBalance();
+      init();
     }
   }, [account, contract]);
 
@@ -78,7 +40,33 @@ const App: React.FC = () => {
     <div style={{ padding: "20px" }}>
       <h1>Deposit App (Hardhat Local)</h1>
       {!account ? (
-        <button onClick={connectWallet}>Connect Wallet</button>
+        <button 
+          onClick={async () => {
+            try {
+              const web3Modal = new Web3Modal({
+                network: VITE_LOCAL_RPC_URL,
+                cacheProvider: true,
+                providerOptions: {},
+              });
+              const instance = await web3Modal.connect();
+              const provider = new ethers.BrowserProvider(instance);
+              const signer = await provider.getSigner();
+              const contract = new ethers.Contract(VITE_CONTRACT_ADDRESS, DepositContractABI, signer);
+              const code = await provider.getCode(VITE_CONTRACT_ADDRESS);
+              console.log("Code:", code);
+        
+              // setProvider(provider);
+              // setSigner(signer);
+              setContract(contract);
+              const address = await signer.getAddress();
+              setAccount(address);
+            } catch (error) {
+              console.error("Failed to connect wallet:", error);
+            }
+          }}
+        >
+          Connect Wallet
+        </button>
       ) : (
         <div>
           <p>Connected Account: {account}</p>
@@ -89,7 +77,24 @@ const App: React.FC = () => {
             onChange={(e) => setDepositAmount(e.target.value)}
             placeholder="Amount in ETH"
           />
-          <button onClick={depositFunds}>Deposit</button>
+          <button 
+            onClick={async () => {
+              if (contract && depositAmount) {
+                try {
+                  const tx = await contract.deposit({
+                    value: ethers.parseEther(depositAmount),
+                  });
+                  await tx.wait();
+                  init();
+                  setDepositAmount("");
+                } catch (error) {
+                  console.error("Failed to deposit:", error);
+                }
+              }
+            }}
+          >
+            Deposit
+          </button>
         </div>
       )}
     </div>

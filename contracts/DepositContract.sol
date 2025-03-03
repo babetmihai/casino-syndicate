@@ -4,6 +4,7 @@ pragma solidity ^0.8.0;
 
 
 contract DepositContract {
+	
 	struct UserBalance {
 		uint256 balance;
 		address userAddress;

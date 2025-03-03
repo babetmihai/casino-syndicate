@@ -6,7 +6,7 @@ const config: HardhatUserConfig = {
   networks: {
     localhost: {
       url: 'http://127.0.0.1:8545',
-      chainId: 1337, // Local network
+      chainId: 31337, // Local network
     },
   },
 };

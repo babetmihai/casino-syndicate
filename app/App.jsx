@@ -19,7 +19,7 @@ const App = () => {
   const init = async () => {
     if (contract && account) {
       try {
-        const { balance } = await contract.getContractBalances();
+        const balance  = await contract.getContractBalance();
         console.log("Balance:", balance);
         setBalance(ethers.formatEther(balance));
       } catch (error) {
@@ -58,7 +58,7 @@ const App = () => {
   }, [contract]);
 
 
-  console.log("Deposit Events:", depositEvents);
+  console.log("Deposit Events:", depositEvents, VITE_LOCAL_RPC_URL);
   return (
     <div style={{ padding: "20px" }}>
       <h1>Deposit App (Hardhat Local)</h1>
@@ -71,7 +71,7 @@ const App = () => {
                 cacheProvider: true,
                 providerOptions: {},
               });
-              const abi = await fetch(`/${VITE_CONTRACT_NAME}.json`).then(res => res.json());
+              const abi = await fetch(`/${VITE_CONTRACT_NAME}.json?v=${Date.now()}`).then(res => res.json());
               const instance = await web3Modal.connect();
               const provider = new ethers.BrowserProvider(instance);
               const signer = await provider.getSigner();
@@ -106,7 +106,7 @@ const App = () => {
               if (contract && depositAmount) {
                 try {
                   const tx = await contract.deposit({
-                    value: ethers.parseEther(depositAmount),
+                    value: ethers.parseEther(depositAmount)
                   });
                   await tx.wait();
                   init();

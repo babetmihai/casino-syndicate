@@ -7,8 +7,16 @@ async function main() {
   const [deployer] = await ethers.getSigners();
   console.log("Deploying with account:", deployer.address);
 
+  // The network is automatically selected based on the --network flag when running the script
+  // For example: npx hardhat run hardhat.deploy.js --network localhost
+  // The network configuration comes from your hardhat.config.js file
+  
   const DepositContract = await ethers.getContractFactory("DepositContract");
   const depositContract = await DepositContract.deploy();
+  
+  // If you need to explicitly use a specific provider/network:
+  // const provider = ethers.provider; // This is the provider for the selected network
+  console.log("Deploying to network:", network.name);
 
   await depositContract.waitForDeployment();
   console.log("DepositContract deployed to:", await depositContract.getAddress());

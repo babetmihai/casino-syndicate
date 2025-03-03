@@ -2,7 +2,7 @@
   "name": "hardhat-project",
   "scripts": {
     "start": "vite",
-    "contracts": "nodemon --transpile-only",
+    "contracts": "nodemon",
     "chain": "npx hardhat node",
     "build": "vite build",
     "preview": "vite preview",

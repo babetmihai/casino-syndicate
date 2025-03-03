@@ -1,9 +1,11 @@
 {
   "name": "hardhat-project",
   "scripts": {
-    "dev": "vite",
+    "start": "vite",
+    "chain": "npx hardhat node",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "npx hardhat compile && npx hardhat run hardhat.deploy.js --network localhost"
   },
   "devDependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",

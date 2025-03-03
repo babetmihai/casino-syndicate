@@ -1,6 +1,6 @@
-import { ethers } from "hardhat";
-import * as fs from 'fs';
-import * as path from 'path';
+const { ethers } = require("hardhat");
+const fs = require('fs');
+const path = require('path');
 
 
 async function main() {
@@ -13,13 +13,11 @@ async function main() {
   await depositContract.waitForDeployment();
   console.log("DepositContract deployed to:", await depositContract.getAddress());
   // Save the contract address to .env file
-  const fs = require('fs');
-  const path = require('path');
   
   const contractAddress = await depositContract.getAddress();
   
   // Path to .env file
-  const envPath = path.resolve(__dirname, '../frontend/.env');
+  const envPath = path.resolve(__dirname, './.env');
   
   // Check if .env file exists
   let envContent = '';
@@ -47,7 +45,7 @@ async function main() {
 async function saveAbiToFrontend(contractName) {
   try {
     // Path to the artifact file
-    const artifactPath = path.resolve(__dirname, `../artifacts/contracts/${contractName}.sol/${contractName}.json`);
+    const artifactPath = path.resolve(__dirname, `./artifacts/contracts/${contractName}.sol/${contractName}.json`);
     
     // Read the artifact file
     const artifactRaw = fs.readFileSync(artifactPath, 'utf8');
@@ -57,7 +55,7 @@ async function saveAbiToFrontend(contractName) {
     const abi = artifact.abi;
     
     // Create frontend/public directory if it doesn't exist
-    const publicDir = path.resolve(__dirname, '../frontend/public');
+    const publicDir = path.resolve(__dirname, './app/public');
     if (!fs.existsSync(publicDir)) {
       fs.mkdirSync(publicDir, { recursive: true });
     }

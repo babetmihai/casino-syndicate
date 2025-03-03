@@ -15,7 +15,6 @@ const App = () => {
   const [balance, setBalance] = useState("0");
   const [depositAmount, setDepositAmount] = useState("");
 
-
   const init = async () => {
     if (contract && account) {
       try {

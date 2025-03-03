@@ -7,11 +7,9 @@
     "preview": "vite preview",
     "deploy": "npx hardhat compile && npx hardhat run hardhat.deploy.js"
   },
-  "devDependencies": {
-    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
-    "hardhat": "^2.22.19"
-  },
   "dependencies": {
+    "@nomicfoundation/hardhat-toolbox": "^5.0.0",
+    "hardhat": "^2.22.19",
     "@vitejs/plugin-react": "^4.3.4",
     "ethers": "^6.13.5",
     "react": "^19.0.0",

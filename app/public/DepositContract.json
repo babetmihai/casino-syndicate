@@ -79,7 +79,7 @@
             "type": "address"
           }
         ],
-        "internalType": "struct UserBalance",
+        "internalType": "struct DepositContract.UserBalance",
         "name": "",
         "type": "tuple"
       }

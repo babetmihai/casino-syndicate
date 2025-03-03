@@ -1,0 +1,7 @@
+{
+  "watch": [
+    "contracts"
+  ],
+  "ext": "sol",
+  "exec": "npm run deploy"
+}

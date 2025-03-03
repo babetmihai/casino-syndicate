@@ -8,6 +8,7 @@ const { VITE_CONTRACT_ADDRESS, VITE_LOCAL_RPC_URL, VITE_CONTRACT_NAME } = import
 
 
 const App = () => {
+  console.log(VITE_CONTRACT_ADDRESS, VITE_LOCAL_RPC_URL, VITE_CONTRACT_NAME)
   // const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null);
   // const [signer, setSigner] = useState<ethers.Signer | null>(null);
   const [contract, setContract] = useState(null);

@@ -1,5 +1,5 @@
 {
-  "name": "hardhat-project",
+  "name": "casino-syndicate",
   "scripts": {
     "start": "vite",
     "contracts": "nodemon",

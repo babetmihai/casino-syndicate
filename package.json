@@ -1,22 +1,7 @@
 {
-  "name": "casino-syndicate",
-  "version": "1.0.0",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1",
-    "deploy": "npx hardhat compile && npx hardhat run scripts/deploy.ts --network localhost"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "description": "",
+  "name": "hardhat-project",
   "devDependencies": {
-    "@nomicfoundation/hardhat-chai-matchers": "^2.0.8",
-    "@nomicfoundation/hardhat-ethers": "^3.0.8",
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
-    "chai": "^4.5.0",
-    "dotenv": "^16.4.7",
-    "ethers": "^6.13.5",
     "hardhat": "^2.22.19"
   }
 }

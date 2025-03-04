@@ -3,7 +3,7 @@ pragma solidity ^0.8.0;
 
 
 
-contract DepositContract {
+contract Contract {
 	mapping(address => uint256) public balances;
 	address public owner;
 

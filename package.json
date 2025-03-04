@@ -1,7 +1,7 @@
 {
   "name": "casino-syndicate",
   "scripts": {
-    "start": "concurrently  \"npm run chain:start\"  \"npm run contract:watch\" \"npm run app:start\"",
+    "start": "concurrently  \"npm run chain:start\" \"npm run contract:watch\" \"npm run app:start\"",
     "chain:start": "npx hardhat node",
     "app:build": "vite build",
     "app:start": "vite",

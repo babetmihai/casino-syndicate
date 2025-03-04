@@ -1,16 +1,17 @@
 {
   "name": "casino-syndicate",
   "scripts": {
-    "start": "vite",
-    "contracts": "nodemon",
-    "chain": "npx hardhat node",
-    "build": "vite build",
-    "preview": "vite preview",
-    "deploy": "npx hardhat compile && npx hardhat run hardhat.deploy.js --network localhost"
+    "start": "npm run chain:start & sleep 500 & concurrently  \"npm run contract:watch\" \"npm run app:start\"",
+    "chain:start": "npx hardhat node",
+    "app:build": "vite build",
+    "app:start": "vite",
+    "contract": "npx hardhat compile && npx hardhat run hardhat.deploy.js --network localhost",
+    "contract:watch": "nodemon"
   },
   "dependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",
     "@vitejs/plugin-react": "^4.3.4",
+    "concurrently": "^9.1.2",
     "dotenv": "^16.4.7",
     "eslint": "^9.21.0",
     "eslint-plugin-react": "^7.37.4",

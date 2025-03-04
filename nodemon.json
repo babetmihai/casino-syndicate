@@ -3,5 +3,5 @@
     "contracts"
   ],
   "ext": "sol",
-  "exec": "npm run deploy"
+  "exec": "npm run contract"
 }

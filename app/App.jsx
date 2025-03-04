@@ -18,7 +18,7 @@ const App = () => {
   const init = async () => {
     if (contract && account) {
       try {
-        const balance  = await contract.getContractBalance();
+        const balance  = await contract.getContractBalance(); 
         console.log("Balance:", balance);
         setBalance(ethers.formatEther(balance));
       } catch (error) {

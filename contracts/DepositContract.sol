@@ -7,6 +7,7 @@ contract DepositContract {
 	mapping(address => uint256) public balances;
 	address public owner;
 
+
 	event Deposited(address indexed user, uint256 amount);
 
 	constructor() {

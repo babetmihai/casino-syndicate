@@ -14,13 +14,9 @@ async function main() {
   const address = await contract.getAddress();
 
   const artifactPath = path.resolve(__dirname, `./artifacts/contracts/${VITE_CONTRACT_NAME}.sol/${VITE_CONTRACT_NAME}.json`);
-  const artifact = JSON.parse(fs.readFileSync(artifactPath, 'utf8'));
-  
-  const config = {
-    abi: artifact.abi,
-    address
-  }
-  
+  const { abi } = JSON.parse(fs.readFileSync(artifactPath, 'utf8'));
+  const config = { abi,  address }
+
   const publicDir = path.resolve(__dirname, './app/public');
   if (!fs.existsSync(publicDir)) {
     fs.mkdirSync(publicDir, { recursive: true });

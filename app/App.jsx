@@ -4,11 +4,10 @@ import { ethers } from "ethers";
 
 
 
-const { VITE_CONTRACT_ADDRESS, VITE_LOCAL_RPC_URL, VITE_CONTRACT_NAME } = import.meta.env
+const { VITE_LOCAL_RPC_URL, VITE_CONTRACT_NAME } = import.meta.env
 
 
 const App = () => {
-  console.log(VITE_CONTRACT_ADDRESS, VITE_LOCAL_RPC_URL, VITE_CONTRACT_NAME)
   // const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null);
   // const [signer, setSigner] = useState<ethers.Signer | null>(null);
   const [contract, setContract] = useState(null);
@@ -71,12 +70,12 @@ const App = () => {
                 cacheProvider: true,
                 providerOptions: {},
               });
-              const abi = await fetch(`/${VITE_CONTRACT_NAME}.json?v=${Date.now()}`).then(res => res.json());
+              const config = await fetch(`/${VITE_CONTRACT_NAME}.json?v=${Date.now()}`).then(res => res.json());
               const instance = await web3Modal.connect();
               const provider = new ethers.BrowserProvider(instance);
               const signer = await provider.getSigner();
-              const contract = new ethers.Contract(VITE_CONTRACT_ADDRESS, abi, signer);
-              const code = await provider.getCode(VITE_CONTRACT_ADDRESS);
+              const contract = new ethers.Contract(config.address, config.abi, signer);
+              const code = await provider.getCode(config.address);
               console.log("Code:", code);
         
               // setProvider(provider);

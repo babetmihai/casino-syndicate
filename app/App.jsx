@@ -81,8 +81,8 @@ const App = () => {
               // setProvider(provider);
               // setSigner(signer);
               setContract(contract);
-              const address = await signer.getAddress();
-              setAccount(address);
+              const account = await signer.getAddress();
+              setAccount(account);
             } catch (error) {
               console.error("Failed to connect wallet:", error);
             }

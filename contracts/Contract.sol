@@ -13,6 +13,7 @@ contract Contract {
 		owner = msg.sender;
 	}
 
+
 	function deposit() external payable {
 		require(msg.value > 0, "Must send some Ether");
 		balances[msg.sender] += msg.value;

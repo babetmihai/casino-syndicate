@@ -5,7 +5,7 @@
     "chain": "npx hardhat node",
     "build": "vite build",
     "contract": "npx hardhat compile && npx hardhat run hardhat.deploy.js --network localhost",
-    "contract:watch": "nodemon"
+    "contracts": "nodemon"
   },
   "dependencies": {
     "@nomicfoundation/hardhat-toolbox": "^5.0.0",

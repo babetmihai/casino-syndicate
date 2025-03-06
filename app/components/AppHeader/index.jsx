@@ -7,6 +7,7 @@ import { disconnectWallet } from "../../core/wallet"
 import { showModal } from "../../core/modals"
 import WalletModal from "../../core/wallet/WalletModal"
 import { Logout } from "tabler-icons-react"
+import AccountMenu from "../AccountMenu"
 
 
 const AppHeader = () => {
@@ -24,23 +25,7 @@ const AppHeader = () => {
       <div className="AppHeader_right" >
         {account &&
           <>
-            <Button
-              onClick={() => showModal(WalletModal)}
-              variant="filled"
-              color="indigo"
-              size="md"
-            >
-              {`Connected: ${account.slice(0, 6)}...`}
-            </Button>
-            <Button
-              size="md"
-              onClick={() => disconnectWallet()}
-              leftSection={<Logout />}
-              variant="filled"
-              color="red"
-            >
-              Logout
-            </Button>
+            <AccountMenu />
           </>
         }
         {!account &&

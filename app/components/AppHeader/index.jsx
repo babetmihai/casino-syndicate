@@ -16,7 +16,8 @@ const AppHeader = () => {
 
     <Card
       shadow="sm"
-      p="md"
+      p="sm"
+      mih="4.25rem"
       gap="md"
       className="AppHeader_root"
     >
@@ -33,10 +34,9 @@ const AppHeader = () => {
             onClick={() => showModal(WalletModal)}
             variant="filled"
             color="indigo"
-            size="lg"
             radius="md"
           >
-            Connect Wallet
+            Connect
           </Button>
 
         }

@@ -1,10 +1,9 @@
 import { ethers } from "ethers"
-import { EMPTY_OBJECT } from ".."
 import { actions } from "../store"
 
 
-export const selectWallet = () => actions.get("wallet", EMPTY_OBJECT)
-export const connectWallet = async () => {
+export const selectAccount = () => actions.get("wallet.account")
+export const connectAccount = async () => {
   await getWalletProvider()
   const accounts = await window.ethereum.request({ method: "eth_requestAccounts" })
   const account = accounts[0]

@@ -1,7 +1,7 @@
 import React from "react"
 import { Modal, Text, Button } from "@mantine/core"
 import { hideModal } from "../modals"
-import { connectWallet } from "."
+import { connectAccount } from "."
 
 const WalletModal = () => {
   return (
@@ -20,7 +20,7 @@ const WalletModal = () => {
         size="md"
         mb="sm"
         onClick={async () => {
-          await connectWallet()
+          await connectAccount()
           hideModal()
         }}
       >

@@ -1,49 +1,21 @@
 import React from "react"
-import { MantineProvider, Button } from "@mantine/core"
-import { useSelector } from "react-redux"
-import { disconnectWallet, selectWallet } from "./core/wallet"
-import { showModal } from "./core/modals"
-import WalletModal from "./core/wallet/WalletModal"
+import { MantineProvider } from "@mantine/core"
 import ModalDispatcher from "./core/modals/ModalDispatcher"
+import { Route, Switch } from "react-router-dom"
+import { useSelector } from "react-redux"
+import { selectAccount } from "./core/wallet"
+import DashboardScreen from "./screens/Dashboard"
+import LoginScreen from "./screens/LoginScreen"
 
-
-function WalletConnect() {
-  const { account } = useSelector(() => selectWallet())
-
-  return (
-    <div style={{ minHeight: "100vh", display: "flex", justifyContent: "center", alignItems: "center" }}>
-      <Button
-        onClick={() => showModal(WalletModal)}
-        variant="filled"
-        color="indigo"
-        size="lg"
-        radius="md"
-      >
-        {account ? `Connected: ${account.slice(0, 6)}...` : "Connect Wallet"}
-      </Button>
-
-
-      {account && (
-        <Button
-          onClick={disconnectWallet}
-          variant="filled"
-          color="red"
-          size="lg"
-          radius="md"
-          ml="md"
-        >
-          Disconnect
-        </Button>
-      )}
-    </div>
-  )
-
-}
 
 function App() {
+  const account = useSelector(() => selectAccount())
   return (
     <MantineProvider>
-      <WalletConnect />
+      <Switch>
+        {!account && <Route component={LoginScreen} />}
+        <Route path="/" component={DashboardScreen} />
+      </Switch>
       <ModalDispatcher />
     </MantineProvider>
   )

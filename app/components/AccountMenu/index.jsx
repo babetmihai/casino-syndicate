@@ -21,14 +21,10 @@ const AccountMenu = () => {
             {account.replace(/\d/g, "").toUpperCase().slice(0, 2)}
           </Avatar>
         </Menu.Target>
-        <Menu.Dropdown >
-          <Menu.Item
-            onClick={() => showModal(WalletModal)}
-            leftSection={<Wallet />}
-          >
-            {`Connected: ${account.slice(0, 6)}...`}
-
-          </Menu.Item>
+        <Menu.Dropdown>
+          <Menu.Label>
+            {`Connected: ${account.slice(0, 8)}...`}
+          </Menu.Label>
           <Menu.Item
             onClick={() => disconnectWallet()}
             leftSection={<Logout />}

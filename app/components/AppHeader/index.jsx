@@ -1,6 +1,6 @@
 import React from "react"
 import "./index.scss"
-import { Button, Card } from "@mantine/core"
+import { Button, Card, Text, Title } from "@mantine/core"
 import { useSelector } from "react-redux"
 import { selectAccount } from "../../core/wallet"
 import { showModal } from "../../core/modals"
@@ -9,10 +9,9 @@ import AccountMenu from "../AccountMenu"
 import { Wallet } from "tabler-icons-react"
 
 
-const AppHeader = () => {
+const AppHeader = ({ name }) => {
   const account = useSelector(() => selectAccount())
   return (
-
     <Card
       shadow="sm"
       p="sm"
@@ -21,6 +20,7 @@ const AppHeader = () => {
       className="AppHeader_root"
     >
       <div className="AppHeader_left">
+        <Title order={3}>{name}</Title>
       </div>
       <div className="AppHeader_right" >
         {account &&

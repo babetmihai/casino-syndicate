@@ -1,8 +1,16 @@
 import React from "react"
 import "./index.scss"
+import AppHeader from "../AppHeader"
 
-const AppScreen = ({ children }) => {
-  return <div className="AppScreen_root">{children}</div>
+const AppScreen = ({ name, children }) => {
+  return (
+    <>
+      <AppHeader name={name} />
+      <div className="AppScreen_root">
+        {children}
+      </div>
+    </>
+  )
 }
 
 export default AppScreen

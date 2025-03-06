@@ -4,10 +4,8 @@ import AppScreen from "app/components/AppScreen"
 
 const TableList = () => {
   return (
-    <AppScreen>
-      <div>
-        <h1>Table List</h1>
-      </div>
+    <AppScreen name="Table List">
+
     </AppScreen>
   )
 }

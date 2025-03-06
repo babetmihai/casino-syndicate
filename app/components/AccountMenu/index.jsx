@@ -12,14 +12,16 @@ const AccountMenu = () => {
   const account = useSelector(() => selectAccount())
   return (
     <div className="AccountMenu_root">
-      <Menu>
+      <Menu withArrow>
         <Menu.Target>
           <Avatar
             size="md"
-            radius="md"
-          />
+            radius="xl"
+          >
+            {account.replace(/\d/g, "").toUpperCase().slice(0, 2)}
+          </Avatar>
         </Menu.Target>
-        <Menu.Dropdown>
+        <Menu.Dropdown >
           <Menu.Item
             onClick={() => showModal(WalletModal)}
             leftSection={<Wallet />}

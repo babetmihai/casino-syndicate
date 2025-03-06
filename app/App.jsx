@@ -12,7 +12,7 @@ function App() {
   const account = useSelector(() => selectAccount())
   return (
     <MantineProvider>
-      <Switch>
+      <Switch> 
         {!account && <Route component={LoginScreen} />}
         <Route path="/" component={DashboardScreen} />
       </Switch>

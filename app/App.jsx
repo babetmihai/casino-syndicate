@@ -1,11 +1,11 @@
 import React from "react"
-import { MantineProvider } from "@mantine/core"
 import ModalDispatcher from "./core/modals/ModalDispatcher"
 import { Route, Switch } from "react-router-dom"
 import DashboardScreen from "./screens/Dashboard"
 import TableList from "./screens/TableList"
 import TableView from "./screens/TableView"
 import AppLayout from "./components/AppLayout"
+import { MantineProvider } from "@mantine/core"
 
 
 function App() {
@@ -15,12 +15,13 @@ function App() {
     >
       <AppLayout>
         <Switch>
-          <Route path="/" component={DashboardScreen} />
+          <Route path="/" exact component={DashboardScreen} />
           <Route path="/tables" component={TableList} />
           <Route path="/tables/:id" component={TableView} />
         </Switch>
+        <ModalDispatcher />
       </AppLayout>
-      <ModalDispatcher />
+
     </MantineProvider>
   )
 }

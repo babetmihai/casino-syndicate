@@ -1,7 +1,10 @@
 import React from "react"
 import { Modal, Text, Button } from "@mantine/core"
 import { hideModal } from "../modals"
-import { connectAccount } from "."
+import { connectAccount, disconnectWallet } from "."
+import { Logout } from "tabler-icons-react"
+import "./index.scss"
+
 
 const WalletModal = () => {
   return (
@@ -13,28 +16,29 @@ const WalletModal = () => {
       size="sm"
       radius="md"
     >
-      <Button
-        fullWidth
-        variant="filled"
-        color="blue"
-        size="md"
-        mb="sm"
-        onClick={async () => {
-          await connectAccount()
-          hideModal()
-        }}
-      >
-        MetaMask
-      </Button>
-      <Button
-        fullWidth
-        variant="outline"
-        color="gray"
-        size="md"
-        onClick={hideModal}
-      >
-        Cancel
-      </Button>
+      <div className="WalletModal_buttons">
+        <Button
+          fullWidth
+          variant="filled"
+          color="blue"
+          size="md"
+          onClick={async () => {
+            await connectAccount()
+            hideModal()
+          }}
+        >
+          MetaMask
+        </Button>
+        <Button
+          fullWidth
+          variant="outline"
+          color="gray"
+          size="md"
+          onClick={hideModal}
+        >
+          Cancel
+        </Button>
+      </div>
     </Modal>
   )
 }

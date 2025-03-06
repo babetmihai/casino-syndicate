@@ -10,5 +10,12 @@ export default defineConfig({
     alias: {
       "app": path.resolve(__dirname, "./app")
     }
+  },
+  build: {
+    rollupOptions: {
+      output: {
+        manualChunks: undefined // Ensure no forced chunking interferes
+      }
+    }
   }
 })

@@ -1,8 +1,7 @@
 import React from "react"
 import { Modal, Text, Button } from "@mantine/core"
-import { hideModal } from "../modals"
-import { connectAccount, disconnectWallet } from "."
-import { Logout } from "tabler-icons-react"
+import { hideModal } from "../../modals"
+import { connectAccount } from ".."
 import "./index.scss"
 
 

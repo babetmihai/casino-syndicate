@@ -6,11 +6,18 @@ import "@mantine/core/styles.css"
 import "./index.css"
 import { Provider } from "react-redux"
 import store from "./core/store"
+import { loadStorage } from "./core/storage"
 
-ReactDOM.createRoot(document.getElementById("root")).render(
-  <React.StrictMode>
-    <Provider store={store}>
-      <App />
-    </Provider>
-  </React.StrictMode>
-)
+
+const init = async () => {
+  await loadStorage()
+  ReactDOM.createRoot(document.getElementById("root")).render(
+    <React.StrictMode>
+      <Provider store={store}>
+        <App />
+      </Provider>
+    </React.StrictMode>
+  )
+}
+
+init()

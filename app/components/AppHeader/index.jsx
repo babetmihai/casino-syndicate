@@ -36,7 +36,6 @@ const AppHeader = () => {
           >
             Connect
           </Button>
-
         }
       </div>
     </Card>

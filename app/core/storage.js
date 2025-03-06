@@ -1,5 +1,5 @@
 import localforage from "localforage"
-import { actions } from "src/core/store"
+import { actions } from "./store"
 import _ from "lodash"
 
 const VERSION = 1

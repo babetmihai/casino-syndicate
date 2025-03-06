@@ -2,20 +2,24 @@ import React from "react"
 import { MantineProvider } from "@mantine/core"
 import ModalDispatcher from "./core/modals/ModalDispatcher"
 import { Route, Switch } from "react-router-dom"
-import { useSelector } from "react-redux"
-import { selectAccount } from "./core/wallet"
 import DashboardScreen from "./screens/Dashboard"
-import LoginScreen from "./screens/LoginScreen"
+import TableList from "./screens/TableList"
+import TableView from "./screens/TableView"
+import AppLayout from "./components/AppLayout"
 
 
 function App() {
-  const account = useSelector(() => selectAccount())
   return (
-    <MantineProvider>
-      <Switch> 
-        {!account && <Route component={LoginScreen} />}
-        <Route path="/" component={DashboardScreen} />
-      </Switch>
+    <MantineProvider
+      defaultColorScheme="dark"
+    >
+      <AppLayout>
+        <Switch>
+          <Route path="/" component={DashboardScreen} />
+          <Route path="/tables" component={TableList} />
+          <Route path="/table/:id" component={TableView} />
+        </Switch>
+      </AppLayout>
       <ModalDispatcher />
     </MantineProvider>
   )

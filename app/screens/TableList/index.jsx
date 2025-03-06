@@ -2,14 +2,14 @@ import React from "react"
 import AppScreen from "app/components/AppScreen"
 
 
-const DashboardScreen = () => {
+const TableList = () => {
   return (
     <AppScreen>
       <div>
-        <h1>Dashboard</h1>
+        <h1>Table List</h1>
       </div>
     </AppScreen>
   )
 }
 
-export default DashboardScreen
+export default TableList

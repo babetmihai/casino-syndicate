@@ -32,8 +32,8 @@ const AppHeader = () => {
         {!account &&
           <Button
             onClick={() => showModal(WalletModal)}
-            variant="filled"
-            color="indigo"
+            variant="light"
+            color="gray"
             radius="md"
           >
             Connect

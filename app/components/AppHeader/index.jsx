@@ -3,10 +3,8 @@ import "./index.scss"
 import { Button, Card } from "@mantine/core"
 import { useSelector } from "react-redux"
 import { selectAccount } from "../../core/wallet"
-import { disconnectWallet } from "../../core/wallet"
 import { showModal } from "../../core/modals"
 import WalletModal from "../../core/wallet/WalletModal"
-import { Logout } from "tabler-icons-react"
 import AccountMenu from "../AccountMenu"
 
 

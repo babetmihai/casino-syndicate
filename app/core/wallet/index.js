@@ -1,7 +1,6 @@
 import { ethers } from "ethers"
 import { actions } from "../store"
 
-
 export const selectAccount = () => actions.get("wallet.account")
 export const connectAccount = async () => {
   await getWalletProvider()

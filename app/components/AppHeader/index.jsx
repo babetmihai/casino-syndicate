@@ -6,6 +6,7 @@ import { selectAccount } from "../../core/wallet"
 import { showModal } from "../../core/modals"
 import WalletModal from "../../core/wallet/WalletModal"
 import AccountMenu from "../AccountMenu"
+import { Wallet } from "tabler-icons-react"
 
 
 const AppHeader = () => {
@@ -33,6 +34,7 @@ const AppHeader = () => {
             variant="light"
             color="gray"
             radius="md"
+            leftSection={<Wallet />}
           >
             Connect
           </Button>

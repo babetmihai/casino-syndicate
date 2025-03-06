@@ -1,124 +1,113 @@
-import React, { useState, useEffect } from "react"
-import Web3Modal from "web3modal"
+import React, { Component } from "react"
+import { MantineProvider, Button, Modal, Text } from "@mantine/core"
 import { ethers } from "ethers"
 
+class WalletConnect extends Component {
+  state = {
+    isOpen: false,
+    account: null,
+    provider: null,
+    error: null
+  }
 
-const { VITE_LOCAL_RPC_URL, VITE_CONTRACT_NAME } = import.meta.env
+  connectWallet = async () => {
+    if (!window.ethereum) {
+      this.setState({ error: "MetaMask not detected. Please install it." })
+      return
+    }
 
+    try {
+      const accounts = await window.ethereum.request({ method: "eth_requestAccounts" })
+      const provider = new ethers.BrowserProvider(window.ethereum)
+      const account = accounts[0]
 
-const App = () => {
-  // const [provider, setProvider] = useState<ethers.BrowserProvider | null>(null);
-  // const [signer, setSigner] = useState<ethers.Signer | null>(null);
-  const [contract, setContract] = useState(null)
-  const [account, setAccount] = useState(null)
-  const [balance, setBalance] = useState("0")
-  const [depositAmount, setDepositAmount] = useState("")
-
-  const init = async () => {
-    if (contract && account) {
-      try {
-        const balance = await contract.getContractBalance()
-        console.log("Balance:", balance)
-        setBalance(ethers.formatEther(balance))
-      } catch (error) {
-        console.error("Failed to fetch balance:", error)
-      }
+      this.setState({
+        account,
+        provider,
+        isOpen: false,
+        error: null
+      })
+    } catch (error) {
+      console.error("Connection failed:", error)
+      this.setState({ error: error.message })
     }
   }
 
-  useEffect(() => {
-    if (account && contract) {
-      init()
-    }
-  }, [account, contract])
+  disconnectWallet = () => {
+    this.setState({ account: null, provider: null })
+  }
 
+  toggleModal = () => {
+    this.setState((prevState) => ({ isOpen: !prevState.isOpen }))
+  }
 
-  const [depositEvents, setDepositEvents] = useState([])
+  render() {
+    const { account, isOpen, error } = this.state
 
-  useEffect(() => {
-    if (contract) {
-      // Set up event listener for Deposited events
-      contract.on("Deposited", (user, amount, event) => {
-        const deposit = {
-          user,
-          amount: ethers.formatEther(amount), // Convert wei to Ether
-          txHash: event.transactionHash
-        }
-        setDepositEvents((prev) => [...prev, deposit])
-        console.log(`Deposit from ${user}: ${ethers.formatEther(amount)} ETH`)
-      })
-
-      // Cleanup listener on component unmount
-      return () => {
-        contract.removeAllListeners("Deposited")
-      }
-    }
-  }, [contract])
-
-
-  return (
-    <div style={{ padding: "20px" }}>
-      <h1>Deposit App (Hardhat Local)</h1>
-      {!account ? (
-        <button
-          onClick={async () => {
-            try {
-              const web3Modal = new Web3Modal({
-                network: VITE_LOCAL_RPC_URL,
-                cacheProvider: true,
-                providerOptions: {}
-              })
-              const config = await fetch(`/${VITE_CONTRACT_NAME}.json?v=${Date.now()}`).then(res => res.json())
-              const instance = await web3Modal.connect()
-              const provider = new ethers.BrowserProvider(instance)
-              const signer = await provider.getSigner()
-              const contract = new ethers.Contract(config.address, config.abi, signer)
-              const code = await provider.getCode(config.address)
-              console.log("Code:", code)
-
-              // setProvider(provider);
-              // setSigner(signer);
-              setContract(contract)
-              const account = await signer.getAddress()
-              setAccount(account)
-            } catch (error) {
-              console.error("Failed to connect wallet:", error)
-            }
-          }}
+    return (
+      <div style={{ minHeight: "100vh", display: "flex", justifyContent: "center", alignItems: "center" }}>
+        <Button
+          onClick={this.toggleModal}
+          variant="filled"
+          color="indigo"
+          size="lg"
+          radius="md"
         >
-          Connect Wallet
-        </button>
-      ) : (
-        <div>
-          <p>Connected Account: {account}</p>
-          <p>Your Balance: {balance} ETH</p>
-          <input
-            type="number"
-            value={depositAmount}
-            onChange={(e) => setDepositAmount(e.target.value)}
-            placeholder="Amount in ETH"
-          />
-          <button
-            onClick={async () => {
-              if (contract && depositAmount) {
-                try {
-                  const tx = await contract.deposit({
-                    value: ethers.parseEther(depositAmount)
-                  })
-                  await tx.wait()
-                  init()
-                  setDepositAmount("")
-                } catch (error) {
-                  console.error("Failed to deposit:", error)
-                }
-              }
-            }}
+          {account ? `Connected: ${account.slice(0, 6)}...` : "Connect Wallet"}
+        </Button>
+
+        <Modal
+          opened={isOpen}
+          onClose={this.toggleModal}
+          title={<Text size="xl" fw={700}>Connect to a Wallet</Text>}
+          centered
+          size="sm"
+          radius="md"
+        >
+          {error && <Text color="red" size="sm" mb="md">{error}</Text>}
+          <Button
+            fullWidth
+            variant="filled"
+            color="blue"
+            size="md"
+            mb="sm"
+            onClick={this.connectWallet}
           >
-            Deposit
-          </button>
-        </div>
-      )}
-    </div>
+            MetaMask
+          </Button>
+          <Button
+            fullWidth
+            variant="outline"
+            color="gray"
+            size="md"
+            onClick={this.toggleModal}
+          >
+            Cancel
+          </Button>
+        </Modal>
+
+        {account && (
+          <Button
+            onClick={this.disconnectWallet}
+            variant="filled"
+            color="red"
+            size="lg"
+            radius="md"
+            ml="md"
+          >
+            Disconnect
+          </Button>
+        )}
+      </div>
+    )
+  }
+}
+
+function App() {
+  return (
+    <MantineProvider>
+      <WalletConnect />
+    </MantineProvider>
   )
 }
 

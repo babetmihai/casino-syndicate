@@ -8,13 +8,12 @@ import AppLayout from "./components/AppLayout"
 import { MantineProvider } from "@mantine/core"
 import { useSelector } from "react-redux"
 import { selectAccount } from "app/core/wallet"
-import { initContract } from "app/core/contract"
-
+import contracts from "app/core/contracts"
 
 function App() {
   const account = useSelector(() => selectAccount())
   React.useEffect(() => {
-    initContract(account)
+    if (account) contracts.init()
   }, [account])
   return (
     <MantineProvider

@@ -6,15 +6,9 @@ import TableList from "./screens/TableList"
 import TableView from "./screens/TableView"
 import AppLayout from "./components/AppLayout"
 import { MantineProvider } from "@mantine/core"
-import { useSelector } from "react-redux"
-import { selectAccount } from "app/core/wallet"
-import contracts from "app/core/contracts"
+
 
 function App() {
-  const account = useSelector(() => selectAccount())
-  React.useEffect(() => {
-    if (account) contracts.init()
-  }, [account])
   return (
     <MantineProvider
       defaultColorScheme="dark"

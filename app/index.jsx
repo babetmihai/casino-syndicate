@@ -14,13 +14,11 @@ import history from "./core/history"
 const init = async () => {
   await loadStorage()
   ReactDOM.createRoot(document.getElementById("root")).render(
-    <React.StrictMode>
-      <Router history={history}>
-        <Provider store={store}>
-          <App />
-        </Provider>
-      </Router>
-    </React.StrictMode>
+    <Router history={history}>
+      <Provider store={store}>
+        <App />
+      </Provider>
+    </Router>
   )
 }
 

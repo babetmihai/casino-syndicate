@@ -1,8 +1,8 @@
 import React from "react"
 import { Modal, Text, Button } from "@mantine/core"
 import { hideModal } from "../../modals"
-import { connectAccount } from ".."
 import "./index.scss"
+import chain from ".."
 
 
 const WalletModal = () => {
@@ -22,7 +22,7 @@ const WalletModal = () => {
           color="blue"
           size="md"
           onClick={async () => {
-            await connectAccount()
+            await chain.init()
             hideModal()
           }}
         >

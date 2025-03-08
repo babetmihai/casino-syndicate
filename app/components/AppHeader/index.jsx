@@ -2,15 +2,14 @@ import React from "react"
 import "./index.scss"
 import { Button, Card, Title } from "@mantine/core"
 import { useSelector } from "react-redux"
-import { selectChain } from "../../core/chain"
 import { showModal } from "../../core/modals"
-import WalletModal from "../../core/chain/WalletModal"
+import WalletModal from "../../core/wallet/WalletModal"
 import AccountMenu from "../AccountMenu"
 import { Wallet } from "tabler-icons-react"
-
+import { selectWallet } from "../../core/wallet"
 
 const AppHeader = ({ name }) => {
-  const { account } = useSelector(() => selectChain())
+  const { account } = useSelector(() => selectWallet())
   return (
     <Card
       shadow="sm"

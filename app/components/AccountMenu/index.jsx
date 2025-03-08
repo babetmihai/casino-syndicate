@@ -2,12 +2,11 @@ import React from "react"
 import "./index.scss"
 import { Menu, Avatar } from "@mantine/core"
 import { Logout } from "tabler-icons-react"
-import { selectChain } from "app/core/chain"
+import { selectWallet, disconnectWallet } from "app/core/wallet"
 import { useSelector } from "react-redux"
-import chain from "app/core/chain"
 
 const AccountMenu = () => {
-  const { account } = useSelector(() => selectChain())
+  const { account } = useSelector(() => selectWallet())
   return (
     <div className="AccountMenu_root">
       <Menu withArrow>
@@ -24,7 +23,7 @@ const AccountMenu = () => {
             {`Connected: ${account.slice(0, 8)}...`}
           </Menu.Label>
           <Menu.Item
-            onClick={() => chain.unset()}
+            onClick={() => disconnectWallet()}
             leftSection={<Logout />}
           >
             Logout

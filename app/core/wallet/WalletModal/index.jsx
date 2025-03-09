@@ -26,7 +26,7 @@ const WalletModal = () => {
             hideModal()
           }}
         >
-          MetaMask
+          {t("MetaMask")}
         </Button>
         <Button
           fullWidth
@@ -35,7 +35,7 @@ const WalletModal = () => {
           size="md"
           onClick={hideModal}
         >
-          Cancel
+          {t("cancel")}
         </Button>
       </div>
     </Modal>

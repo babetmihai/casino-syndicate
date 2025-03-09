@@ -4,9 +4,10 @@ import { Button } from "@mantine/core"
 import { Link } from "react-router-dom"
 import { useSelector } from "react-redux"
 import { selectWallet } from "app/core/wallet"
-
+import { useTranslation } from "react-i18next"
 
 const DashboardScreen = () => {
+  const { t } = useTranslation()
   const { contract, account } = useSelector(() => selectWallet())
 
   React.useEffect(() => {
@@ -25,13 +26,10 @@ const DashboardScreen = () => {
 
   }, [contract, account])
   return (
-    <AppScreen name="Dashboard">
-      <div>
-        <h1></h1>
-      </div>
+    <AppScreen name={t("dashboard")}>
       <Link to="/tables">
         <Button>
-          Tables
+          {t("tables")}
         </Button>
       </Link>
 

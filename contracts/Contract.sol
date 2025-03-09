@@ -36,7 +36,7 @@ contract Contract {
 		return address(this).balance;
 	}
 
-	function createTable(string memory _name) external payable {
+	function createTable(string memory _name) public payable {
 		require(msg.value > 0, "Must send some Ether");
 		uint256 tableId = tableCount++;
 		Table memory table = Table({

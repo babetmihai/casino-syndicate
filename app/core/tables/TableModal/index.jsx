@@ -22,7 +22,7 @@ const TableModal = () => {
     onSubmit: async (values, formik) => {
       try {
         formik.setSubmitting(true)
-        await createTable(values.name)
+        await createTable(values)
         hideModal()
       } finally {
         formik.setSubmitting(false)

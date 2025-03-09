@@ -27,6 +27,29 @@ const DashboardScreen = () => {
     }
 
   }, [contract, account])
+
+
+  React.useEffect(() => {
+    if (contract) {
+      // Set up event listener for Deposited events
+      contract.on("Deposited", (user, amount, event) => {
+        const deposit = {
+          user,
+          amount: ethers.formatEther(amount), // Convert wei to Ether
+          txHash: event.transactionHash
+        }
+        setDepositEvents((prev) => [...prev, deposit])
+        console.log(`Deposit from ${user}: ${ethers.formatEther(amount)} ETH`)
+      })
+
+      // Cleanup listener on component unmount
+      return () => {
+        contract.removeAllListeners("Deposited")
+      }
+    }
+  }, [contract])
+
+
   return (
     <AppScreen name={t("dashboard")}>
       <Link to="/tables">

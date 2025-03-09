@@ -43,12 +43,16 @@ const TableModal = () => {
         <TextInput
           label="Name"
           placeholder="Name"
-          {...formik.getFieldProps("name")}
+          onChange={(event) => {
+            formik.setFieldValue("name", event.target.value)
+          }}
         />
         <NumberInput
           label="Balance"
           placeholder="Balance"
-          {...formik.getFieldProps("balance")}
+          onChange={(value) => {
+            formik.setFieldValue("balance", value)
+          }}
         />
       </div>
       <div className="TableModal_buttons">

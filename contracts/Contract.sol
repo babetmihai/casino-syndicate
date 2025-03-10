@@ -22,7 +22,7 @@ contract Contract {
 		uint256 createdAt;
 		uint256 updatedAt;
 	}
-
+	
 
 	mapping(uint256 => mapping(address => TableMember)) public members; 
 	mapping(uint256 => Table) public tables;
@@ -34,7 +34,7 @@ contract Contract {
 	constructor() {
 		owner = msg.sender;
 	}
-	
+
 	function deposit() external payable {
 		require(msg.value > 0, "Must send some Ether");
 		balances[msg.sender] += msg.value;

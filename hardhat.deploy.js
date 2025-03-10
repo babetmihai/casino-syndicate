@@ -21,7 +21,6 @@ async function main() {
   const { abi } = JSON.parse(fs.readFileSync(artifactPath, "utf8"))
   const config = { address, abi }
 
-
   const configPath = path.resolve(__dirname, `.contractrc.json`)
   fs.writeFileSync(configPath, JSON.stringify(config, null, 2))
   console.log(`Contract address: ${address}`)

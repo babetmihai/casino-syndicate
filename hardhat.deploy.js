@@ -11,7 +11,6 @@ async function main() {
   const Contract = await ethers.getContractFactory(VITE_CONTRACT_NAME)
   const contract = await Contract.deploy()
   await contract.waitForDeployment()
-  await new Promise((resolve) => setTimeout(resolve, 2000))
   const address = await contract.getAddress()
 
 

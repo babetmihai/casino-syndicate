@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 
-
 contract Contract {
 	uint256 public tableCount;
 
@@ -22,7 +21,7 @@ contract Contract {
 		uint256 createdAt;
 		uint256 updatedAt;
 	}
-	
+
 
 	mapping(uint256 => mapping(address => TableMember)) public members; 
 	mapping(uint256 => Table) public tables;

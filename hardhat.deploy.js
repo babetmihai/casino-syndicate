@@ -19,9 +19,13 @@ async function main() {
     `./artifacts/contracts/${VITE_CONTRACT_NAME}.sol/${VITE_CONTRACT_NAME}.json`
   )
   const { abi } = JSON.parse(fs.readFileSync(artifactPath, "utf8"))
-  const config = { address, abi }
+  const config = { abi, address }
 
-  const configPath = path.resolve(__dirname, `.contractrc.json`)
+  const publicDir = path.resolve(__dirname, "./app/public")
+  if (!fs.existsSync(publicDir)) {
+    fs.mkdirSync(publicDir, { recursive: true })
+  }
+  const configPath = path.resolve(publicDir, `config.json`)
   fs.writeFileSync(configPath, JSON.stringify(config, null, 2))
   console.log(`Contract address: ${address}`)
 }

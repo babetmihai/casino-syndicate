@@ -5,6 +5,7 @@ import { Link } from "react-router-dom"
 import { useSelector } from "react-redux"
 import { selectWallet } from "app/core/wallet"
 import { useTranslation } from "react-i18next"
+import { ethers } from "ethers"
 
 const DashboardScreen = () => {
 
@@ -37,7 +38,8 @@ const DashboardScreen = () => {
           amount: ethers.formatEther(amount), // Convert wei to Ether
           txHash: event.transactionHash
         }
-        setDepositEvents((prev) => [...prev, deposit])
+
+        console.log("Deposit:", deposit)
         console.log(`Deposit from ${user}: ${ethers.formatEther(amount)} ETH`)
       })
 

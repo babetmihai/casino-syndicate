@@ -25,8 +25,8 @@ async function main() {
   if (!fs.existsSync(publicDir)) {
     fs.mkdirSync(publicDir, { recursive: true })
   }
-  const configPath = path.resolve(publicDir, `abi.json`)
-  fs.writeFileSync(configPath, JSON.stringify(abi, null, 2))
+  const abiPath = path.resolve(publicDir, `abi.json`)
+  fs.writeFileSync(abiPath, JSON.stringify(abi, null, 2))
   console.log(`Contract address: ${address}`)
 
   // Update .env file with the new contract address

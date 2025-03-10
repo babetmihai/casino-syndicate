@@ -13,10 +13,6 @@ export default defineConfig({
     }
   },
   server: {
-    watch: {
-      include: ["./app/public/**"],
-      usePolling: true,
-      interval: 100 // 1 second delay between file change detection
-    },
+    port: 3000
   }
 })

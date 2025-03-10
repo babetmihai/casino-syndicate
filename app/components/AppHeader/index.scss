@@ -6,6 +6,15 @@
   justify-content: space-between;
 }
 
+.AppHeader_left {
+  flex: none;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: .75rem;
+}
+
 .AppHeader_right {
   flex: none;
   display: flex;

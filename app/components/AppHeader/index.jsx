@@ -1,14 +1,14 @@
 import React from "react"
 import "./index.scss"
-import { Button, Card, Title } from "@mantine/core"
+import { Button, Card, Title, ActionIcon } from "@mantine/core"
 import { useSelector } from "react-redux"
 import { showModal } from "../../core/modals"
 import WalletModal from "../../core/wallet/WalletModal"
 import AccountMenu from "../AccountMenu"
-import { Wallet } from "tabler-icons-react"
+import { ArrowLeft, Wallet } from "tabler-icons-react"
 import { selectWallet } from "../../core/wallet"
 
-const AppHeader = ({ name }) => {
+const AppHeader = ({ name, onBack }) => {
   const { account } = useSelector(() => selectWallet())
   return (
     <Card
@@ -19,6 +19,11 @@ const AppHeader = ({ name }) => {
       className="AppHeader_root"
     >
       <div className="AppHeader_left">
+        {onBack && (
+          <ActionIcon variant="light" color="gray" onClick={onBack}>
+            <ArrowLeft />
+          </ActionIcon>
+        )}
         <Title order={3}>{name}</Title>
       </div>
       <div className="AppHeader_right" >

@@ -6,14 +6,14 @@ import { showModal } from "app/core/modals"
 import TableModal from "app/core/tables/TableModal"
 import history from "app/core/history"
 import { useSelector } from "react-redux"
-import { selectWallet } from "app/core/wallet"
+import { selectContract } from "app/core/wallet"
 
 const TableList = () => {
   const { t } = useTranslation()
-  const { contract, account } = useSelector(() => selectWallet())
+  const contract = useSelector(() => selectContract())
 
   React.useEffect(() => {
-    if (contract && account) {
+    if (contract) {
       const init = async () => {
         try {
           const tables = await contract.getTables()
@@ -25,7 +25,7 @@ const TableList = () => {
       init()
     }
 
-  }, [contract, account])
+  }, [contract])
 
   return (
     <AppScreen

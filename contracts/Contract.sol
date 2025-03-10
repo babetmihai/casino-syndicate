@@ -4,7 +4,6 @@ pragma solidity ^0.8.0;
 contract Contract {
 	uint256 public tableCount;
 
-
 	struct TableMember {
 		address id;
 		uint256 tableId;
@@ -13,7 +12,6 @@ contract Contract {
 		uint256 createdAt;
 		uint256 updatedAt;
 	}	
-
 
 	struct Table {
 		uint256 id;

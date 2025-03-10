@@ -5,16 +5,25 @@ pragma solidity ^0.8.0;
 
 contract Contract {
 	uint256 public tableCount;
+
+	struct TableMember {
+		uint256 amount;
+		address owner;
+		uint256 createdAt;
+		uint256 updatedAt;
+	}
+
 	struct Table {
 		uint256 id;
 		string name;
 		address owner;
-		uint256 balance;
 		uint256 createdAt;
 		uint256 updatedAt;
 
 	}
 
+
+	mapping(uint256 => mapping(address => TableMember)) public members; 
 	mapping(uint256 => Table) public tables;
 
 	mapping(address => uint256) public balances;
@@ -39,14 +48,28 @@ contract Contract {
 	function createTable(string memory _name) public payable {
 		require(msg.value > 0, "Must send some Ether");
 		uint256 tableId = tableCount++;
+
+		
+		TableMember memory member = TableMember({
+			amount: msg.value,
+			owner: msg.sender,
+			createdAt: block.timestamp,
+			updatedAt: block.timestamp
+		});	
+
+
+	
+		members[tableId][msg.sender] = member;
+
 		Table memory table = Table({
 			id: tableId,
 			name: _name,
-			balance: msg.value,
 			owner: msg.sender,
 			createdAt: block.timestamp,
 			updatedAt: block.timestamp
 		});
+
+			
 		tables[tableId] = table;
 	}
 

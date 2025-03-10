@@ -7,8 +7,10 @@ contract Contract {
 	uint256 public tableCount;
 
 	struct TableMember {
+		address id;
+		uint256 tableId;
 		uint256 amount;
-		address owner;
+		address createdBy;
 		uint256 createdAt;
 		uint256 updatedAt;
 	}
@@ -16,10 +18,9 @@ contract Contract {
 	struct Table {
 		uint256 id;
 		string name;
-		address owner;
+		address createdBy;
 		uint256 createdAt;
 		uint256 updatedAt;
-
 	}
 
 
@@ -50,34 +51,34 @@ contract Contract {
 		uint256 tableId = tableCount++;
 
 		
-		TableMember memory member = TableMember({
-			amount: msg.value,
-			owner: msg.sender,
-			createdAt: block.timestamp,
-			updatedAt: block.timestamp
-		});	
-
-
-	
-		members[tableId][msg.sender] = member;
-
 		Table memory table = Table({
 			id: tableId,
 			name: _name,
-			owner: msg.sender,
+			createdBy: msg.sender,
 			createdAt: block.timestamp,
 			updatedAt: block.timestamp
 		});
 
-			
 		tables[tableId] = table;
+
+
+		TableMember memory member = TableMember({
+			id: msg.sender,
+			amount: msg.value,
+			tableId: tableId,
+			createdBy: msg.sender,
+			createdAt: block.timestamp,
+			updatedAt: block.timestamp
+		});	
+
+		members[tableId][msg.sender] = member;
 	}
 
-	function getTableNames() external view returns (string[] memory) {
-		string[] memory tableNames = new string[](tableCount);
+	function getTables() external view returns (Table[] memory) {
+		Table[] memory _tables = new Table[](tableCount);
 		for (uint256 i = 0; i < tableCount; i++) {
-			tableNames[i] = tables[i].name;
+			_tables[i] = tables[i];
 		}
-		return tableNames;
-	}
+		return _tables;
+	}	
 }

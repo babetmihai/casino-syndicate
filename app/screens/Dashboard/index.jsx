@@ -16,9 +16,8 @@ const DashboardScreen = () => {
         console.log("init")
         try {
           const balance = await contract.getContractBalance()
-          const tables = await contract.getTableNames()
+
           console.log("Balance:", balance)
-          console.log("Tables:", tables)
         } catch (error) {
           console.error("Failed to fetch balance:", error)
         }

@@ -8,6 +8,7 @@ export default [
   { languageOptions: { globals: globals.browser } },
   pluginReact.configs.flat.recommended,
   {
+    ignores: ["**/*.sol"],
     rules: {
       "react/jsx-no-target-blank": "off",
       "semi": [

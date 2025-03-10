@@ -3,9 +3,10 @@ import { Modal, Text, Button } from "@mantine/core"
 import { hideModal } from "../../modals"
 import "./index.scss"
 import { initWallet } from ".."
-
+import { useTranslation } from "react-i18next"
 
 const WalletModal = () => {
+  const { t } = useTranslation()
   return (
     <Modal
       opened

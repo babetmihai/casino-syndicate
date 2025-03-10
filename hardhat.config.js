@@ -1,3 +1,4 @@
+/* eslint-disable */
 require("@nomicfoundation/hardhat-toolbox")
 // or require("@nomiclabs/hardhat-waffle"); for older versions
 

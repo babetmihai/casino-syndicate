@@ -1,7 +1,8 @@
 {
   "name": "casino-syndicate",
   "scripts": {
-    "start": "vite",
+    "start": "npm run chain & concurrently \"npm run dev\" \"npm run contracts\"",
+    "dev": "vite",
     "chain": "npx hardhat node",
     "build": "vite build",
     "contract": "npx hardhat compile && npx hardhat run hardhat.deploy.js --network localhost",

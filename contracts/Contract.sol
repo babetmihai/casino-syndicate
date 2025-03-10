@@ -35,12 +35,12 @@ contract Contract {
 		owner = msg.sender;
 	}
 
-
 	function deposit() external payable {
 		require(msg.value > 0, "Must send some Ether");
 		balances[msg.sender] += msg.value;
 		emit Deposited(msg.sender, msg.value);
 	}
+	
 
 	function getContractBalance() external view returns (uint256) {
 		return address(this).balance;

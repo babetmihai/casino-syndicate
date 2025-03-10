@@ -10,7 +10,7 @@ const DEFAULT_LANGUGAGE = "en"
 
 
 export const loadLanguage = () => {
-  const language = actions.get("language") || DEFAULT_LANGUGAGE
+  const language = actions.get("language", DEFAULT_LANGUGAGE)
   actions.set("language", language)
 
   dayjs.locale(language)

@@ -11,6 +11,7 @@ async function main() {
   const Contract = await ethers.getContractFactory(VITE_CONTRACT_NAME)
   const contract = await Contract.deploy()
   await contract.waitForDeployment()
+  await new Promise((resolve) => setTimeout(resolve, 2000))
   const address = await contract.getAddress()
 
 
@@ -19,10 +20,10 @@ async function main() {
     `./artifacts/contracts/${VITE_CONTRACT_NAME}.sol/${VITE_CONTRACT_NAME}.json`
   )
   const { abi } = JSON.parse(fs.readFileSync(artifactPath, "utf8"))
-  const config = { abi, address }
+  const config = { address, abi }
 
 
-  const configPath = path.resolve(__dirname, `contract.json`)
+  const configPath = path.resolve(__dirname, `.contractrc.json`)
   fs.writeFileSync(configPath, JSON.stringify(config, null, 2))
   console.log(`Contract address: ${address}`)
 }

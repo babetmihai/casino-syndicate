@@ -39,18 +39,17 @@ contract Contract {
 		require(msg.value > 0, "Must send some Ether");
 		balances[msg.sender] += msg.value;
 		emit Deposited(msg.sender, msg.value);
-	}
-	
+	}	
+
 
 	function getContractBalance() external view returns (uint256) {
 		return address(this).balance;
 	}
-
+	
 	function createTable(string memory _name) public payable {
 		require(msg.value > 0, "Must send some Ether");
 		uint256 tableId = tableCount++;
 
-		
 		Table memory table = Table({
 			id: tableId,
 			name: _name,

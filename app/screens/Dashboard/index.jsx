@@ -26,7 +26,7 @@ const DashboardScreen = () => {
       init()
     }
 
-  }, [contract, account])
+  }, [contract.target, account])
 
 
   React.useEffect(() => {
@@ -48,7 +48,7 @@ const DashboardScreen = () => {
         contract.removeAllListeners("Deposited")
       }
     }
-  }, [contract])
+  }, [contract.target])
 
 
   return (

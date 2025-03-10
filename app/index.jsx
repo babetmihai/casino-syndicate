@@ -2,6 +2,7 @@ import "@mantine/core/styles.css"
 import "./index.scss"
 
 import React from "react"
+import { initWallet, selectWallet } from "./core/wallet"
 import ReactDOM from "react-dom/client"
 import App from "./App"
 import { Provider } from "react-redux"
@@ -9,7 +10,7 @@ import store from "./core/store"
 import { loadStorage } from "./core/storage"
 import { Router } from "react-router-dom"
 import history from "./core/history"
-import { initWallet, selectWallet } from "./core/wallet"
+
 import { loadLanguage } from "./core/i18n"
 
 

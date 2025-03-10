@@ -21,7 +21,6 @@ function App() {
         </Switch>
         <ModalDispatcher />
       </AppLayout>
-
     </MantineProvider>
   )
 }

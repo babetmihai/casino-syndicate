@@ -14,14 +14,9 @@ export default defineConfig({
   },
   server: {
     watch: {
-      include: ["**/app/public/**"]
-    }
-  },
-  build: {
-    rollupOptions: {
-      output: {
-        manualChunks: undefined // Ensure no forced chunking interferes
-      }
-    }
+      include: ["./app/public/**"],
+      usePolling: true,
+      interval: 100 // 1 second delay between file change detection
+    },
   }
 })

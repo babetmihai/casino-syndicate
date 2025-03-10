@@ -19,15 +19,30 @@ async function main() {
     `./artifacts/contracts/${VITE_CONTRACT_NAME}.sol/${VITE_CONTRACT_NAME}.json`
   )
   const { abi } = JSON.parse(fs.readFileSync(artifactPath, "utf8"))
-  const config = { abi, address }
 
-  const publicDir = path.resolve(__dirname, "./app/public")
-  if (!fs.existsSync(publicDir)) {
-    fs.mkdirSync(publicDir, { recursive: true })
+  // Update the .env file with the contract address
+  const envPath = path.resolve(__dirname, '.env')
+  let envContent = fs.readFileSync(envPath, 'utf8')
+  
+  // Update or add the contract address in .env
+  if (envContent.includes('VITE_CONTRACT_ADDRESS=')) {
+    envContent = envContent.replace(/VITE_CONTRACT_ADDRESS=.*/g, `VITE_CONTRACT_ADDRESS=${address}`)
+  } else {
+    envContent += `\nVITE_CONTRACT_ADDRESS=${address}`
   }
-  const configPath = path.resolve(publicDir, `config.json`)
-  fs.writeFileSync(configPath, JSON.stringify(config, null, 2))
+  // Update or add the ABI in .env
+  if (envContent.includes('VITE_CONTRACT_ABI=')) {
+    envContent = envContent.replace(/VITE_CONTRACT_ABI=.*/g, `VITE_CONTRACT_ABI=${JSON.stringify(abi)}`)
+  } else {
+    envContent += `\nVITE_CONTRACT_ABI=${JSON.stringify(abi)}`
+  }
+  
+  fs.writeFileSync(envPath, envContent)
+  
+
+  
   console.log(`Contract address: ${address}`)
+  console.log(`Updated .env file with contract address`)
 }
 
 

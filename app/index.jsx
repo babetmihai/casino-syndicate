@@ -10,9 +10,11 @@ import { loadStorage } from "./core/storage"
 import { Router } from "react-router-dom"
 import history from "./core/history"
 import { initWallet, selectWallet } from "./core/wallet"
+import { loadLanguage } from "./core/i18n"
 
 const init = async () => {
   await loadStorage()
+  await loadLanguage()
   const { account } = selectWallet()
   if (account) await initWallet()
 

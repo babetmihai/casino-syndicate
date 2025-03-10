@@ -13,29 +13,23 @@ async function main() {
   await contract.waitForDeployment()
   const address = await contract.getAddress()
 
-
   const artifactPath = path.resolve(
     __dirname,
     `./artifacts/contracts/${VITE_CONTRACT_NAME}.sol/${VITE_CONTRACT_NAME}.json`
   )
   const { abi } = JSON.parse(fs.readFileSync(artifactPath, "utf8"))
-
-
   const publicDir = path.resolve(__dirname, "./app/public")
   if (!fs.existsSync(publicDir)) {
     fs.mkdirSync(publicDir, { recursive: true })
   }
   const abiPath = path.resolve(publicDir, `abi.json`)
-  fs.writeFileSync(abiPath, JSON.stringify(abi, null, 2))
-  console.log(`Contract address: ${address}`)
-
+ 
   // Update .env file with the new contract address
   const envPath = path.resolve(__dirname, './.env');
   let envContent = '';
-  
+
   if (fs.existsSync(envPath)) {
     envContent = fs.readFileSync(envPath, 'utf8');
-    
     // Replace existing contract address or add it if it doesn't exist
     if (envContent.includes('VITE_CONTRACT_ADDRESS=')) {
       envContent = envContent.replace(
@@ -49,6 +43,8 @@ async function main() {
     envContent = `VITE_CONTRACT_ADDRESS=${address}`;
   }
   
+  fs.writeFileSync(abiPath, JSON.stringify(abi, null, 2))
+  console.log(`abi.json written to ${abiPath}`)
   fs.writeFileSync(envPath, envContent);
   console.log(`Updated .env file with contract address: ${address}`);
 }

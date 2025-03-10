@@ -13,7 +13,6 @@ import history from "./core/history"
 
 import { loadLanguage } from "./core/i18n"
 
-
 const init = async () => {
   await loadStorage()
   await loadLanguage()

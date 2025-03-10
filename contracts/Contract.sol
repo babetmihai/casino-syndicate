@@ -43,9 +43,8 @@ contract Contract {
 
 	function getContractBalance() external view returns (uint256) {
 		return address(this).balance;
-	}
-	
-	
+	}	
+
 	function createTable(string memory _name) public payable {
 		require(msg.value > 0, "Must send some Ether");
 		uint256 tableId = tableCount++;

@@ -25,7 +25,7 @@ const TableList = () => {
       init()
     }
 
-  }, [contract.target, account])
+  }, [contract, account])
 
   return (
     <AppScreen

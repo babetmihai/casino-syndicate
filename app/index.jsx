@@ -19,6 +19,7 @@ const init = async () => {
   await loadLanguage()
   const { account } = selectWallet()
   if (account) await initWallet()
+  console.log("test")
 
   ReactDOM.createRoot(document.getElementById("root")).render(
     <Router history={history}>

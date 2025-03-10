@@ -10,11 +10,10 @@ export const initWallet = async () => {
   await window.ethereum.request({ method: "eth_requestAccounts" })
   const provider = new ethers.BrowserProvider(window.ethereum)
   const signer = await provider.getSigner()
-  const contract = new ethers.Contract(config.address, config.abi, signer)
-  const contractWithSigner = contract.connect(signer)
+  const unsigned = new ethers.Contract(config.address, config.abi, signer)
+  const contract = unsigned.connect(signer)
   const account = await signer.getAddress()
-  actions.set("wallet", { account, contract: contractWithSigner, config })
-
+  actions.set("wallet", { account, contract })
 }
 
 export const disconnectWallet = () => {

@@ -15,17 +15,9 @@
       "jsx": true
     }
   },
-  "settings": {
-    "import/resolver": {
-      "node": {
-        "paths": [
-          "app"
-        ]
-      }
-    }
-  },
   "plugins": [
-    "react"
+    "react",
+    "react-hooks"
   ],
   "ignorePatterns": [
     "dist",

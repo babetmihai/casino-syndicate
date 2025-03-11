@@ -1,0 +1,28 @@
+
+.TableList_root {
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+  padding: .75rem;
+}
+
+.TableList_list {
+  display: flex;
+  flex-direction: column;
+  gap: .75rem;
+}
+
+.TableList_header {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center; 
+}
+
+.TableList_card {
+  display: flex;
+  flex-direction: row;
+  justify-content: space-between;
+  align-items: center;
+}
+

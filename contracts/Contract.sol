@@ -62,4 +62,10 @@ contract Contract {
 		}
 		return _tables;
 	}	
+
+	function getTable(uint256 _tableId) external view returns (Table memory) {
+		return tables[_tableId];
+	}
 }
+
+

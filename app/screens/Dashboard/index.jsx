@@ -1,12 +1,11 @@
 import React from "react"
 import AppScreen from "app/components/AppScreen"
 import { Button } from "@mantine/core"
-import { Link } from "react-router-dom"
 import { useSelector } from "react-redux"
 import { selectWallet } from "app/core/wallet"
 import { useTranslation } from "react-i18next"
 import { ethers } from "ethers"
-
+import "./index.scss"
 
 const DashboardScreen = () => {
   const { t } = useTranslation()
@@ -53,12 +52,13 @@ const DashboardScreen = () => {
 
   return (
     <AppScreen name={t("dashboard")}>
-      <Link to="/tables">
-        <Button>
-          {t("tables")}
-        </Button>
-      </Link>
-
+      <div className="Dashboard_content">
+        <div className="Dashboard_header">
+          <Button>
+            {t("deposit")}
+          </Button>
+        </div>
+      </div>
     </AppScreen>
   )
 }

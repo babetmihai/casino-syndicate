@@ -24,14 +24,8 @@
     "type": "event"
   },
   {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
-      }
-    ],
-    "name": "balances",
+    "inputs": [],
+    "name": "getBalance",
     "outputs": [
       {
         "internalType": "uint256",
@@ -43,121 +37,23 @@
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "internalType": "string",
-        "name": "_name",
-        "type": "string"
-      }
-    ],
-    "name": "createTable",
-    "outputs": [],
-    "stateMutability": "payable",
-    "type": "function"
-  },
-  {
     "inputs": [],
-    "name": "deposit",
-    "outputs": [],
-    "stateMutability": "payable",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "getContractBalance",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "_tableId",
-        "type": "uint256"
-      }
-    ],
-    "name": "getTableInfo",
+    "name": "getTable",
     "outputs": [
       {
         "components": [
           {
-            "components": [
-              {
-                "internalType": "address",
-                "name": "id",
-                "type": "address"
-              },
-              {
-                "internalType": "uint256",
-                "name": "tableId",
-                "type": "uint256"
-              },
-              {
-                "internalType": "uint256",
-                "name": "amount",
-                "type": "uint256"
-              },
-              {
-                "internalType": "address",
-                "name": "createdBy",
-                "type": "address"
-              },
-              {
-                "internalType": "uint256",
-                "name": "createdAt",
-                "type": "uint256"
-              },
-              {
-                "internalType": "uint256",
-                "name": "updatedAt",
-                "type": "uint256"
-              }
-            ],
-            "internalType": "struct TableMember",
-            "name": "member",
-            "type": "tuple"
+            "internalType": "uint256",
+            "name": "memberbalance",
+            "type": "uint256"
           },
           {
-            "components": [
-              {
-                "internalType": "uint256",
-                "name": "id",
-                "type": "uint256"
-              },
-              {
-                "internalType": "string",
-                "name": "name",
-                "type": "string"
-              },
-              {
-                "internalType": "address",
-                "name": "createdBy",
-                "type": "address"
-              },
-              {
-                "internalType": "uint256",
-                "name": "createdAt",
-                "type": "uint256"
-              },
-              {
-                "internalType": "uint256",
-                "name": "updatedAt",
-                "type": "uint256"
-              }
-            ],
-            "internalType": "struct Table",
-            "name": "table",
-            "type": "tuple"
+            "internalType": "uint256",
+            "name": "playerbalance",
+            "type": "uint256"
           }
         ],
-        "internalType": "struct TableInfoDTO",
+        "internalType": "struct TableDTO",
         "name": "",
         "type": "tuple"
       }
@@ -166,52 +62,7 @@
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "getTables",
-    "outputs": [
-      {
-        "components": [
-          {
-            "internalType": "uint256",
-            "name": "id",
-            "type": "uint256"
-          },
-          {
-            "internalType": "string",
-            "name": "name",
-            "type": "string"
-          },
-          {
-            "internalType": "address",
-            "name": "createdBy",
-            "type": "address"
-          },
-          {
-            "internalType": "uint256",
-            "name": "createdAt",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "updatedAt",
-            "type": "uint256"
-          }
-        ],
-        "internalType": "struct Table[]",
-        "name": "",
-        "type": "tuple[]"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
     "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      },
       {
         "internalType": "address",
         "name": "",
@@ -221,33 +72,8 @@
     "name": "members",
     "outputs": [
       {
-        "internalType": "address",
-        "name": "id",
-        "type": "address"
-      },
-      {
         "internalType": "uint256",
-        "name": "tableId",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "amount",
-        "type": "uint256"
-      },
-      {
-        "internalType": "address",
-        "name": "createdBy",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "createdAt",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "updatedAt",
+        "name": "",
         "type": "uint256"
       }
     ],
@@ -268,8 +94,14 @@
     "type": "function"
   },
   {
-    "inputs": [],
-    "name": "tableCount",
+    "inputs": [
+      {
+        "internalType": "address",
+        "name": "",
+        "type": "address"
+      }
+    ],
+    "name": "players",
     "outputs": [
       {
         "internalType": "uint256",
@@ -281,42 +113,17 @@
     "type": "function"
   },
   {
-    "inputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "name": "tables",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "id",
-        "type": "uint256"
-      },
-      {
-        "internalType": "string",
-        "name": "name",
-        "type": "string"
-      },
-      {
-        "internalType": "address",
-        "name": "createdBy",
-        "type": "address"
-      },
-      {
-        "internalType": "uint256",
-        "name": "createdAt",
-        "type": "uint256"
-      },
-      {
-        "internalType": "uint256",
-        "name": "updatedAt",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
+    "inputs": [],
+    "name": "postMember",
+    "outputs": [],
+    "stateMutability": "payable",
+    "type": "function"
+  },
+  {
+    "inputs": [],
+    "name": "postPlayer",
+    "outputs": [],
+    "stateMutability": "payable",
     "type": "function"
   }
 ]

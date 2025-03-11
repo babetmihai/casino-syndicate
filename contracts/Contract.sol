@@ -25,7 +25,7 @@ contract Contract {
 	function postMember() public payable {
 		require(msg.value > 0, "Must send some Ether");
 		// If the contract already has a balance, adjust member balances proportionally
-		uint256 contractBalance = address(this).balance;
+		uint256 contractBalance = address(this).balance - msg.value;
 		if (contractBalance > 0) {
 			uint256 totalMemberBalance = 0;
 			

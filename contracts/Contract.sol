@@ -10,7 +10,7 @@ struct Member {
 contract Contract {
 	Member[] public members;
 	event Deposited(address indexed user, uint256 amount);
-
+	event WinningNumber(uint256 number);
 
 	address public owner;
 	constructor() {
@@ -82,6 +82,7 @@ contract Contract {
 		if (winningAmount > 0) {
 			payable(msg.sender).transfer(winningAmount);
 		}
+		emit WinningNumber(randomNumber);
 	}
 }
 

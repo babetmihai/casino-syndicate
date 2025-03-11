@@ -24,6 +24,19 @@
     "type": "event"
   },
   {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": false,
+        "internalType": "uint256",
+        "name": "number",
+        "type": "uint256"
+      }
+    ],
+    "name": "WinningNumber",
+    "type": "event"
+  },
+  {
     "inputs": [],
     "name": "getBalance",
     "outputs": [

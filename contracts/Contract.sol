@@ -63,6 +63,8 @@ contract Contract {
 		});
 	}
 
+
+	// TODO: make it so that a players deposits money, and the postbet refunds the gas
 	function postBet(BetDTO[] memory _bets) external payable {
 		require(msg.value > 0, "Must send some Ether");
 		uint256 randomNumber = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender))) % 37;

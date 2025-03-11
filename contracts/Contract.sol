@@ -4,7 +4,7 @@ pragma solidity ^0.8.0;
 import "./Types.sol";
 
 contract Contract {
-	uint256 public tableCount;
+	uint256 public tableCount = 1;
 
 
 	mapping(uint256 => mapping(address => TableMember)) public members; 
@@ -63,9 +63,19 @@ contract Contract {
 		return _tables;
 	}	
 
-	function getTable(uint256 _tableId) external view returns (Table memory) {
-		return tables[_tableId];
+	function getTableInfo(uint256 _tableId) external view returns (TableInfoDTO memory) {
+		Table memory table = tables[_tableId];
+		TableMember memory member = members[_tableId][msg.sender];
+		TableInfoDTO memory tableInfoDTO = TableInfoDTO({
+			member: member,
+			table: table
+		});
+		return tableInfoDTO;
 	}
 }
 
+struct TableInfoDTO {
+	TableMember member;
+	Table table;
+}
 

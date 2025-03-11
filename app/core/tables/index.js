@@ -13,7 +13,7 @@ export const fetchTables = async () => {
   const res = await contract.getTables()
   const tables = res.reduce((acc, table) => {
     const item = toTableItem(table)
-    acc[item.id] = item
+    if (item) acc[item.id] = item
     return acc
   }, {})
   actions.set("tables", tables)
@@ -21,12 +21,13 @@ export const fetchTables = async () => {
 }
 
 
-export const fetchTable = async (id) => {
+export const fetchTableInfo = async (id) => {
   const contract = selectContract()
-  const res = await contract.getTable(id)
-  const table = toTableItem(res)
-  actions.set(`tables.${id}`, table)
-  return table
+  const { table, member } = await contract.getTableInfo(id)
+  const item = toTableItem(table)
+  if (!item) throw new Error("table_not_found")
+  actions.set(`tables.${id}`, item)
+  return item
 }
 
 
@@ -41,8 +42,11 @@ export const createTable = async ({ name, balance }) => {
 
 
 const toTableItem = (table) => {
-  return {
-    id: table.id.toString(),
-    name: table.name
+  if (table.id) {
+    return {
+      id: table.id.toString(),
+      name: table.name
+    }
   }
+
 }

@@ -87,8 +87,6 @@ contract Contract {
 }
 
 
-
-
 struct BetDTO {
 	uint256 amount;
 	uint256 number;

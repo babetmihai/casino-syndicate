@@ -13,6 +13,7 @@ contract Contract {
 	event WinningNumber(uint256 number);
 
 	address public owner;
+	uint256 public maxBetAmount = 100;
 	constructor() {
 		owner = msg.sender;
 	}
@@ -65,16 +66,20 @@ contract Contract {
 	function postBet(BetDTO[] memory _bets) external payable {
 		require(msg.value > 0, "Must send some Ether");
 		uint256 randomNumber = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender))) % 37;
-		// add validation for bet amount
 		uint256 totalBetAmount = 0;
-		for (uint256 i = 0; i < _bets.length; i++) {
-			totalBetAmount += _bets[i].amount;
-		}
-		require(msg.value == totalBetAmount, "Total bet amount must equal sent Ether");
-		
 		uint256 winningAmount = 0;
+
 		for (uint256 i = 0; i < _bets.length; i++) {
+			if (_bets[i].amount > maxBetAmount) {
+				revert("Bet amount must be less than maxBetAmount");
+			}
+
+			if (totalBetAmount + _bets[i].amount > msg.value) {
+				revert("Total bet amount must equal sent Ether");
+			}
+			
 			if (_bets[i].number == randomNumber) {
+				totalBetAmount += _bets[i].amount;
 				winningAmount += _bets[i].amount * 36;
 			} 
 		}

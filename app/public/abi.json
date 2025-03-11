@@ -44,12 +44,7 @@
         "components": [
           {
             "internalType": "uint256",
-            "name": "memberbalance",
-            "type": "uint256"
-          },
-          {
-            "internalType": "uint256",
-            "name": "playerbalance",
+            "name": "balance",
             "type": "uint256"
           }
         ],
@@ -64,16 +59,21 @@
   {
     "inputs": [
       {
-        "internalType": "address",
+        "internalType": "uint256",
         "name": "",
-        "type": "address"
+        "type": "uint256"
       }
     ],
     "name": "members",
     "outputs": [
       {
+        "internalType": "address",
+        "name": "sender",
+        "type": "address"
+      },
+      {
         "internalType": "uint256",
-        "name": "",
+        "name": "value",
         "type": "uint256"
       }
     ],
@@ -96,32 +96,31 @@
   {
     "inputs": [
       {
-        "internalType": "address",
-        "name": "",
-        "type": "address"
+        "components": [
+          {
+            "internalType": "uint256",
+            "name": "amount",
+            "type": "uint256"
+          },
+          {
+            "internalType": "uint256",
+            "name": "number",
+            "type": "uint256"
+          }
+        ],
+        "internalType": "struct BetDTO[]",
+        "name": "_bets",
+        "type": "tuple[]"
       }
     ],
-    "name": "players",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [],
-    "name": "postMember",
+    "name": "postBet",
     "outputs": [],
     "stateMutability": "payable",
     "type": "function"
   },
   {
     "inputs": [],
-    "name": "postPlayer",
+    "name": "postMember",
     "outputs": [],
     "stateMutability": "payable",
     "type": "function"

@@ -77,7 +77,7 @@ contract Contract {
 			if (totalBetAmount + _bets[i].amount > msg.value) {
 				revert("Total bet amount must equal sent Ether");
 			}
-			
+
 			if (_bets[i].number == randomNumber) {
 				totalBetAmount += _bets[i].amount;
 				winningAmount += _bets[i].amount * 36;
@@ -87,6 +87,7 @@ contract Contract {
 		if (winningAmount > 0) {
 			payable(msg.sender).transfer(winningAmount);
 		}
+		
 		emit WinningNumber(randomNumber);
 	}
 }

@@ -35,7 +35,6 @@ const initContract = async (address, abi) => {
   while (retries > 0) {
     const code = await provider.getCode(address)
     if (code !== "0x") break
-    console.log("Waiting for contract to be available...")
     await new Promise(resolve => setTimeout(resolve, 1000)) // Wait 1s
     retries--
   }

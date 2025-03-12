@@ -8,11 +8,7 @@ module.exports = {
   solidity: "0.8.20",
   networks: {
     hardhat: {
-      chainId: 1337, // Standard local chain ID
-      mining: {
-        auto: false,
-        interval: 1000 // 1s per block
-      }
+      chainId: 1337 // Standard local chain ID
     },
     localhost: {
       url: process.env.VITE_RPC_URL,

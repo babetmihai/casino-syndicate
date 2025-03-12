@@ -1,14 +1,13 @@
 import React from "react"
 import AppScreen from "app/components/AppScreen"
 import { Button } from "@mantine/core"
-import { useSelector } from "react-redux"
-import { selectWallet, useContract } from "app/core/wallet"
+import { useContract } from "app/core/wallet"
 import { useTranslation } from "react-i18next"
 import { ethers } from "ethers"
-import "./index.scss"
 import { showModal } from "app/core/modals"
 import DepositModal from "app/core/tables/DepositModal"
 import { useParams } from "react-router-dom"
+import "./index.scss"
 
 
 const TableScreen = () => {

@@ -6,10 +6,10 @@ import { showModal } from "../../core/modals"
 import WalletModal from "../../core/wallet/WalletModal"
 import AccountMenu from "../AccountMenu"
 import { ArrowLeft, Wallet } from "tabler-icons-react"
-import { selectWallet } from "../../core/wallet"
+import { selectAccount } from "../../core/wallet"
 
 const AppHeader = ({ name, onBack }) => {
-  const { account } = useSelector(() => selectWallet())
+  const account = useSelector(() => selectAccount())
   return (
     <Card
       shadow="sm"

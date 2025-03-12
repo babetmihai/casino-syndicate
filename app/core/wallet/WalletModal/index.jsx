@@ -2,7 +2,7 @@ import React from "react"
 import { Modal, Text, Button } from "@mantine/core"
 import { hideModal } from "../../modals"
 import "./index.scss"
-import { initWallet } from ".."
+import { initAccount } from ".."
 import { useTranslation } from "react-i18next"
 
 const WalletModal = () => {
@@ -23,7 +23,7 @@ const WalletModal = () => {
           color="blue"
           size="md"
           onClick={async () => {
-            await initWallet()
+            await initAccount()
             hideModal()
           }}
         >

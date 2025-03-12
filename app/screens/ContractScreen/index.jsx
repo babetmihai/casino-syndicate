@@ -10,7 +10,7 @@ import { useParams } from "react-router-dom"
 import "./index.scss"
 
 
-const TableScreen = () => {
+const ContractScreen = () => {
   const { t } = useTranslation()
   const params = useParams()
   const [contract] = useContract(params.address)
@@ -56,9 +56,9 @@ const TableScreen = () => {
 
 
   return (
-    <AppScreen name={`${t("table")} ${params.address}`}>
-      <div className="TableScreen_content">
-        <div className="TableScreen_header">
+    <AppScreen name={`${t("contract")} ${params.address}`}>
+      <div className="ContractScreen_content">
+        <div className="ContractScreen_header">
           <Button
             onClick={() => showModal(DepositModal, {
               onSubmit: async ({ balance }) => {
@@ -76,4 +76,4 @@ const TableScreen = () => {
   )
 }
 
-export default TableScreen
+export default ContractScreen

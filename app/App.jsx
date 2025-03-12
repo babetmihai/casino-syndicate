@@ -4,7 +4,7 @@ import { Route, Switch } from "react-router-dom"
 import MainScreen from "./screens/MainScreen"
 import AppLayout from "./components/AppLayout"
 import { MantineProvider } from "@mantine/core"
-import TableScreen from "./screens/TableScreen"
+import ContractScreen from "./screens/ContractScreen"
 
 function App() {
   return (
@@ -14,7 +14,7 @@ function App() {
       <AppLayout>
         <Switch>
           <Route path="/" exact component={MainScreen} />
-          <Route path="/tables/:address" component={TableScreen} />
+          <Route path="/contracts/:address" component={ContractScreen} />
         </Switch>
         <ModalDispatcher />
       </AppLayout>

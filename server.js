@@ -1,10 +1,11 @@
+const dotenv = require("dotenv")
+dotenv.config()
 const hre = require("hardhat")
 const PouchDB = require("pouchdb")
 const path = require("path")
 const express = require("express")
-const { v7 } = require("uuid")
 
-const PORT = 3000
+const { VITE_SERVER_PORT } = process.env
 
 
 const dbPath = path.join(__dirname, "./db")
@@ -37,9 +38,8 @@ app.post("/contracts", async (req, res, next) => {
     const address = await contract.getAddress()
     const abi = Contract.abi
 
-    const id = v7()
     const table = await db.put({
-      id,
+      id: address,
       node: "contract",
       name,
       type,
@@ -52,7 +52,7 @@ app.post("/contracts", async (req, res, next) => {
   }
 })
 
-app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`)
+app.listen(VITE_SERVER_PORT, () => {
+  console.log(`Server is running on port ${VITE_SERVER_PORT}`)
 })
 

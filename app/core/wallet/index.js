@@ -31,11 +31,11 @@ const initContract = async (address, abi) => {
   await window.ethereum.request({ method: "eth_requestAccounts" })
   const provider = new ethers.BrowserProvider(window.ethereum)
   const code = await provider.getCode(address)
-  if (code !== "0x") {
-    const signer = await provider.getSigner()
-    const contract = new ethers.Contract(address, abi, signer)
-    actions.set(`contracts.${address}`, contract)
-    return contract
-  }
+  if (code === "0x") throw new Error("no_contract")
+  const signer = await provider.getSigner()
+  const contract = new ethers.Contract(address, abi, signer)
+  actions.set(`contracts.${address}`, contract)
+  return contract
+
 }
 

@@ -17,31 +17,32 @@ app.get("/", (req, res) => {
   res.send("Server is running")
 })
 
-app.get("/tables", async (req, res, next) => {
+app.get("/contracts", async (req, res, next) => {
   try {
     const result = await db.allDocs()
     const docs = result.rows.map(row => row.doc)
-    const tables = docs.filter(doc => doc.type === "table")
-    res.json(tables)
+    const contracts = docs.filter(doc => doc.node === "contract")
+    res.json(contracts)
   } catch (error) {
     next(error)
   }
 })
 
-app.post("/tables", async (req, res, next) => {
+app.post("/contracts", async (req, res, next) => {
   try {
-    const Contract = await hre.ethers.getContractFactory("Contract")
+    const { name, type } = req.body
+    const Contract = await hre.ethers.getContractFactory(type)
     const contract = await Contract.deploy()
     await contract.waitForDeployment()
     const address = await contract.getAddress()
     const abi = Contract.abi
 
-    const { name } = req.body
     const id = v7()
     const table = await db.put({
       id,
-      type: "table",
+      node: "contract",
       name,
+      type,
       address,
       abi
     })

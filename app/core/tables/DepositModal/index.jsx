@@ -1,28 +1,25 @@
 
-import { Button, Modal, NumberInput, Text, TextInput } from "@mantine/core"
+import { Button, Modal, NumberInput, Text } from "@mantine/core"
 import React from "react"
-import { createTable } from "app/core/tables"
 import { hideModal } from "app/core/modals"
 import { useFormik } from "formik"
 import * as Yup from "yup"
 import { useTranslation } from "react-i18next"
 
 
-const TableModal = () => {
+const DepositModal = ({ onSubmit }) => {
   const { t } = useTranslation()
   const formik = useFormik({
     initialValues: {
-      name: "",
       balance: 0
     },
     validationSchema: Yup.object({
-      name: Yup.string().required(t("name_required")),
       balance: Yup.number().required(t("balance_required"))
     }),
     onSubmit: async (values, formik) => {
       try {
         formik.setSubmitting(true)
-        await createTable(values)
+        await onSubmit(values)
         hideModal()
       } finally {
         formik.setSubmitting(false)
@@ -39,14 +36,7 @@ const TableModal = () => {
       size="sm"
       radius="md"
     >
-      <div className="TableModal_form">
-        <TextInput
-          label="Name"
-          placeholder="Name"
-          onChange={(event) => {
-            formik.setFieldValue("name", event.target.value)
-          }}
-        />
+      <div className="DepositModal_form">
         <NumberInput
           label="Balance"
           placeholder="Balance"
@@ -55,7 +45,7 @@ const TableModal = () => {
           }}
         />
       </div>
-      <div className="TableModal_buttons">
+      <div className="DepositModal_buttons">
         <Button
           fullWidth
           variant="filled"
@@ -80,4 +70,4 @@ const TableModal = () => {
   )
 }
 
-export default TableModal
+export default DepositModal

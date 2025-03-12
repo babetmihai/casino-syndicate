@@ -6,6 +6,8 @@ import { selectWallet } from "app/core/wallet"
 import { useTranslation } from "react-i18next"
 import { ethers } from "ethers"
 import "./index.scss"
+import { showModal } from "app/core/modals"
+import DepositModal from "app/core/tables/DepositModal"
 
 const DashboardScreen = () => {
   const { t } = useTranslation()
@@ -16,10 +18,10 @@ const DashboardScreen = () => {
       const init = async () => {
         console.log("init")
         try {
-          const balance = await contract.getContractBalance()
-          console.log("Balance:", balance)
+          const table = await contract.getTable()
+          console.log("Table:", table)
         } catch (error) {
-          console.error("Failed to fetch balance:", error)
+          console.error("Failed to fetch table:", error)
         }
       }
       init()
@@ -54,7 +56,15 @@ const DashboardScreen = () => {
     <AppScreen name={t("dashboard")}>
       <div className="Dashboard_content">
         <div className="Dashboard_header">
-          <Button>
+          <Button
+            onClick={() => showModal(DepositModal, {
+              onSubmit: async ({ balance }) => {
+                await contract.depositShares({
+                  value: ethers.parseEther(balance.toString())
+                })
+              }
+            })}
+          >
             {t("deposit")}
           </Button>
         </div>

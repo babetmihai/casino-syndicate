@@ -5,7 +5,7 @@
     "dev": "vite",
     "chain": "npx hardhat node",
     "build": "vite build",
-    "server": "nodemon"
+    "server": "nodemon --exec node server.js --watch ./server.js"
   },
   "dependencies": {
     "@mantine/core": "^7.17.1",

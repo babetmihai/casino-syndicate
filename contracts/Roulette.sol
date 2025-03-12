@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-contract Contract {
+contract Roulette {
 	uint256 public totalShares = 0;
 	mapping(address => uint256) public shares;
 	mapping(address => uint256) public balances;

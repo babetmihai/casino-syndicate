@@ -33,9 +33,6 @@ app.get("/tables", async (req, res, next) => {
 app.post("/tables", async (req, res, next) => {
   try {
     const { name, type } = req.body
-    // Make sure we're using the correct contract name
-    // The contract in the file is named "Contract" not "Roulette"
-
     const Contract = await hre.ethers.getContractFactory(type)
     const contract = await Contract.deploy()
     await contract.waitForDeployment()

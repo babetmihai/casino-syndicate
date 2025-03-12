@@ -9,6 +9,7 @@ import DepositModal from "app/core/tables/DepositModal"
 import { useParams } from "react-router-dom"
 import "./index.scss"
 import { useTable } from "app/core/tables"
+import history from "app/core/history"
 
 
 const TableScreen = () => {
@@ -25,6 +26,7 @@ const TableScreen = () => {
         console.log("init")
         try {
           const table = await contract.getTable()
+          const { totalBalance, totalShares, memberShares, playerBalance } = table
           console.log("Table:", table)
         } catch (error) {
           console.error("Failed to fetch table:", error)
@@ -59,7 +61,10 @@ const TableScreen = () => {
 
 
   return (
-    <AppScreen name={`${t("table")} ${name}`}>
+    <AppScreen
+      name={`${t("table")} ${name}`}
+      onBack={() => history.replace("/")}
+    >
       <div className="TableScreen_content">
         <div className="TableScreen_header">
           <Button

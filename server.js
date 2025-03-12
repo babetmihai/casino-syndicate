@@ -25,19 +25,37 @@ app.get("/tables", async (req, res, next) => {
     const result = await db.allDocs({ include_docs: true })
     const docs = result.rows.map(row => row.doc)
     const tables = docs.filter(doc => doc.node === "table")
+
     res.json(tables)
   } catch (error) {
     next(error)
   }
 })
 
+app.get("/tables/:id", async (req, res, next) => {
+  try {
+    const { id } = req.params
+    const table = await db.get(id)
+    res.json(table)
+  } catch (error) {
+    next(error)
+  }
+})
+
+
 app.post("/tables", async (req, res, next) => {
   try {
     const { name, type } = req.body
-    const Contract = await hre.ethers.getContractFactory(type)
+    await hre.run("compile")
+
+    // Get the localhost provider
+    const provider = new hre.ethers.JsonRpcProvider(process.env.VITE_RPC_URL)
+    const signer = await provider.getSigner()
+
+    const Contract = await hre.ethers.getContractFactory(type, signer)
     const contract = await Contract.deploy()
     await contract.waitForDeployment()
-    const address = contract.target
+    const address = await contract.getAddress()
     const artifact = await hre.artifacts.readArtifact(type)
     const abi = artifact.abi
 
@@ -49,7 +67,8 @@ app.post("/tables", async (req, res, next) => {
       name,
       type,
       address,
-      abi
+      abi,
+      createdAt: new Date().toISOString()
     })
 
     const table = await db.get(id)

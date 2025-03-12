@@ -20,7 +20,7 @@ export const disconnectAccount = () => {
 export const useContract = (address, abi) => {
   const contract = useSelector(() => selectContract(address))
   React.useEffect(() => {
-    if (address) initContract(address, abi)
+    if (address && !contract) initContract(address, abi)
   }, [address])
 
   return [contract]
@@ -28,7 +28,13 @@ export const useContract = (address, abi) => {
 
 const selectContract = (address) => actions.get(`contracts.${address}`)
 const initContract = async (address, abi) => {
+  await window.ethereum.request({ method: "eth_requestAccounts" })
   const provider = new ethers.BrowserProvider(window.ethereum)
+  const code = await provider.getCode(address)
+  if (code === "0x") {
+    console.error("No contract at this address!")
+    return
+  }
   const signer = await provider.getSigner()
   const contract = new ethers.Contract(address, abi, signer)
   actions.set(`contracts.${address}`, contract)

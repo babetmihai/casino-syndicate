@@ -3,16 +3,17 @@ import { actions } from "../store"
 import { useSelector } from "react-redux"
 import React from "react"
 import { EMPTY_OBJECT } from ".."
+import _ from "lodash"
 
 
-export const selectTable = (id) => actions.get(`tables.${id}`)
+export const selectTable = (id) => actions.get(`tables.${id}`, EMPTY_OBJECT)
 export const selectTables = () => actions.get("tables", EMPTY_OBJECT)
 
 
 export const useTable = (id) => {
   const table = useSelector(() => selectTable(id))
   React.useEffect(() => {
-    if (id && !table) fetchTable(id)
+    if (id && _.isEmpty(table)) fetchTable(id)
   }, [id])
   return [table]
 }

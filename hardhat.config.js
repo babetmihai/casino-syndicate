@@ -1,4 +1,5 @@
-/* eslint-disable */
+
+require("dotenv").config()
 require("@nomicfoundation/hardhat-toolbox")
 // or require("@nomiclabs/hardhat-waffle"); for older versions
 
@@ -10,7 +11,7 @@ module.exports = {
       chainId: 1337 // Standard local chain ID
     },
     localhost: {
-      url: "http://127.0.0.1:8545",
+      url: process.env.VITE_RPC_URL,
       chainId: 1337 // Local network
     }
   }

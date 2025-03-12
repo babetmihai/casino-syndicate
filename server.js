@@ -45,13 +45,10 @@ app.get("/tables/:id", async (req, res, next) => {
 
 app.post("/tables", async (req, res, next) => {
   try {
-    const { name, type } = req.body
     await hre.run("compile")
-
-    // Get the localhost provider
+    const { name, type } = req.body
     const provider = new hre.ethers.JsonRpcProvider(process.env.VITE_RPC_URL)
     const signer = await provider.getSigner()
-
     const Contract = await hre.ethers.getContractFactory(type, signer)
     const contract = await Contract.deploy()
     await contract.waitForDeployment()

@@ -2,19 +2,14 @@
 pragma solidity ^0.8.0;
 
 contract Contract {
-	uint256 public totalShares = 1;
+	uint256 public totalShares = 0;
 	mapping(address => uint256) public shares;
 	mapping(address => uint256) public balances;
+
 	event Deposited(address indexed user, uint256 amount);
 	event WinningNumber(uint256 number);
 
-	address public owner;
-	uint256 public maxBetAmount = 100;
-	constructor() {
-		owner = msg.sender;
-	}
 
-	
 	function getTable() external view returns (TableDTO memory) {
 		return TableDTO({
 			memberShares: shares[msg.sender],
@@ -48,6 +43,12 @@ contract Contract {
     emit Deposited(msg.sender, msg.value);
 	}
 
+	function withdrawShares() external {
+		require(shares[msg.sender] > 0, "Must have shares to withdraw");
+		payable(msg.sender).transfer(shares[msg.sender]);
+		totalShares -= shares[msg.sender];
+		delete shares[msg.sender];
+	}
 
 	function depositBalance() external payable {
 		require(msg.value > 0, "Must send some Ether");
@@ -66,6 +67,7 @@ contract Contract {
 		uint256 randomNumber = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender))) % 37;
 		uint256 totalBetAmount = 0;
 		uint256 winningAmount = 0;
+		uint256 maxBetAmount = 100;
 
 		for (uint256 i = 0; i < 37; i++) {
 			if (_bets[i] > maxBetAmount) {

@@ -13,6 +13,7 @@ import history from "app/core/history"
 import { useSelector } from "react-redux"
 import { selectTableData } from "app/core/tables"
 
+
 const TableScreen = () => {
   const { t } = useTranslation()
   const { tableId } = useParams()
@@ -22,13 +23,13 @@ const TableScreen = () => {
   const tableData = useSelector(() => selectTableData(tableId))
 
   React.useEffect(() => {
-    if (contract) {
+    if (tableId) {
       fetchTableData(tableId)
     }
 
-  }, [contract])
+  }, [tableId])
 
-  console.log("tableData", tableData)
+
   React.useEffect(() => {
     if (contract) {
       // Set up event listener for Deposited events
@@ -65,7 +66,7 @@ const TableScreen = () => {
                 const tx = await contract.depositShares({
                   value: ethers.parseEther(balance.toString())
                 })
-                await tx.wait()
+                tx.wait()
                 await fetchTableData(tableId)
               }
             })}

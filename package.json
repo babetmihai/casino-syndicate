@@ -5,8 +5,7 @@
     "dev": "vite",
     "chain": "npx hardhat node",
     "build": "vite build",
-    "contract": "npx hardhat compile && npx hardhat run hardhat.deploy.js --network localhost",
-    "contracts": "nodemon"
+    "server": "nodemon"
   },
   "dependencies": {
     "@mantine/core": "^7.17.1",

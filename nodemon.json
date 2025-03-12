@@ -1,7 +1,7 @@
 {
   "watch": [
-    "contracts"
+    "server.js"
   ],
-  "ext": "sol",
-  "exec": "npm run contract"
+  "ext": "js",
+  "exec": "npm run server"
 }

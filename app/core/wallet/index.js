@@ -26,7 +26,7 @@ export const useContract = (address, abi) => {
   return [contract]
 }
 
-const selectContract = (address) => actions.get(`contracts.${address}`)
+export const selectContract = (address) => actions.get(`contracts.${address}`)
 const initContract = async (address, abi) => {
   await window.ethereum.request({ method: "eth_requestAccounts" })
   const provider = new ethers.BrowserProvider(window.ethereum)

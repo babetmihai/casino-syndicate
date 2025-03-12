@@ -8,9 +8,10 @@ import { showModal } from "app/core/modals"
 import DepositModal from "app/core/tables/DepositModal"
 import { useParams } from "react-router-dom"
 import "./index.scss"
-import { useTable } from "app/core/tables"
+import { fetchTableData, useTable } from "app/core/tables"
 import history from "app/core/history"
-
+import { useSelector } from "react-redux"
+import { selectTableData } from "app/core/tables"
 
 const TableScreen = () => {
   const { t } = useTranslation()
@@ -18,26 +19,16 @@ const TableScreen = () => {
   const [table] = useTable(tableId)
   const { name, address, abi } = table
   const [contract] = useContract(address, abi)
-
+  const tableData = useSelector(() => selectTableData(tableId))
 
   React.useEffect(() => {
     if (contract) {
-      const init = async () => {
-        console.log("init")
-        try {
-          const table = await contract.getTable()
-          const { totalBalance, totalShares, memberShares, playerBalance } = table
-          console.log("Table:", table)
-        } catch (error) {
-          console.error("Failed to fetch table:", error)
-        }
-      }
-      init()
+      fetchTableData(tableId)
     }
 
   }, [contract])
 
-
+  console.log("tableData", tableData)
   React.useEffect(() => {
     if (contract) {
       // Set up event listener for Deposited events
@@ -70,9 +61,12 @@ const TableScreen = () => {
           <Button
             onClick={() => showModal(DepositModal, {
               onSubmit: async ({ balance }) => {
-                await contract.depositShares({
+                await window.ethereum.request({ method: "eth_requestAccounts" })
+                const tx = await contract.depositShares({
                   value: ethers.parseEther(balance.toString())
                 })
+                await tx.wait()
+                await fetchTableData(tableId)
               }
             })}
           >

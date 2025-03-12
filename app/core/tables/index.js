@@ -4,6 +4,8 @@ import { useSelector } from "react-redux"
 import React from "react"
 import { EMPTY_OBJECT } from ".."
 import _ from "lodash"
+import { selectContract } from "../wallet"
+import { ethers } from "ethers"
 
 
 export const selectTable = (id) => actions.get(`tables.${id}`, EMPTY_OBJECT)
@@ -37,5 +39,15 @@ export const fetchTables = async () => {
 export const createTable = async (values) => {
   const { data } = await client.post("/tables", values)
   actions.set(`tables.${data.id}`, data)
+  return data
+}
+
+export const selectTableData = (id) => actions.get(`tableData.${id}`, EMPTY_OBJECT)
+export const fetchTableData = async (id) => {
+  const table = selectTable(id)
+  const { address } = table
+  const contract = selectContract(address)
+  const data = await contract.getTable()
+  actions.set(`tableData.${id}`, _.mapValues(data, (value) => ethers.formatEther(value)))
   return data
 }

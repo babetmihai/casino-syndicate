@@ -27,7 +27,7 @@ contract Roulette {
 
 
 
-	function depositShares() public payable {
+	function depositShares() public payable returns (bool) {
 		require(msg.value > 0, "Must send some Ether");
     uint256 previousBalance = address(this).balance - msg.value;
     uint256 memberShares;
@@ -42,6 +42,8 @@ contract Roulette {
     totalShares += memberShares;
     shares[msg.sender] += memberShares;
     emit Deposited(msg.sender, msg.value);
+
+		return true;
 	}
 
 	function withdrawShares() external {

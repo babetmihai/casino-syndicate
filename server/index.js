@@ -1,3 +1,4 @@
+const hre = require("hardhat")
 const PouchDB = require("pouchdb")
 const path = require("path")
 const express = require("express")
@@ -29,7 +30,13 @@ app.get("/tables", async (req, res, next) => {
 
 app.post("/tables", async (req, res, next) => {
   try {
-    const { name, address, abi } = req.body
+    const Contract = await hre.ethers.getContractFactory("Contract")
+    const contract = await Contract.deploy()
+    await contract.waitForDeployment()
+    const address = await contract.getAddress()
+    const abi = Contract.abi
+
+    const { name } = req.body
     const id = v7()
     const table = await db.put({
       id,

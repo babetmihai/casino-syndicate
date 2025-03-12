@@ -1,10 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-
-
+struct TableDTO {
+	uint256 memberShares;
+	uint256 playerBalance;
+	uint256 totalShares;
+	uint256 totalBalance;
+}
 contract Roulette {
-	uint256 public totalShares = 1;
+	uint256 public totalShares = 0;
 	mapping(address => uint256) public shares;
 	mapping(address => uint256) public balances;
 
@@ -12,8 +16,13 @@ contract Roulette {
 	event WinningNumber(uint256 number);
 
 
-	function getTable() public view returns (uint256) {
-		return totalShares;
+	function getTable() public view returns (TableDTO memory) {
+		return TableDTO({
+			memberShares: shares[msg.sender],
+			playerBalance: balances[msg.sender],
+			totalBalance: address(this).balance,
+			totalShares: totalShares
+		});
 	}
 
 

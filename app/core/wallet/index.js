@@ -2,7 +2,6 @@ import { ethers } from "ethers"
 import { actions } from "../store"
 import { useSelector } from "react-redux"
 import React from "react"
-import { selectTable } from "../bak"
 
 
 export const selectAccount = () => actions.get("account")
@@ -18,18 +17,17 @@ export const disconnectAccount = () => {
 }
 
 
-export const useContract = (address) => {
+export const useContract = (address, abi) => {
   const contract = useSelector(() => selectContract(address))
   React.useEffect(() => {
-    if (address) initContract(address)
+    if (address) initContract(address, abi)
   }, [address])
 
   return [contract]
 }
 
 const selectContract = (address) => actions.get(`contracts.${address}`)
-const initContract = async (address) => {
-  const { abi } = selectTable(address)
+const initContract = async (address, abi) => {
   const provider = new ethers.BrowserProvider(window.ethereum)
   const signer = await provider.getSigner()
   const contract = new ethers.Contract(address, abi, signer)

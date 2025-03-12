@@ -15,8 +15,8 @@ const TableScreen = () => {
   const { t } = useTranslation()
   const { tableId } = useParams()
   const [table] = useTable(tableId)
-  const { address } = table
-  const [contract] = useContract(address)
+  const { address, abi } = table
+  const [contract] = useContract(address, abi)
 
 
   React.useEffect(() => {

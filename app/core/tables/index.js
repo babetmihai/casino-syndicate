@@ -1,7 +1,12 @@
-import { client } from "./client"
+import client from "../client"
 import { actions } from "../store"
 import { useSelector } from "react-redux"
 import React from "react"
+import { EMPTY_OBJECT } from ".."
+
+
+export const selectTable = (id) => actions.get(`tables.${id}`)
+export const selectTables = () => actions.get("tables", EMPTY_OBJECT)
 
 
 export const useTable = (id) => {
@@ -11,7 +16,7 @@ export const useTable = (id) => {
   }, [id])
   return [table]
 }
-const selectTable = (id) => actions.get(`tables.${id}`)
+
 const fetchTable = async (id) => {
   const { data } = await client.get(`/tables/${id}`)
   actions.set(`tables.${data.id}`, data)

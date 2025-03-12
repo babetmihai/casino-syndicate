@@ -39,10 +39,11 @@ const TableModal = ({ onSubmit }) => {
     >
       <div className="TableModal_form">
         <TextInput
+          name="name"
           label="Name"
           placeholder="Name"
-          onChange={(value) => {
-            formik.setFieldValue("name", value)
+          onChange={(event) => {
+            formik.setFieldValue("name", event.target.value)
           }}
         />
       </div>

@@ -33,7 +33,7 @@ contract Contract {
 
 	function depositShares() public payable {
 		require(msg.value > 0, "Must send some Ether");
-    uint256 previousBalance = address(this).balance;
+    uint256 previousBalance = address(this).balance - msg.value;
     uint256 memberShares;
 
     if (previousBalance == 0) {

@@ -1,14 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-
-struct Member {
-	address sender;
-	uint256 value;
-}
-
 contract Contract {
-	Member[] public members;
+	uint256 public totalShares = 1;
+	mapping(address => uint256) public shares;
+	mapping(address => uint256) public balances;
 	event Deposited(address indexed user, uint256 amount);
 	event WinningNumber(uint256 number);
 
@@ -18,76 +14,76 @@ contract Contract {
 		owner = msg.sender;
 	}
 
-
-	function getBalance() external view returns (uint256) {
-		return address(this).balance;
-	}	
-
-	function postMember() public payable {
-		require(msg.value > 0, "Must send some Ether");
-		// If the contract already has a balance, adjust member balances proportionally
-		uint256 contractBalance = address(this).balance - msg.value;
-		if (contractBalance > 0) {
-			uint256 totalMemberBalance = 0;
-			
-			// Calculate total member balance
-			for (uint256 i = 0; i < members.length; i++) {
-				totalMemberBalance += members[i].value;
-			}
-			
-			// Only adjust if there's a discrepancy and total member balance is not zero
-			if (totalMemberBalance != contractBalance && totalMemberBalance > 0) {
-				// Calculate the ratio for adjustment
-				uint256 ratio = (contractBalance * 1e18) / totalMemberBalance;
-				
-				// Adjust each member's balance proportionally
-				for (uint256 i = 0; i < members.length; i++) {
-					members[i].value = (members[i].value * ratio) / 1e18;
-				}
-			}
-		}
-		members.push(Member({sender: msg.sender, value: msg.value}));
-		emit Deposited(msg.sender, msg.value);
-	}
-
+	
 	function getTable() external view returns (TableDTO memory) {
-		uint256 balance = 0;
-		for (uint256 i = 0; i < members.length; i++) {
-			if (members[i].sender == msg.sender) {
-				balance += members[i].value;
-			}
-		}
-
 		return TableDTO({
-			balance: balance
+			memberShares: shares[msg.sender],
+			playerBalance: balances[msg.sender],
+			totalBalance: address(this).balance,
+			totalShares: totalShares
 		});
 	}
 
+	struct TableDTO {
+		uint256 memberShares;
+		uint256 playerBalance;
+		uint256 totalShares;
+		uint256 totalBalance;
+	}
 
-	// TODO: make it so that a players deposits money, and the postbet refunds the gas
-	function postBet(BetDTO[] memory _bets) external payable {
+	function depositShares() public payable {
 		require(msg.value > 0, "Must send some Ether");
+    uint256 previousBalance = address(this).balance;
+    uint256 memberShares;
+
+    if (previousBalance == 0) {
+      memberShares = msg.value;
+    } else {
+			memberShares = (msg.value * totalShares) / previousBalance;
+			require(memberShares > 0, "Share calculation resulted in zero");
+    }
+
+    totalShares += memberShares;
+    shares[msg.sender] += memberShares;
+    emit Deposited(msg.sender, msg.value);
+	}
+
+
+	function depositBalance() external payable {
+		require(msg.value > 0, "Must send some Ether");
+		balances[msg.sender] += msg.value;
+		emit Deposited(msg.sender, msg.value);
+	}
+
+	function withdrawBalance() external {
+		require(balances[msg.sender] > 0, "Must have a balance to withdraw");
+		payable(msg.sender).transfer(balances[msg.sender]);
+		delete balances[msg.sender];
+	}
+
+	function postBet(uint256[37] memory _bets) external {
+		uint256 playerBalance = balances[msg.sender];
 		uint256 randomNumber = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender))) % 37;
 		uint256 totalBetAmount = 0;
 		uint256 winningAmount = 0;
 
-		for (uint256 i = 0; i < _bets.length; i++) {
-			if (_bets[i].amount > maxBetAmount) {
+		for (uint256 i = 0; i < 37; i++) {
+			if (_bets[i] > maxBetAmount) {
 				revert("Bet amount must be less than maxBetAmount");
 			}
 
-			if (totalBetAmount + _bets[i].amount > msg.value) {
+			if (totalBetAmount + _bets[i] > playerBalance) {
 				revert("Total bet amount must equal sent Ether");
 			}
 
-			if (_bets[i].number == randomNumber) {
-				totalBetAmount += _bets[i].amount;
-				winningAmount += _bets[i].amount * 36;
+			if (_bets[i] == randomNumber) {
+				totalBetAmount += _bets[i];
+				winningAmount += _bets[i] * 36;
 			} 
 		}
 
 		if (winningAmount > 0) {
-			payable(msg.sender).transfer(winningAmount);
+			balances[msg.sender] += winningAmount;
 		}
 		
 		emit WinningNumber(randomNumber);
@@ -95,11 +91,3 @@ contract Contract {
 }
 
 
-struct BetDTO {
-	uint256 amount;
-	uint256 number;
-}
-
-struct TableDTO {
-	uint256 balance;
-}

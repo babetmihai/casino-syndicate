@@ -7,6 +7,7 @@ import { createTable, fetchTables, selectTables } from "app/core/tables"
 import { Button, Card } from "@mantine/core"
 import { showModal } from "app/core/modals"
 import TableModal from "app/core/tables/TableModal"
+import history from "app/core/history"
 
 const MainScreen = () => {
   const { t } = useTranslation()
@@ -33,9 +34,13 @@ const MainScreen = () => {
         </div>
         <div className="MainScreen_tables">
           {Object.values(tables).map((table) => (
-            <Card key={table.id} className="MainScreen_table">
+            <Card
+              onClick={() => history.push(`/tables/${table.id}`)}
+              key={table.id} className="MainScreen_table"
+            >
               <div className="MainScreen_table_name">{table.name}</div>
               <div className="MainScreen_table_address">{table.address}</div>
+
             </Card>
           ))}
         </div>

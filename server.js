@@ -18,18 +18,18 @@ app.get("/", (req, res) => {
   res.send("Server is running")
 })
 
-app.get("/contracts", async (req, res, next) => {
+app.get("/tables", async (req, res, next) => {
   try {
     const result = await db.allDocs()
     const docs = result.rows.map(row => row.doc)
-    const contracts = docs.filter(doc => doc.node === "contract")
+    const contracts = docs.filter(doc => doc.node === "table")
     res.json(contracts)
   } catch (error) {
     next(error)
   }
 })
 
-app.post("/contracts", async (req, res, next) => {
+app.post("/tables", async (req, res, next) => {
   try {
     const { name, type } = req.body
     const Contract = await hre.ethers.getContractFactory(type)
@@ -40,7 +40,7 @@ app.post("/contracts", async (req, res, next) => {
 
     const table = await db.put({
       id: address,
-      node: "contract",
+      node: "table",
       name,
       type,
       address,

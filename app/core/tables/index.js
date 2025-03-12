@@ -1,52 +1,35 @@
-import { EMPTY_OBJECT } from ".."
+import { client } from "./client"
 import { actions } from "../store"
-import { selectContract } from "../wallet"
-import { ethers } from "ethers"
+import { useSelector } from "react-redux"
+import React from "react"
 
 
-export const selectTables = () => actions.get("tables", EMPTY_OBJECT)
-export const selectTable = (id) => actions.get(`tables.${id}`, EMPTY_OBJECT)
-
+export const useTable = (id) => {
+  const table = useSelector(() => selectTable(id))
+  React.useEffect(() => {
+    if (id && !table) fetchTable(id)
+  }, [id])
+  return [table]
+}
+const selectTable = (id) => actions.get(`tables.${id}`)
+const fetchTable = async (id) => {
+  const { data } = await client.get(`/tables/${id}`)
+  actions.set(`tables.${data.id}`, data)
+  return data
+}
 
 export const fetchTables = async () => {
-  const contract = selectContract()
-  const res = await contract.getTables()
-  const tables = res.reduce((acc, table) => {
-    const item = toTableItem(table)
-    if (item) acc[item.id] = item
+  const { data } = await client.get("/tables")
+  const tables = data.reduce((acc, table) => {
+    acc[table.id] = table
     return acc
   }, {})
   actions.set("tables", tables)
   return tables
 }
 
-
-export const fetchTableInfo = async (id) => {
-  const contract = selectContract()
-  const { table, member } = await contract.getTableInfo(id)
-  const item = toTableItem(table)
-  if (!item) throw new Error("table_not_found")
-  actions.set(`tables.${id}`, item)
-  return item
-}
-
-
-export const createTable = async ({ name, balance }) => {
-  const contract = selectContract()
-  const tx = await contract.createTable(name, {
-    value: ethers.parseEther(balance.toString())
-  })
-  await tx.wait()
-  await fetchTables()
-}
-
-
-const toTableItem = (table) => {
-  if (table.id) {
-    return {
-      id: table.id.toString(),
-      name: table.name
-    }
-  }
-
+export const createTable = async (values) => {
+  const { data } = await client.post("/tables", values)
+  actions.set(`tables.${data.id}`, data)
+  return data
 }

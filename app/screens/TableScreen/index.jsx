@@ -8,12 +8,15 @@ import { showModal } from "app/core/modals"
 import DepositModal from "app/core/tables/DepositModal"
 import { useParams } from "react-router-dom"
 import "./index.scss"
+import { useTable } from "app/core/tables"
 
 
-const ContractScreen = () => {
+const TableScreen = () => {
   const { t } = useTranslation()
-  const params = useParams()
-  const [contract] = useContract(params.address)
+  const { tableId } = useParams()
+  const [table] = useTable(tableId)
+  const { address } = table
+  const [contract] = useContract(address)
 
 
   React.useEffect(() => {
@@ -56,9 +59,9 @@ const ContractScreen = () => {
 
 
   return (
-    <AppScreen name={`${t("contract")} ${params.address}`}>
-      <div className="ContractScreen_content">
-        <div className="ContractScreen_header">
+    <AppScreen name={`${t("table")} ${address}`}>
+      <div className="TableScreen_content">
+        <div className="TableScreen_header">
           <Button
             onClick={() => showModal(DepositModal, {
               onSubmit: async ({ balance }) => {
@@ -76,4 +79,4 @@ const ContractScreen = () => {
   )
 }
 
-export default ContractScreen
+export default TableScreen

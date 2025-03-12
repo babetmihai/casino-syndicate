@@ -4,7 +4,7 @@ import _ from "lodash"
 
 const VERSION = 1
 const PERSISTENT_PATHS = [
-  "wallet.account"
+  "account"
 ]
 
 localforage.config({

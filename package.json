@@ -3,7 +3,7 @@
   "scripts": {
     "start": "concurrently \"npm run dev\" \"npm run server\"",
     "dev": "vite",
-    "chain": "npx hardhat node",
+    "chain": "rm -rf ./db && npx hardhat node",
     "build": "vite build",
     "server": "nodemon --exec node server.js --watch ./server.js"
   },

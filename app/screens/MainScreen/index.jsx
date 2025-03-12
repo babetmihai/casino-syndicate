@@ -7,7 +7,7 @@ const MainScreen = () => {
   const { t } = useTranslation()
 
   return (
-    <AppScreen name={t("main")}>
+    <AppScreen name={t("casino_syndicate")}>
       <div className="MainScreen_content">
         <div className="MainScreen_header">
 

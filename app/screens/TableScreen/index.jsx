@@ -15,7 +15,7 @@ const TableScreen = () => {
   const { t } = useTranslation()
   const { tableId } = useParams()
   const [table] = useTable(tableId)
-  const { address, abi } = table
+  const { name, address, abi } = table
   const [contract] = useContract(address, abi)
 
 
@@ -59,7 +59,7 @@ const TableScreen = () => {
 
 
   return (
-    <AppScreen name={`${t("table")} ${address}`}>
+    <AppScreen name={`${t("table")} ${name}`}>
       <div className="TableScreen_content">
         <div className="TableScreen_header">
           <Button

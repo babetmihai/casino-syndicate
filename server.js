@@ -5,7 +5,6 @@ const PouchDB = require("pouchdb")
 const path = require("path")
 const express = require("express")
 const cors = require("cors")
-const { add } = require("lodash")
 const { v7 } = require("uuid")
 
 const { VITE_SERVER_PORT } = process.env

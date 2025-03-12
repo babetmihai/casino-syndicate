@@ -1,6 +1,6 @@
 import React from "react"
 import AppScreen from "app/components/AppScreen"
-import { Button } from "@mantine/core"
+import { Button, Text } from "@mantine/core"
 import { useContract } from "app/core/wallet"
 import { useTranslation } from "react-i18next"
 import { ethers } from "ethers"
@@ -23,11 +23,11 @@ const TableScreen = () => {
   const tableData = useSelector(() => selectTableData(tableId))
 
   React.useEffect(() => {
-    if (tableId) {
-      fetchTableData(tableId)
+    if (contract) {
+      if (contract) fetchTableData(tableId)
     }
 
-  }, [tableId])
+  }, [contract])
 
 
   React.useEffect(() => {
@@ -66,13 +66,18 @@ const TableScreen = () => {
                 const tx = await contract.depositShares({
                   value: ethers.parseEther(balance.toString())
                 })
-                tx.wait()
+                await tx.wait()
                 await fetchTableData(tableId)
               }
             })}
           >
             {t("deposit")}
           </Button>
+          {Object.entries(tableData).map(([key, value]) => (
+            <Text c="dimmed" key={key}>
+              {key}: {value}
+            </Text>
+          ))}
         </div>
       </div>
     </AppScreen>

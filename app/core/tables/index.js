@@ -48,6 +48,11 @@ export const fetchTableData = async (id) => {
   const { address } = table
   const contract = selectContract(address)
   const data = await contract.getTable()
-  actions.set(`tableData.${id}`, _.mapValues(data, (value) => ethers.formatEther(value)))
-  return data
+  const TABLE_DATA_FIELDS = ["memberShares", "playerBalance", "totalBalance", "totalShares"]
+  const formattedData = TABLE_DATA_FIELDS.reduce((acc, field) => {
+    acc[field] = ethers.formatEther(data[field])
+    return acc
+  }, {})
+  actions.set(`tableData.${id}`, formattedData)
+  return formattedData
 }

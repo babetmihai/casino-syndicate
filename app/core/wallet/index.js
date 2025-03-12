@@ -30,9 +30,15 @@ const selectContract = (address) => actions.get(`contracts.${address}`)
 const initContract = async (address, abi) => {
   await window.ethereum.request({ method: "eth_requestAccounts" })
   const provider = new ethers.BrowserProvider(window.ethereum)
-  const code = await provider.getCode(address)
-  if (code === "0x") throw new Error("no_contract")
   const signer = await provider.getSigner()
+  let retries = 5
+  while (retries > 0) {
+    const code = await provider.getCode(address)
+    if (code !== "0x") break
+    console.log("Waiting for contract to be available...")
+    await new Promise(resolve => setTimeout(resolve, 1000)) // Wait 1s
+    retries--
+  }
   const contract = new ethers.Contract(address, abi, signer)
   actions.set(`contracts.${address}`, contract)
   return contract

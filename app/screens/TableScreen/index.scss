@@ -1,0 +1,14 @@
+
+.Dashboard_content {
+  display: flex;
+  flex-direction: column;
+  padding: .75rem;
+  gap: .75rem;
+}
+
+.Dashboard_header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: .75rem;
+}

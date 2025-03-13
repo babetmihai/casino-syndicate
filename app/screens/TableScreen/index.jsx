@@ -10,7 +10,7 @@ import { useParams } from "react-router-dom"
 import "./index.scss"
 import history from "app/core/history"
 import { useSelector } from "react-redux"
-import { selectTableData } from "app/core/tables"
+import { selectRoulette } from "app/core/tables"
 
 
 const TableScreen = () => {
@@ -18,7 +18,7 @@ const TableScreen = () => {
   const { address } = useParams()
   const { name = "" } = useSelector(() => selectTable(address))
   const contract = useSelector(() => selectContract(address))
-  const tableData = useSelector(() => selectTableData(address))
+  const roulette = useSelector(() => selectRoulette(contract.target))
 
   React.useEffect(() => {
     if (address) initTable(address)
@@ -63,7 +63,7 @@ const TableScreen = () => {
           >
             {t("deposit")}
           </Button>
-          {Object.entries(tableData).map(([key, value]) => (
+          {Object.entries(roulette).map(([key, value]) => (
             <Text c="dimmed" key={key}>
               {key}: {value}
             </Text>

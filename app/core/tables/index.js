@@ -16,8 +16,7 @@ export const selectTableData = (address) => actions.get(`tableData.${address}`, 
 
 export const initTable = async (address) => {
   const table = await fetchTable(address)
-  const contract = await generateContract(address, table.abi)
-  await fetchTableData(address, contract)
+  await generateContract(address, table.abi)
 }
 
 
@@ -41,17 +40,6 @@ const generateContract = async (address, abi) => {
   const contract = new ethers.Contract(address, abi, signer)
   actions.set(`contracts.${address}`, contract)
   return contract
-}
-
-export const fetchTableData = async (contract) => {
-  const data = await contract.getTable()
-  const TABLE_DATA_FIELDS = ["memberShares", "playerBalance", "totalBalance", "totalShares"]
-  const formattedData = TABLE_DATA_FIELDS.reduce((acc, field) => {
-    acc[field] = ethers.formatEther(data[field])
-    return acc
-  }, {})
-  actions.set(`tableData.${contract.target}`, formattedData)
-  return formattedData
 }
 
 
@@ -91,12 +79,3 @@ export const createTable = async (values) => {
   return table
 }
 
-
-export const buyTableShares = async ({ balance }, contract) => {
-  await window.ethereum.request({ method: "eth_requestAccounts" })
-  const tx = await contract.depositShares({
-    value: ethers.parseEther(balance.toString())
-  })
-  await tx.wait()
-  await fetchTableData(contract)
-}

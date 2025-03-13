@@ -42,32 +42,26 @@ export const fetchTables = async () => {
 export const createTable = async (values) => {
   const { name, type } = values
   if (!window.ethereum) throw new Error("Please install MetaMask!")
-
-  // Request wallet connection
   await window.ethereum.request({ method: "eth_requestAccounts" })
+
   const provider = new ethers.BrowserProvider(window.ethereum)
   const signer = await provider.getSigner()
 
-  // Fetch the contract ABI and bytecode from the backend (or Hardhat artifacts)
-  const response = await client.get(`/contract-artifact/${type}`)
-  const { abi, bytecode } = response.data
+  const { data: artifact } = await client.get(`/contract-artifact/${type}`)
+  const { abi, bytecode } = artifact
 
-  // Deploy the contract
-  const contractFactory = new ethers.ContractFactory(abi, bytecode, signer)
-  const contract = await contractFactory.deploy()
-
-  // Wait for deployment and get the address
+  const factory = new ethers.ContractFactory(abi, bytecode, signer)
+  const contract = await factory.deploy()
   await contract.waitForDeployment()
   const address = await contract.getAddress()
 
-  // Send contract details to the backend
-  const { data } = await client.post("/tables", {
+  const { data: table } = await client.post("/tables", {
     name,
     type,
     abi,
     address
   })
-  actions.set(`tables.${address}`, data)
+  actions.set(`tables.${address}`, table)
 
 }
 

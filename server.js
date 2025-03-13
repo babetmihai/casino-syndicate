@@ -32,10 +32,10 @@ app.get("/tables", async (req, res, next) => {
   }
 })
 
-app.get("/tables/:id", async (req, res, next) => {
+app.get("/tables/:address", async (req, res, next) => {
   try {
-    const { id } = req.params
-    const table = await db.get(id)
+    const { address } = req.params
+    const table = await db.get(address)
     res.json(table)
   } catch (error) {
     next(error)
@@ -56,19 +56,18 @@ app.post("/tables", async (req, res, next) => {
     const artifact = await hre.artifacts.readArtifact(type)
     const abi = artifact.abi
 
-    const id = v7()
+
     await db.put({
-      _id: id,
-      id,
+      _id: address,
+      address,
       node: "table",
       name,
       type,
-      address,
       abi,
       createdAt: new Date().toISOString()
     })
 
-    const table = await db.get(id)
+    const table = await db.get(address)
     res.json(table)
   } catch (error) {
     next(error)

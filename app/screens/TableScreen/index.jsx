@@ -16,15 +16,16 @@ import { selectTableData } from "app/core/tables"
 
 const TableScreen = () => {
   const { t } = useTranslation()
-  const { tableId } = useParams()
-  const [table] = useTable(tableId)
-  const { name, address, abi } = table
+  const { address } = useParams()
+  const [table] = useTable(address)
+
+  const { name, abi } = table
   const [contract] = useContract(address, abi)
-  const tableData = useSelector(() => selectTableData(tableId))
+  const tableData = useSelector(() => selectTableData(address))
 
   React.useEffect(() => {
     if (contract) {
-      if (contract) fetchTableData(tableId)
+      if (contract) fetchTableData(address)
     }
 
   }, [contract])
@@ -67,7 +68,7 @@ const TableScreen = () => {
                   value: ethers.parseEther(balance.toString())
                 })
                 await tx.wait()
-                await fetchTableData(tableId)
+                await fetchTableData(address)
               }
             })}
           >

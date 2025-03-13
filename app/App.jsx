@@ -14,7 +14,7 @@ function App() {
       <AppLayout>
         <Switch>
           <Route path="/" exact component={MainScreen} />
-          <Route path="/tables/:tableId" component={TableScreen} />
+          <Route path="/tables/:address" component={TableScreen} />
         </Switch>
         <ModalDispatcher />
       </AppLayout>

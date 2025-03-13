@@ -16,8 +16,13 @@ const GameScreen = () => {
     if (address) initTable(address)
   }, [address])
 
+  const { name } = table
+
   return (
-    <AppScreen name={table.name}loading={loading}>
+    <AppScreen
+      name={name}
+      loading={loading}
+    >
       {contract &&
         <Resolver
           table={table}

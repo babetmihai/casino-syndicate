@@ -3,10 +3,10 @@ import "./index.scss"
 import { Button, Card, Title, ActionIcon } from "@mantine/core"
 import { useSelector } from "react-redux"
 import { showModal } from "../../core/modals"
-import WalletModal from "../../core/wallet/WalletModal"
+import AccountModal from "../../core/account/AccountModal"
 import AccountMenu from "../AccountMenu"
 import { ArrowLeft, Wallet } from "tabler-icons-react"
-import { selectAccount } from "../../core/wallet"
+import { selectAccount } from "../../core/account"
 
 const AppHeader = ({ name, onBack }) => {
   const account = useSelector(() => selectAccount())
@@ -34,7 +34,7 @@ const AppHeader = ({ name, onBack }) => {
         }
         {!account &&
           <Button
-            onClick={() => showModal(WalletModal)}
+            onClick={() => showModal(AccountModal)}
             variant="light"
             color="gray"
             radius="md"

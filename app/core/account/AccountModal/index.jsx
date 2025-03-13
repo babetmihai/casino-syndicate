@@ -5,7 +5,7 @@ import "./index.scss"
 import { initAccount } from ".."
 import { useTranslation } from "react-i18next"
 
-const WalletModal = () => {
+const AccountModal = () => {
   const { t } = useTranslation()
   return (
     <Modal
@@ -43,4 +43,4 @@ const WalletModal = () => {
   )
 }
 
-export default WalletModal
+export default AccountModal

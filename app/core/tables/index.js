@@ -4,7 +4,6 @@ import { useSelector } from "react-redux"
 import React from "react"
 import { EMPTY_OBJECT } from ".."
 import _ from "lodash"
-import { selectContract } from "../wallet"
 import { ethers } from "ethers"
 
 
@@ -56,3 +55,33 @@ export const fetchTableData = async (id) => {
   actions.set(`tableData.${id}`, formattedData)
   return formattedData
 }
+
+
+export const useContract = (address, abi) => {
+  const contract = useSelector(() => selectContract(address))
+  React.useEffect(() => {
+    if (address && !contract) initContract(address, abi)
+  }, [address])
+
+  return [contract]
+}
+
+
+export const selectContract = (address) => actions.get(`contracts.${address}`)
+const initContract = async (address, abi) => {
+  await window.ethereum.request({ method: "eth_requestAccounts" })
+  const provider = new ethers.BrowserProvider(window.ethereum)
+  const signer = await provider.getSigner()
+  let retries = 5
+  while (retries > 0) {
+    const code = await provider.getCode(address)
+    if (code !== "0x") break
+    await new Promise(resolve => setTimeout(resolve, 1000)) // Wait 1s
+    retries--
+  }
+  const contract = new ethers.Contract(address, abi, signer)
+  actions.set(`contracts.${address}`, contract)
+  return contract
+
+}
+

@@ -2,7 +2,7 @@ import React from "react"
 import "./index.scss"
 import { Menu, Avatar } from "@mantine/core"
 import { Logout } from "tabler-icons-react"
-import { selectAccount, disconnectAccount } from "app/core/wallet"
+import { selectAccount, disconnectAccount } from "app/core/account"
 import { useSelector } from "react-redux"
 
 const AccountMenu = () => {

@@ -1,7 +1,7 @@
 import React from "react"
 import AppScreen from "app/components/AppScreen"
 import { Button, Text } from "@mantine/core"
-import { useContract } from "app/core/wallet"
+import { useContract } from "app/core/tables"
 import { useTranslation } from "react-i18next"
 import { ethers } from "ethers"
 import { showModal } from "app/core/modals"

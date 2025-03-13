@@ -9,7 +9,7 @@ import { useSelector } from "react-redux"
 import { buyTableShares, fetchRoulette, selectRoulette } from ".."
 
 
-const RouletteScreen = ({ address, contract }) => {
+const RouletteAdmin = ({ address, contract }) => {
   const { t } = useTranslation()
   const roulette = useSelector(() => selectRoulette(address))
   React.useEffect(() => {
@@ -58,4 +58,4 @@ const RouletteScreen = ({ address, contract }) => {
   )
 }
 
-export default RouletteScreen
+export default RouletteAdmin

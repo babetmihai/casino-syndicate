@@ -92,7 +92,7 @@ export const createTable = async (values) => {
 }
 
 
-export const postTableShares = async ({ balance }, contract) => {
+export const buyTableShares = async ({ balance }, contract) => {
   await window.ethereum.request({ method: "eth_requestAccounts" })
   const tx = await contract.depositShares({
     value: ethers.parseEther(balance.toString())

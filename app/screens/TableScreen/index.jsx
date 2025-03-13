@@ -1,14 +1,13 @@
 import React from "react"
 import AppScreen from "app/components/AppScreen"
 import { Button, Text } from "@mantine/core"
-import { initTable, selectContract, selectTable } from "app/core/tables"
+import { initTable, buyTableShares, selectContract, selectTable } from "app/core/tables"
 import { useTranslation } from "react-i18next"
 import { ethers } from "ethers"
 import { showModal } from "app/core/modals"
 import DepositModal from "app/core/tables/DepositModal"
 import { useParams } from "react-router-dom"
 import "./index.scss"
-import { fetchTableData } from "app/core/tables"
 import history from "app/core/history"
 import { useSelector } from "react-redux"
 import { selectTableData } from "app/core/tables"
@@ -58,12 +57,7 @@ const TableScreen = () => {
           <Button
             onClick={() => showModal(DepositModal, {
               onSubmit: async ({ balance }) => {
-                await window.ethereum.request({ method: "eth_requestAccounts" })
-                const tx = await contract.depositShares({
-                  value: ethers.parseEther(balance.toString())
-                })
-                await tx.wait()
-                await fetchTableData(contract)
+                await buyTableShares({ balance }, contract)
               }
             })}
           >

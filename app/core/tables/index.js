@@ -2,10 +2,6 @@ import client from "../client"
 import { actions } from "../store"
 import { EMPTY_OBJECT } from ".."
 import { ethers } from "ethers"
-import { useParams } from "react-router-dom"
-import { useSelector } from "react-redux"
-import { Loader } from "@mantine/core"
-import React from "react"
 
 
 export const TABLE_TYPES = {
@@ -15,7 +11,6 @@ export const TABLE_TYPES = {
 export const selectTable = (address) => actions.get(`tables.${address}`, EMPTY_OBJECT)
 export const selectTables = () => actions.get("tables", EMPTY_OBJECT)
 export const selectContract = (address) => actions.get(`contracts.${address}`)
-export const selectTableData = (address) => actions.get(`tableData.${address}`, EMPTY_OBJECT)
 
 
 export const initTable = async (address) => {

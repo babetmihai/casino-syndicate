@@ -1,6 +1,9 @@
 import { ethers } from "ethers"
 import { actions } from "app/core/store"
+import { EMPTY_OBJECT } from "app/core"
 
+
+export const selectRoulette = (address) => actions.get(`games.roulette.${address}`, EMPTY_OBJECT)
 
 export const fetchRoulette = async (contract) => {
   const data = await contract.getTable()

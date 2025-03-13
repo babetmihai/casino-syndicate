@@ -1,7 +1,7 @@
 import React from "react"
 import AppScreen from "app/components/AppScreen"
 import { Button, Text } from "@mantine/core"
-import { buyTableShares, withTable } from "app/core/tables"
+import { buyTableShares } from "app/core/tables"
 import { useTranslation } from "react-i18next"
 import { ethers } from "ethers"
 import { showModal } from "app/core/modals"
@@ -66,4 +66,4 @@ const TableScreen = ({ table, contract }) => {
   )
 }
 
-export default withTable(TableScreen)
+export default TableScreen

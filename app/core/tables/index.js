@@ -18,20 +18,6 @@ export const selectContract = (address) => actions.get(`contracts.${address}`)
 export const selectTableData = (address) => actions.get(`tableData.${address}`, EMPTY_OBJECT)
 
 
-export const withTable = (Component) => () => {
-  const { address } = useParams()
-  const table = useSelector(() => selectTable(address))
-  const contract = useSelector(() => selectContract(address))
-  React.useEffect(() => {
-    if (address) initTable(address)
-  }, [address])
-
-
-  if (contract) return <Component contract={contract} table={table} />
-  return <Loader />
-}
-
-
 export const initTable = async (address) => {
   const table = await fetchTable(address)
   await generateContract(address, table.abi)

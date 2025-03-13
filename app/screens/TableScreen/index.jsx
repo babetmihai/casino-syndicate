@@ -1,29 +1,21 @@
 import React from "react"
 import AppScreen from "app/components/AppScreen"
 import { Button, Text } from "@mantine/core"
-import { initTable, buyTableShares, selectContract, selectTable } from "app/core/tables"
+import { buyTableShares, withTable } from "app/core/tables"
 import { useTranslation } from "react-i18next"
 import { ethers } from "ethers"
 import { showModal } from "app/core/modals"
 import DepositModal from "app/core/tables/DepositModal"
-import { useParams } from "react-router-dom"
 import "./index.scss"
 import history from "app/core/history"
 import { useSelector } from "react-redux"
 import { selectRoulette } from "app/core/tables"
 
 
-const TableScreen = () => {
+const TableScreen = ({ table, contract }) => {
   const { t } = useTranslation()
-  const { address } = useParams()
-  const { name = "" } = useSelector(() => selectTable(address))
-  const contract = useSelector(() => selectContract(address))
-  const roulette = useSelector(() => selectRoulette(contract.target))
-
-  React.useEffect(() => {
-    if (address) initTable(address)
-  }, [address])
-
+  const { name, address } = table
+  const roulette = useSelector(() => selectRoulette(address))
 
   React.useEffect(() => {
     if (contract) {
@@ -74,4 +66,4 @@ const TableScreen = () => {
   )
 }
 
-export default TableScreen
+export default withTable(TableScreen)

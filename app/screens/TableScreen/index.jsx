@@ -1,5 +1,4 @@
 import React from "react"
-import { Loader } from "@mantine/core"
 import { initTable, selectContract, selectTable, TABLE_TYPES } from "app/core/tables"
 import { useSelector } from "react-redux"
 import { useParams } from "react-router-dom"

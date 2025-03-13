@@ -5,6 +5,7 @@ import { hideModal } from "app/core/modals"
 import { useFormik } from "formik"
 import * as Yup from "yup"
 import { useTranslation } from "react-i18next"
+import { TABLE_TYPES } from ".."
 
 
 const TableModal = ({ onSubmit }) => {
@@ -12,7 +13,7 @@ const TableModal = ({ onSubmit }) => {
   const formik = useFormik({
     initialValues: {
       name: "",
-      type: "Roulette"
+      type: TABLE_TYPES.Roulette
     },
     validationSchema: Yup.object({
       name: Yup.string().required(t("name_required"))

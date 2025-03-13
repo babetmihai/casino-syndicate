@@ -7,7 +7,7 @@ import _ from "lodash"
 import { ethers } from "ethers"
 
 
-const TABLE_TYPES = {
+export const TABLE_TYPES = {
   Roulette: "Roulette"
 }
 

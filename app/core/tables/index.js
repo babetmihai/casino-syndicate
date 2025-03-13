@@ -1,9 +1,6 @@
 import client from "../client"
 import { actions } from "../store"
-import { useSelector } from "react-redux"
-import React from "react"
 import { EMPTY_OBJECT } from ".."
-import _ from "lodash"
 import { ethers } from "ethers"
 
 
@@ -13,20 +10,24 @@ export const TABLE_TYPES = {
 
 export const selectTable = (address) => actions.get(`tables.${address}`, EMPTY_OBJECT)
 export const selectTables = () => actions.get("tables", EMPTY_OBJECT)
+export const selectContract = (address) => actions.get(`contracts.${address}`)
+export const selectTableData = (address) => actions.get(`tableData.${address}`, EMPTY_OBJECT)
 
-
-export const useTable = (address) => {
-  const table = useSelector(() => selectTable(address))
-  React.useEffect(() => {
-    if (address && _.isEmpty(table)) initTable(address)
-  }, [address])
-  return [table]
-}
 
 export const initTable = async (address) => {
-  const { data: table } = await client.get(`/tables/${address}`)
-  const { abi } = table
+  const table = await fetchTable(address)
+  const contract = await generateContract(address, table.abi)
+  await fetchTableData(address, contract)
+}
 
+
+const fetchTable = async (address) => {
+  const { data: table } = await client.get(`/tables/${address}`)
+  actions.set(`tables.${address}`, table)
+  return table
+}
+
+const generateContract = async (address, abi) => {
   await window.ethereum.request({ method: "eth_requestAccounts" })
   const provider = new ethers.BrowserProvider(window.ethereum)
   const signer = await provider.getSigner()
@@ -39,9 +40,20 @@ export const initTable = async (address) => {
   }
   const contract = new ethers.Contract(address, abi, signer)
   actions.set(`contracts.${address}`, contract)
-  actions.set(`tables.${address}`, table)
   return contract
 }
+
+export const fetchTableData = async (address, contract) => {
+  const data = await contract.getTable()
+  const TABLE_DATA_FIELDS = ["memberShares", "playerBalance", "totalBalance", "totalShares"]
+  const formattedData = TABLE_DATA_FIELDS.reduce((acc, field) => {
+    acc[field] = ethers.formatEther(data[field])
+    return acc
+  }, {})
+  actions.set(`tableData.${address}`, formattedData)
+  return formattedData
+}
+
 
 export const fetchTables = async () => {
   const { data } = await client.get("/tables")
@@ -78,22 +90,3 @@ export const createTable = async (values) => {
   actions.set(`tables.${address}`, table)
 
 }
-
-
-export const selectContract = (address) => actions.get(`contracts.${address}`)
-
-export const selectTableData = (id) => actions.get(`tableData.${id}`, EMPTY_OBJECT)
-export const fetchTableData = async (id) => {
-  const table = selectTable(id)
-  const { address } = table
-  const contract = selectContract(address)
-  const data = await contract.getTable()
-  const TABLE_DATA_FIELDS = ["memberShares", "playerBalance", "totalBalance", "totalShares"]
-  const formattedData = TABLE_DATA_FIELDS.reduce((acc, field) => {
-    acc[field] = ethers.formatEther(data[field])
-    return acc
-  }, {})
-  actions.set(`tableData.${id}`, formattedData)
-  return formattedData
-}
-

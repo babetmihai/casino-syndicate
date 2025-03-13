@@ -22,10 +22,7 @@ const TableScreen = () => {
   const tableData = useSelector(() => selectTableData(address))
 
   React.useEffect(() => {
-    if (address) {
-      if (!contract) initTable(address)
-    }
-
+    if (address) initTable(address)
   }, [address])
 
 
@@ -66,7 +63,7 @@ const TableScreen = () => {
                   value: ethers.parseEther(balance.toString())
                 })
                 await tx.wait()
-                await fetchTableData(address)
+                await fetchTableData(address, contract)
               }
             })}
           >

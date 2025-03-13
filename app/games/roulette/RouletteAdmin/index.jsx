@@ -1,5 +1,5 @@
 import React from "react"
-import { Button, Text } from "@mantine/core"
+import { ActionIcon, Button, Card, CopyButton, Text } from "@mantine/core"
 import { useTranslation } from "react-i18next"
 import { ethers } from "ethers"
 import { showModal } from "app/core/modals"
@@ -7,6 +7,7 @@ import DepositModal from "app/core/tables/DepositModal"
 import "./index.scss"
 import { useSelector } from "react-redux"
 import { buyTableShares, fetchRoulette, selectRoulette } from ".."
+import { Check, Copy } from "tabler-icons-react"
 
 
 const RouletteAdmin = ({ address, contract }) => {
@@ -35,10 +36,10 @@ const RouletteAdmin = ({ address, contract }) => {
     }
   }, [])
 
-
+  const tableUrl = `${window.location.origin}/#/tables/${address}`
   return (
-    <div className="TableScreen_content">
-      <div className="TableScreen_header">
+    <div className="RouletteAdmin_content">
+      <div className="RouletteAdmin_header">
         <Button
           onClick={() => showModal(DepositModal, {
             onSubmit: async ({ balance }) => {
@@ -48,12 +49,27 @@ const RouletteAdmin = ({ address, contract }) => {
         >
           {t("deposit")}
         </Button>
-        {Object.entries(roulette).map(([key, value]) => (
-          <Text c="dimmed" key={key}>
-            {key}: {value}
-          </Text>
-        ))}
+
+
       </div>
+      <Card className="RouletteAdmin_url">
+        <Text flex={1}>{tableUrl}</Text>
+        <CopyButton value={tableUrl}>
+          {({ copied, copy }) => (
+            <ActionIcon
+              onClick={copy}
+              color={copied ? "green" : "gray"}
+            >
+              {copied ? <Check size={16} /> : <Copy size={16} />}
+            </ActionIcon>
+          )}
+        </CopyButton>
+      </Card>
+      {Object.entries(roulette).map(([key, value]) => (
+        <Text c="dimmed" key={key}>
+          {key}: {value}
+        </Text>
+      ))}
     </div>
   )
 }

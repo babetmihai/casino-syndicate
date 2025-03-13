@@ -3,7 +3,6 @@ import { initTable, selectContract, selectTable, TABLE_TYPES } from "app/core/ta
 import { useSelector } from "react-redux"
 import { useParams } from "react-router-dom"
 import AppScreen from "app/components/AppScreen"
-import history from "app/core/history"
 import { useLoader } from "app/core/loaders"
 import RouletteGame from "app/games/roulette/RouletteGame"
 
@@ -18,7 +17,7 @@ const GameScreen = () => {
   }, [address])
 
   return (
-    <AppScreen name={table.name} onBack={() => history.replace("/")} loading={loading}>
+    <AppScreen name={table.name}loading={loading}>
       {contract &&
         <Resolver
           table={table}

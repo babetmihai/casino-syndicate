@@ -4,7 +4,9 @@ import { Route, Switch } from "react-router-dom"
 import MainScreen from "./screens/MainScreen"
 import AppLayout from "./components/AppLayout"
 import { MantineProvider } from "@mantine/core"
-import TableScreen from "./screens/TableScreen"
+import AdminScreen from "./screens/AdminScreen"
+import GameScreen from "./screens/GameScreen"
+
 
 function App() {
   return (
@@ -14,7 +16,8 @@ function App() {
       <AppLayout>
         <Switch>
           <Route path="/" exact component={MainScreen} />
-          <Route path="/tables/:address" component={TableScreen} />
+          <Route path="/tables/:address/admin" component={AdminScreen} />
+          <Route path="/tables/:address" component={GameScreen} />
         </Switch>
         <ModalDispatcher />
       </AppLayout>

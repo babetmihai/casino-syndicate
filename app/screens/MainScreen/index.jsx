@@ -37,7 +37,7 @@ const MainScreen = () => {
           {_.orderBy(Object.values(tables), ["createdAt"], ["desc"])
             .map((table) => (
               <Card
-                onClick={() => history.push(`/tables/${table.address}`)}
+                onClick={() => history.push(`/tables/${table.address}/admin`)}
                 key={table.address}
                 className="MainScreen_table"
               >

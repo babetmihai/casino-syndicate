@@ -8,7 +8,7 @@ import history from "app/core/history"
 import { useLoader } from "app/core/loaders"
 
 
-const TableScreen = () => {
+const AdminScreen = () => {
   const { address } = useParams()
   const table = useSelector(() => selectTable(address))
   const contract = useSelector(() => selectContract(address))
@@ -21,7 +21,7 @@ const TableScreen = () => {
   return (
     <AppScreen name={table.name} onBack={() => history.replace("/")} loading={loading}>
       {contract &&
-        <TableResolver
+        <Resolver
           table={table}
           contract={contract}
           address={address}
@@ -32,7 +32,7 @@ const TableScreen = () => {
 }
 
 
-const TableResolver = ({ table, ...props }) => {
+const Resolver = ({ table, ...props }) => {
   const { type } = table
   switch (type) {
     case (TABLE_TYPES.Roulette): return <RouletteAdmin table={table} {...props} />
@@ -40,4 +40,4 @@ const TableResolver = ({ table, ...props }) => {
   }
 }
 
-export default TableScreen
+export default AdminScreen

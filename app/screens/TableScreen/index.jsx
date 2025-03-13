@@ -1,14 +1,14 @@
 import React from "react"
 import AppScreen from "app/components/AppScreen"
 import { Button, Text } from "@mantine/core"
-import { useContract } from "app/core/tables"
+import { initTable, selectContract, selectTable } from "app/core/tables"
 import { useTranslation } from "react-i18next"
 import { ethers } from "ethers"
 import { showModal } from "app/core/modals"
 import DepositModal from "app/core/tables/DepositModal"
 import { useParams } from "react-router-dom"
 import "./index.scss"
-import { fetchTableData, useTable } from "app/core/tables"
+import { fetchTableData } from "app/core/tables"
 import history from "app/core/history"
 import { useSelector } from "react-redux"
 import { selectTableData } from "app/core/tables"
@@ -17,18 +17,16 @@ import { selectTableData } from "app/core/tables"
 const TableScreen = () => {
   const { t } = useTranslation()
   const { address } = useParams()
-  const [table] = useTable(address)
-
-  const { name, abi } = table
-  const [contract] = useContract(address, abi)
+  const { name = "" } = useSelector(() => selectTable(address))
+  const contract = useSelector(() => selectContract(address))
   const tableData = useSelector(() => selectTableData(address))
 
   React.useEffect(() => {
-    if (contract) {
-      if (contract) fetchTableData(address)
+    if (address) {
+      if (!contract) initTable(address)
     }
 
-  }, [contract])
+  }, [address])
 
 
   React.useEffect(() => {

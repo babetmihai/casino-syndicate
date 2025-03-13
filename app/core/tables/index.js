@@ -18,15 +18,29 @@ export const selectTables = () => actions.get("tables", EMPTY_OBJECT)
 export const useTable = (address) => {
   const table = useSelector(() => selectTable(address))
   React.useEffect(() => {
-    if (address && _.isEmpty(table)) fetchTable(address)
+    if (address && _.isEmpty(table)) initTable(address)
   }, [address])
   return [table]
 }
 
-const fetchTable = async (address) => {
-  const { data } = await client.get(`/tables/${address}`)
-  actions.set(`tables.${address}`, data)
-  return data
+export const initTable = async (address) => {
+  const { data: table } = await client.get(`/tables/${address}`)
+  const { abi } = table
+
+  await window.ethereum.request({ method: "eth_requestAccounts" })
+  const provider = new ethers.BrowserProvider(window.ethereum)
+  const signer = await provider.getSigner()
+  let retries = 5
+  while (retries > 0) {
+    const code = await provider.getCode(address)
+    if (code !== "0x") break
+    await new Promise(resolve => setTimeout(resolve, 1000)) // Wait 1s
+    retries--
+  }
+  const contract = new ethers.Contract(address, abi, signer)
+  actions.set(`contracts.${address}`, contract)
+  actions.set(`tables.${address}`, table)
+  return contract
 }
 
 export const fetchTables = async () => {
@@ -66,34 +80,7 @@ export const createTable = async (values) => {
 }
 
 
-export const useContract = (address, abi) => {
-  const contract = useSelector(() => selectContract(address))
-  React.useEffect(() => {
-    if (address && abi && !contract) initContract(address, abi)
-  }, [address])
-
-  return [contract]
-}
-
-
 export const selectContract = (address) => actions.get(`contracts.${address}`)
-const initContract = async (address, abi) => {
-  await window.ethereum.request({ method: "eth_requestAccounts" })
-  const provider = new ethers.BrowserProvider(window.ethereum)
-  const signer = await provider.getSigner()
-  let retries = 5
-  while (retries > 0) {
-    const code = await provider.getCode(address)
-    if (code !== "0x") break
-    await new Promise(resolve => setTimeout(resolve, 1000)) // Wait 1s
-    retries--
-  }
-  const contract = new ethers.Contract(address, abi, signer)
-  actions.set(`contracts.${address}`, contract)
-  return contract
-
-}
-
 
 export const selectTableData = (id) => actions.get(`tableData.${id}`, EMPTY_OBJECT)
 export const fetchTableData = async (id) => {

@@ -2,7 +2,7 @@ import client from "../client"
 import { actions } from "../store"
 import { EMPTY_OBJECT } from ".."
 import { ethers } from "ethers"
-
+import { clearLoader, setLoader } from "../loaders"
 
 export const TABLE_TYPES = {
   Roulette: "Roulette"
@@ -14,8 +14,15 @@ export const selectContract = (address) => actions.get(`contracts.${address}`)
 
 
 export const initTable = async (address) => {
-  const table = await fetchTable(address)
-  await generateContract(address, table.abi)
+  try {
+    setLoader(address)
+    const table = await fetchTable(address)
+    await generateContract(address, table.abi)
+  } catch (error) {
+    console.error(error)
+  } finally {
+    clearLoader(address)
+  }
 }
 
 

@@ -18,6 +18,7 @@ export const initTable = async (address) => {
     setLoader(address)
     const table = await fetchTable(address)
     await generateContract(address, table.abi)
+    return table
   } catch (error) {
     console.error(error)
   } finally {

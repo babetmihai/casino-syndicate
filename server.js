@@ -21,7 +21,7 @@ app.get("/", (req, res) => {
 
 app.get("/tables", async (req, res, next) => {
   try {
-    const account = req.headers.Authorization?.replace("Bearer ", "")
+    const account = req.headers.authorization?.replace("Bearer ", "")
     const result = await db.allDocs({ include_docs: true })
     const docs = result.rows.map(row => row.doc)
     const tables = docs.filter(doc => (
@@ -49,7 +49,7 @@ app.get("/tables/:address", async (req, res, next) => {
 app.post("/tables", async (req, res, next) => {
   try {
     await hre.run("compile")
-    const account = req.headers.Authorization?.replace("Bearer ", "")
+    const account = req.headers.authorization?.replace("Bearer ", "")
     const { name, type, abi, address } = req.body
 
     await db.put({

@@ -6,21 +6,30 @@ import RouletteAdmin from "app/games/roulette/RouletteAdmin"
 import AppScreen from "app/components/AppScreen"
 import history from "app/core/history"
 import { useLoader } from "app/core/loaders"
+import { selectAccount } from "app/core/account"
 
 
 const AdminScreen = () => {
   const { address } = useParams()
+  const account = useSelector(() => selectAccount())
   const table = useSelector(() => selectTable(address))
   const contract = useSelector(() => selectContract(address))
   const loading = useLoader(address)
 
   React.useEffect(() => {
     if (address) initTable(address)
+      .then(({ createdBy }) => {
+        if (createdBy !== account) {
+          history.replace(`/tables/${address}`)
+        }
+      })
   }, [address])
 
+
+  const { name, createdBy } = table
   return (
-    <AppScreen name={table.name} onBack={() => history.replace("/")} loading={loading}>
-      {contract &&
+    <AppScreen name={name} onBack={() => history.replace("/")} loading={loading}>
+      {contract && createdBy === account &&
         <Resolver
           table={table}
           contract={contract}

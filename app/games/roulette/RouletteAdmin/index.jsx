@@ -50,7 +50,9 @@ const RouletteAdmin = ({ address, contract }) => {
           {t("deposit")}
         </Button>
 
-
+        <Button variant="light">
+          {t("withdraw")}
+        </Button>
       </div>
       <Card className="RouletteAdmin_url">
         <Text flex={1}>{tableUrl}</Text>

@@ -45,7 +45,7 @@ const TableScreen = () => {
         contract.removeAllListeners("Deposited")
       }
     }
-  }, [contract])
+  }, [contract?.target])
 
 
   return (
@@ -63,7 +63,7 @@ const TableScreen = () => {
                   value: ethers.parseEther(balance.toString())
                 })
                 await tx.wait()
-                await fetchTableData(address, contract)
+                await fetchTableData(contract)
               }
             })}
           >

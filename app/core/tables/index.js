@@ -43,14 +43,14 @@ const generateContract = async (address, abi) => {
   return contract
 }
 
-export const fetchTableData = async (address, contract) => {
+export const fetchTableData = async (contract) => {
   const data = await contract.getTable()
   const TABLE_DATA_FIELDS = ["memberShares", "playerBalance", "totalBalance", "totalShares"]
   const formattedData = TABLE_DATA_FIELDS.reduce((acc, field) => {
     acc[field] = ethers.formatEther(data[field])
     return acc
   }, {})
-  actions.set(`tableData.${address}`, formattedData)
+  actions.set(`tableData.${contract.target}`, formattedData)
   return formattedData
 }
 
@@ -88,5 +88,15 @@ export const createTable = async (values) => {
     address
   })
   actions.set(`tables.${address}`, table)
+  return table
+}
 
+
+export const postTableShares = async ({ balance }, contract) => {
+  await window.ethereum.request({ method: "eth_requestAccounts" })
+  const tx = await contract.depositShares({
+    value: ethers.parseEther(balance.toString())
+  })
+  await tx.wait()
+  await fetchTableData(contract)
 }

@@ -26,15 +26,17 @@ const MainScreen = () => {
     <AppScreen name={t("casino_syndicate")}>
       <div className="MainScreen_content">
         <div className="MainScreen_header">
-          <Button
-            onClick={() => showModal(TableModal, {
-              onSubmit: async (values) => {
-                await createTable(values)
-              }
-            })}
-          >
-            {t("create_table")}
-          </Button>
+          {account &&
+            <Button
+              onClick={() => showModal(TableModal, {
+                onSubmit: async (values) => {
+                  await createTable(values)
+                }
+              })}
+            >
+              {t("create_table")}
+            </Button>
+          }
         </div>
         <div className="MainScreen_tables">
           {_.orderBy(Object.values(tables), ["createdAt"], ["desc"])

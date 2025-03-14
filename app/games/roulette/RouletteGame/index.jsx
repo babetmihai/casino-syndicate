@@ -3,6 +3,9 @@ import "./index.scss"
 import _ from "lodash"
 import BettingSpot from "./BettingSpot"
 
+
+const BLACK_NUMBERS = [2, 4, 6, 8, 10, 11, 13, 15, 17, 19, 20, 22, 24, 26, 28, 29, 31, 33, 35]
+
 const RouletteGame = React.memo(() => {
   return (
     <div className="RouletteGame_root">
@@ -24,7 +27,7 @@ const RouletteGame = React.memo(() => {
                 const number = (row * 3) + (3 - column)
                 const x = (row + 1)
                 const y = column
-                const color = number % 2 === 0 ? "transparent" : "red"
+                const color = BLACK_NUMBERS.includes(number) ? "black" : "red"
                 return (
                   <BettingSpot
                     key={column}
@@ -108,7 +111,7 @@ const RouletteGame = React.memo(() => {
           x={7}
           y={4}
           width={2}
-          color="transparent"
+          color="black"
         />
       </svg>
     </div>

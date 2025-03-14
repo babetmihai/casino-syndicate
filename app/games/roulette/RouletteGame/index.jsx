@@ -1,13 +1,13 @@
 import React from "react"
 import "./index.scss"
 import _ from "lodash"
-import RouletteBet from "./RouletteBet"
+import BettingSpot from "./BettingSpot"
 
 const RouletteGame = React.memo(() => {
   return (
     <div className="RouletteGame_root">
       <svg className="RouletteGame_table" viewBox="0 0 140 50">
-        <RouletteBet
+        <BettingSpot
           x={0}
           y={0}
           width={1}
@@ -24,7 +24,7 @@ const RouletteGame = React.memo(() => {
                 const y = column
                 const color = number % 2 === 0 ? "red" : "transparent"
                 return (
-                  <RouletteBet
+                  <BettingSpot
                     key={column}
                     x={x}
                     y={y}
@@ -39,7 +39,7 @@ const RouletteGame = React.memo(() => {
         {_.range(3).map((row) => {
           const labels = ["1st", "2nd", "3rd"]
           return (
-            <RouletteBet
+            <BettingSpot
               key={row}
               x={13}
               y={row}
@@ -51,7 +51,7 @@ const RouletteGame = React.memo(() => {
         {_.range(3).map((row) => {
           const labels = ["1st 12", "2nd 12", "3rd 12"]
           return (
-            <RouletteBet
+            <BettingSpot
               key={row}
               x={(1 + 4 * row)}
               y={3}
@@ -61,41 +61,41 @@ const RouletteGame = React.memo(() => {
             />
           )
         })}
-        <RouletteBet
+        <BettingSpot
           x={1}
           y={4}
           width={2}
           color="green"
           label={"1 to 18"}
         />
-        <RouletteBet
+        <BettingSpot
           x={11}
           y={4}
           width={2}
           color="green"
           label={"19 to 36"}
         />
-        <RouletteBet
+        <BettingSpot
           x={3}
           y={4}
           width={2}
           color="green"
           label={"EVEN"}
         />
-        <RouletteBet
+        <BettingSpot
           x={9}
           y={4}
           width={2}
           color="green"
           label={"ODD"}
         />
-        <RouletteBet
+        <BettingSpot
           x={5}
           y={4}
           width={2}
           color="red"
         />
-        <RouletteBet
+        <BettingSpot
           x={7}
           y={4}
           width={2}

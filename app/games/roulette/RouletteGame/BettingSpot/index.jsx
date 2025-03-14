@@ -5,7 +5,7 @@ import _ from "lodash"
 
 const SIZE = 10
 
-const RouletteBet = React.memo(({
+const BettingSpot = React.memo(({
   x,
   y,
   color,
@@ -15,7 +15,7 @@ const RouletteBet = React.memo(({
   size = SIZE
 }) => {
   return (
-    <g className="RouletteBet_root">
+    <g className="BettingSpot_root">
       <rect
         x={x * size}
         y={y * size}
@@ -39,4 +39,4 @@ const RouletteBet = React.memo(({
   )
 })
 
-export default RouletteBet
+export default BettingSpot

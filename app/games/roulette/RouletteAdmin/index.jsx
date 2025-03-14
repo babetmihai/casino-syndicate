@@ -8,6 +8,7 @@ import "./index.scss"
 import { useSelector } from "react-redux"
 import { buyTableShares, fetchRoulette, selectRoulette } from ".."
 import { Check, Copy } from "tabler-icons-react"
+import { Link } from "react-router-dom"
 
 
 const RouletteAdmin = ({ address, contract }) => {
@@ -50,9 +51,14 @@ const RouletteAdmin = ({ address, contract }) => {
           {t("deposit")}
         </Button>
 
-        <Button variant="light">
+        <Button variant="subtle">
           {t("withdraw")}
         </Button>
+        <Link to={`/tables/${address}`}>
+          <Button variant="subtle">
+            {t("play")}
+          </Button>
+        </Link>
       </div>
       <Card className="RouletteAdmin_url">
         <Text flex={1}>{tableUrl}</Text>
@@ -62,7 +68,7 @@ const RouletteAdmin = ({ address, contract }) => {
               onClick={copy}
               color={copied ? "green" : "gray"}
             >
-              {copied ? <Check size={16} /> : <Copy size={16} />}
+              {copied ? <Check /> : <Copy />}
             </ActionIcon>
           )}
         </CopyButton>

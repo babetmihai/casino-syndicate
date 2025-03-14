@@ -13,6 +13,7 @@ const BettingSpot = React.memo(({
   width = 1,
   height = 1,
   size = SIZE,
+  onClick,
   ...props
 }) => {
   return (
@@ -34,6 +35,7 @@ const BettingSpot = React.memo(({
         fill="white"
         dominantBaseline="middle"
         fontSize={size / 2.5}
+        onClick={onClick}
       >
         {label}
       </text>

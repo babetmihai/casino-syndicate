@@ -2,11 +2,14 @@ import React from "react"
 import "./index.scss"
 import _ from "lodash"
 import BettingSpot from "./BettingSpot"
+import BettingChip from "./BettingChip"
 
 
 const BLACK_NUMBERS = [2, 4, 6, 8, 10, 11, 13, 15, 17, 19, 20, 22, 24, 26, 28, 29, 31, 33, 35]
 
 const RouletteGame = React.memo(() => {
+  const [bets, setBets] = React.useState(_.range(37).fill(0))
+  console.log(bets)
   return (
     <div className="RouletteGame_root">
       <svg className="RouletteGame_table" viewBox="0 0 140 50">
@@ -28,14 +31,22 @@ const RouletteGame = React.memo(() => {
                 const x = (row + 1)
                 const y = column
                 const color = BLACK_NUMBERS.includes(number) ? "black" : "red"
+
                 return (
+
                   <BettingSpot
-                    key={column}
                     x={x}
                     y={y}
+                    key={column}
                     color={color}
                     label={number}
+                    onClick={() => {
+                      const newBet = [...bets]
+                      newBet[number] += 1
+                      setBets(newBet)
+                    }}
                   />
+
                 )
               })}
             </g>
@@ -113,6 +124,39 @@ const RouletteGame = React.memo(() => {
           width={2}
           color="black"
         />
+
+        {_.range(12).map((row) => {
+          return (
+            <g key={row}>
+              {_.range(3).map((column) => {
+                const number = (row * 3) + (3 - column)
+                const x = (row + 1)
+                const y = column
+                const color = BLACK_NUMBERS.includes(number) ? "black" : "red"
+
+                return (
+                  <g key={column}>
+                    {bets[number] > 0 && (
+                      <BettingChip
+                        x={x}
+                        y={y}
+                        color={color}
+                        label={number}
+                        value={bets[number]}
+                        onClick={() => {
+                          const newBet = [...bets]
+                          newBet[number] += 1
+                          setBets(newBet)
+                        }}
+                      />
+                    )}
+
+                  </g>
+                )
+              })}
+            </g>
+          )
+        })}
       </svg>
     </div>
   )

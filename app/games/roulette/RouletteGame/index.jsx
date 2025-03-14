@@ -8,6 +8,8 @@ const RouletteGame = React.memo(() => {
     <div className="RouletteGame_root">
       <svg className="RouletteGame_table" viewBox="0 0 140 50">
         <BettingSpot
+          topLeftRadius={2}
+          bottomLeftRadius={2}
           x={0}
           y={0}
           width={1}
@@ -22,7 +24,7 @@ const RouletteGame = React.memo(() => {
                 const number = (row * 3) + (3 - column)
                 const x = (row + 1)
                 const y = column
-                const color = number % 2 === 0 ? "red" : "transparent"
+                const color = number % 2 === 0 ? "transparent" : "red"
                 return (
                   <BettingSpot
                     key={column}
@@ -38,6 +40,10 @@ const RouletteGame = React.memo(() => {
         })}
         {_.range(3).map((row) => {
           const labels = ["1st", "2nd", "3rd"]
+          const props = {}
+          if (row === 2) props.bottomRightRadius = 2
+          if (row === 0) props.topRightRadius = 2
+
           return (
             <BettingSpot
               key={row}
@@ -45,6 +51,7 @@ const RouletteGame = React.memo(() => {
               y={row}
               color="green"
               label={labels[2 - row]}
+              {...props}
             />
           )
         })}
@@ -67,6 +74,7 @@ const RouletteGame = React.memo(() => {
           width={2}
           color="green"
           label={"1 to 18"}
+          bottomLeftRadius={2}
         />
         <BettingSpot
           x={11}
@@ -74,6 +82,7 @@ const RouletteGame = React.memo(() => {
           width={2}
           color="green"
           label={"19 to 36"}
+          bottomRightRadius={2}
         />
         <BettingSpot
           x={3}

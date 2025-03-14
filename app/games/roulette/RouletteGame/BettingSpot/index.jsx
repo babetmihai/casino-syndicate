@@ -1,7 +1,7 @@
 import React from "react"
 import "./index.scss"
 import _ from "lodash"
-
+import RoundedRect from "../RoundedRect"
 
 const SIZE = 10
 
@@ -12,11 +12,13 @@ const BettingSpot = React.memo(({
   label,
   width = 1,
   height = 1,
-  size = SIZE
+  size = SIZE,
+  ...props
 }) => {
   return (
     <g className="BettingSpot_root">
-      <rect
+      <RoundedRect
+        {...props}
         x={x * size}
         y={y * size}
         width={width * size}

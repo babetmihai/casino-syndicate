@@ -99,7 +99,7 @@ const RouletteGame = React.memo(() => {
           x={7}
           y={4}
           width={2}
-          color="black"
+          color="transparent"
         />
       </svg>
     </div>

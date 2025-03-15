@@ -31,10 +31,14 @@ router.post("/auth/login", async (req, res) => {
 })
 
 router.use(async (req, res, next) => {
-  const token = req.headers.authorization?.replace("Bearer ", "")
-  const decoded = jwt.verify(token, process.env.JWT_SECRET)
-  res.locals.account = decoded?.account
-  next()
+  try {
+    const token = req.headers.authorization?.replace("Bearer ", "")
+    const decoded = jwt.verify(token, process.env.JWT_SECRET)
+    res.locals.account = decoded?.account
+    next()
+  } catch {
+    next()
+  }
 })
 
 module.exports = router

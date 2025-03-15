@@ -19,7 +19,7 @@ const MainScreen = () => {
   const tables = useSelector(() => selectTables())
   React.useEffect(() => {
     fetchTables()
-  }, [])
+  }, [account])
 
 
   return (

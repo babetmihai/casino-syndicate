@@ -7,8 +7,8 @@ const express = require("express")
 const router = express.Router()
 
 const cache = new NodeCache({
-  stdTTL: 100, // Default TTL in seconds (0 = no expiration)
-  checkperiod: 120 // How often to check for expired items (seconds)
+  stdTTL: 8, // Default TTL in seconds (0 = no expiration)
+  checkperiod: 10 // How often to check for expired items (seconds)
 })
 
 

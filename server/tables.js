@@ -1,8 +1,6 @@
 const express = require("express")
-const PouchDB = require("pouchdb")
-const path = require("path")
 const hre = require("hardhat")
-const db = new PouchDB(path.join(__dirname, "../db"))
+const db = require("./db")
 
 
 const router = express.Router()

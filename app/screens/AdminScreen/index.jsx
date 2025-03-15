@@ -6,12 +6,12 @@ import RouletteAdmin from "app/games/roulette/RouletteAdmin"
 import AppScreen from "app/components/AppScreen"
 import history from "app/core/history"
 import { useLoader } from "app/core/loaders"
-import { selectAccount } from "app/core/account"
+import { selectAuth } from "app/core/auth"
 
 
 const AdminScreen = () => {
   const { address } = useParams()
-  const account = useSelector(() => selectAccount())
+  const { account } = useSelector(() => selectAuth())
   const table = useSelector(() => selectTable(address))
   const contract = useSelector(() => selectContract(address))
   const loading = useLoader(address)

@@ -2,7 +2,6 @@ const express = require("express")
 const PouchDB = require("pouchdb")
 const path = require("path")
 const hre = require("hardhat")
-const { authMiddleware } = require("./utils")
 const db = new PouchDB(path.join(__dirname, "../db"))
 
 
@@ -20,7 +19,7 @@ router.get("/tables/:address", async (req, res, next) => {
 })
 
 
-router.get("/tables", authMiddleware, async (req, res, next) => {
+router.get("/tables", async (req, res, next) => {
   try {
     const { account } = res.locals
     const result = await db.allDocs({ include_docs: true })
@@ -36,7 +35,7 @@ router.get("/tables", authMiddleware, async (req, res, next) => {
   }
 })
 
-router.post("/tables", authMiddleware, async (req, res, next) => {
+router.post("/tables", async (req, res, next) => {
   try {
     await hre.run("compile")
     const { account } = res.locals
@@ -61,7 +60,7 @@ router.post("/tables", authMiddleware, async (req, res, next) => {
 })
 
 
-router.get("/tables/artifact/:type", authMiddleware, async (req, res, next) => {
+router.get("/tables/artifact/:type", async (req, res, next) => {
   try {
     await hre.run("compile") // Ensure contracts are compiled
     const { type } = req.params

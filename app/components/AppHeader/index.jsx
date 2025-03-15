@@ -3,13 +3,14 @@ import "./index.scss"
 import { Button, Card, Title, ActionIcon } from "@mantine/core"
 import { useSelector } from "react-redux"
 import { showModal } from "../../core/modals"
-import AccountModal from "../../core/account/AccountModal"
-import AccountMenu from "../AccountMenu"
+import AuthModal from "../../core/auth/AuthModal"
+import AuthMenu from "../../core/auth/AuthMenu"
 import { ArrowLeft, Wallet } from "tabler-icons-react"
-import { selectAccount } from "../../core/account"
+import { selectAuth } from "../../core/auth"
+
 
 const AppHeader = ({ name, onBack }) => {
-  const account = useSelector(() => selectAccount())
+  const auth = useSelector(() => selectAuth())
   return (
     <Card
       shadow="sm"
@@ -27,14 +28,10 @@ const AppHeader = ({ name, onBack }) => {
         <Title order={3}>{name}</Title>
       </div>
       <div className="AppHeader_right" >
-        {account &&
-          <>
-            <AccountMenu />
-          </>
-        }
-        {!account &&
+        {auth.account && <AuthMenu /> }
+        {!auth.account &&
           <Button
-            onClick={() => showModal(AccountModal)}
+            onClick={() => showModal(AuthModal)}
             variant="light"
             color="gray"
             radius="md"

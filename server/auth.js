@@ -22,17 +22,19 @@ router.post("/auth/nonce", async (req, res) => {
 router.post("/auth/login", async (req, res) => {
   const { account, signature } = req.body
   const nonce = await cache.get(`nonce:${account}`)
-  const message = `I am signing my message to login to the app. My address is ${account}. My nonce is ${nonce}.`
-  const messageHash = ethers.utils.solidityPackedKeccak256(
-    ["address", "uint256", "string"],
-    [account, nonce, message]
-  )
-  const recoveredAddress = ethers.utils.recoverAddress(messageHash, signature)
-  if (recoveredAddress !== account) {
+  const signerAddress = ethers.verifyMessage(nonce, signature)
+  if (signerAddress !== account) {
     return res.status(401).json({ error: "Invalid signature" })
   }
   const token = jwt.sign({ account }, process.env.JWT_SECRET)
   res.json({ token })
+})
+
+router.use(async (req, res, next) => {
+  const token = req.headers.authorization?.replace("Bearer ", "")
+  const decoded = jwt.verify(token, process.env.JWT_SECRET)
+  res.locals.account = decoded?.account
+  next()
 })
 
 module.exports = router

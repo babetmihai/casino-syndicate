@@ -1,5 +1,5 @@
 import axios from "axios"
-import { selectAccount } from "./account"
+import { selectAuth } from "./auth"
 
 
 const { VITE_SERVER_URL } = import.meta.env
@@ -10,9 +10,9 @@ const client = axios.create({
 
 client.interceptors.request.use(
   (config) => {
-    const account = selectAccount()
-    if (account) {
-      config.headers.Authorization = `Bearer ${account}`
+    const { token } = selectAuth()
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
     }
     return config
   },

@@ -2,13 +2,14 @@ import React from "react"
 import "./index.scss"
 import { Menu, Avatar } from "@mantine/core"
 import { Logout } from "tabler-icons-react"
-import { selectAccount, disconnectAccount } from "app/core/account"
+import { selectAuth, logout } from "app/core/auth"
 import { useSelector } from "react-redux"
 
-const AccountMenu = () => {
-  const account = useSelector(() => selectAccount())
+
+const AuthMenu = () => {
+  const { account } = useSelector(() => selectAuth())
   return (
-    <div className="AccountMenu_root">
+    <div className="AuthMenu_root">
       <Menu withArrow>
         <Menu.Target>
           <Avatar
@@ -23,7 +24,7 @@ const AccountMenu = () => {
             {`Connected: ${account.slice(0, 8)}...`}
           </Menu.Label>
           <Menu.Item
-            onClick={() => disconnectAccount()}
+            onClick={() => logout()}
             leftSection={<Logout />}
           >
             Logout
@@ -34,4 +35,4 @@ const AccountMenu = () => {
   )
 }
 
-export default AccountMenu
+export default AuthMenu

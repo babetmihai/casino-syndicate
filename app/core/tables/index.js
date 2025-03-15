@@ -68,7 +68,7 @@ export const createTable = async (values) => {
   const provider = new ethers.BrowserProvider(window.ethereum)
   const signer = await provider.getSigner()
 
-  const { data: artifact } = await client.get(`/contract-artifact/${type}`)
+  const { data: artifact } = await client.get(`/tables/artifact/${type}`)
   const { abi, bytecode } = artifact
 
   const factory = new ethers.ContractFactory(abi, bytecode, signer)

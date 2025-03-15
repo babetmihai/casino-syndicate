@@ -9,12 +9,12 @@ import { showModal } from "app/core/modals"
 import TableModal from "app/core/tables/TableModal"
 import history from "app/core/history"
 import _ from "lodash"
-import { selectAccount } from "app/core/account"
+import { selectAuth } from "app/core/auth"
 
 
 const MainScreen = () => {
   const { t } = useTranslation()
-  const account = useSelector((state) => selectAccount(state))
+  const { account } = useSelector(() => selectAuth())
 
   const tables = useSelector(() => selectTables())
   React.useEffect(() => {

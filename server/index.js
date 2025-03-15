@@ -24,7 +24,6 @@ app.use(tablesRouter)
 app.use((err, req, res, next) => {
   console.log("\n\n")
   console.error(err.stack)
-  throw err
 })
 
 app.listen(VITE_SERVER_PORT, () => {

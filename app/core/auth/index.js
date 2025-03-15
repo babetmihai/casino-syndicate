@@ -7,10 +7,7 @@ import { EMPTY_OBJECT } from ".."
 export const selectAuth = () => actions.get("auth", EMPTY_OBJECT)
 
 
-export const logout = () => {
-  actions.unset("auth")
-}
-
+export const logout = () => actions.unset("auth")
 export const login = async () => {
   await window.ethereum.request({ method: "eth_requestAccounts" })
   const provider = new ethers.BrowserProvider(window.ethereum)

@@ -19,8 +19,6 @@ wss.on("connection", (ws) => {
   // send a welcome message to the client
   ws.send("Hello from the server!")
 
-
-
   // Echo back any message received
   ws.on("message", (message) => {
     const data = JSON.parse(message.toString())

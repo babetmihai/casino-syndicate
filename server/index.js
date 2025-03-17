@@ -8,7 +8,7 @@ const authRouter = require("./auth")
 const tablesRouter = require("./tables")
 
 
-const { VITE_SERVER_PORT } = process.env
+const { SERVER_PORT } = process.env
 
 
 const app = express()
@@ -26,7 +26,7 @@ app.use((err, req, res, next) => {
   console.error(err.stack)
 })
 
-app.listen(VITE_SERVER_PORT, () => {
-  console.log(`Server is running on port ${VITE_SERVER_PORT}`)
+app.listen(SERVER_PORT, () => {
+  console.log(`Server is running on port ${SERVER_PORT}`)
 })
 

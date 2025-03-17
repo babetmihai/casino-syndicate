@@ -2,15 +2,9 @@ const WebSocket = require("ws")
 const jwt = require("jsonwebtoken")
 
 // Connect to the server
-const ws = new WebSocket("ws://localhost:8080")
-// Generate a JWT token
-const token = jwt.sign({ username: "user" }, "your-secret-key", { expiresIn: "1h" })
+const ws = new WebSocket(import.meta.env.VITE_WS_URL)
 
-ws.on("open", () => {
-  console.log("Connected to server")
-  // Send login message with JWT token
-  ws.send(JSON.stringify({ type: "login", token }))
-})
+
 
 ws.on("open", () => {
   console.log("Connected to server")

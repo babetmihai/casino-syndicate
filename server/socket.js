@@ -1,6 +1,7 @@
 const { Server } = require("socket.io")
 const jwt = require("jsonwebtoken")
 
+const { JWT_SECRET } = process.env
 
 const useSocket = (httpServer) => {
   const io = new Server(httpServer, {
@@ -11,25 +12,33 @@ const useSocket = (httpServer) => {
 
   io.on("connection", (socket) => {
   // Access the handshake headers
-    const token = socket.handshake.headers.authorization?.replace("Bearer ", "")
-    const decoded = jwt.verify(token, process.env.JWT_SECRET)
-    const { account } = decoded
+    const { headers, query } = socket.handshake
+    const { authorization } = headers
+    const { address } = query
 
-    socket.join(account)
-    io.to(account).emit("message", {
-      message: `Welcome to the casino ${account}`
+    const token = authorization?.replace("Bearer ", "")
+    const { account } = jwt.verify(token, JWT_SECRET)
+
+    socket.join(address)
+    io.to(address).emit("message", {
+      message: `Welcome to the casino ${address}`
     })
-
+    socket.emit("message", {
+      message: `User ${account}`
+    })
 
     socket.on("message", (msg) => {
       console.log("Message:", msg)
     })
 
     io.on("disconnect", (socket) => {
-      socket.leave(account)
+      socket.leave(address)
     })
   })
 }
 
 
-module.exports = useSocket
+module.exports = {
+  useSocket
+}
+

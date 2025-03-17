@@ -18,8 +18,8 @@ const GameScreen = () => {
 
   const { name } = table
 
-  useSocket(address, (event) => {
-    console.log("Received:", event.data)
+  useSocket(address, () => {
+
   })
 
   return (

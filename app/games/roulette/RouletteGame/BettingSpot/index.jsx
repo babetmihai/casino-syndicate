@@ -27,15 +27,16 @@ const BettingSpot = React.memo(({
         strokeWidth={0.3}
         stroke="white"
         fill={color}
+        onClick={onClick}
       />
       <text
+        pointerEvents="none"
         x={(x + (width / 2)) * size}
         y={(y + (height / 2)) * size}
         textAnchor="middle"
         fill="white"
         dominantBaseline="middle"
         fontSize={size / 2.5}
-        onClick={onClick}
       >
         {label}
       </text>

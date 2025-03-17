@@ -13,7 +13,8 @@ const RoundedRect = ({
   bottomRightRadius = radius,
   fill = "blue",
   stroke = "none",
-  strokeWidth = 1
+  strokeWidth = 1,
+  onClick
 }) => {
   // Create a d3-path object
   const p = path()
@@ -59,12 +60,23 @@ const RoundedRect = ({
   const d = p.toString()
 
   return (
-    <path
-      d={d}
-      fill={fill}
-      stroke={stroke}
-      strokeWidth={strokeWidth}
-    />
+    <>
+      <path
+        d={d}
+        fill={fill}
+        stroke={stroke}
+        strokeWidth={strokeWidth}
+      />
+      <rect
+        x={x}
+        y={y}
+        width={width}
+        height={height}
+        fill="transparent"
+        pointerEvents="all"
+        onClick={onClick}
+      />
+    </>
   )
 }
 

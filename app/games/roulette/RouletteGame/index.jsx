@@ -36,7 +36,6 @@ const RouletteGame = React.memo(() => {
             chipProps.y = 1
           }
 
-
           return (
             <g key={number}>
               <BettingSpot

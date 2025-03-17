@@ -49,7 +49,6 @@ const MainScreen = () => {
               >
                 <div className="MainScreen_table_name">{table.name}</div>
                 <div className="MainScreen_table_address">{table.address}</div>
-
               </Card>
             ))}
         </div>

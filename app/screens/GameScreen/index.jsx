@@ -5,7 +5,7 @@ import { useParams } from "react-router-dom"
 import AppScreen from "app/components/AppScreen"
 import { useLoader } from "app/core/loaders"
 import RouletteGame from "app/games/roulette/RouletteGame"
-
+import { useSocket } from "app/core/socket"
 const GameScreen = () => {
   const { address } = useParams()
   const table = useSelector(() => selectTable(address))
@@ -17,6 +17,10 @@ const GameScreen = () => {
   }, [address])
 
   const { name } = table
+
+  useSocket(address, (event) => {
+    console.log("Received:", event.data)
+  })
 
   return (
     <AppScreen

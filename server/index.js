@@ -2,16 +2,17 @@ const dotenv = require("dotenv")
 dotenv.config()
 const express = require("express")
 const cors = require("cors")
-
+const useSocket = require("./socket")
+const { createServer } = require("http")
 
 const authRouter = require("./auth")
 const tablesRouter = require("./tables")
 
 
-const { SERVER_PORT } = process.env
-
-
 const app = express()
+const httpServer = createServer(app)
+
+
 app.use(express.json())
 app.use(cors())
 app.get("/", (req, res) => {
@@ -26,7 +27,10 @@ app.use((err, req, res, next) => {
   console.error(err.stack)
 })
 
-app.listen(SERVER_PORT, () => {
-  console.log(`Server is running on port ${SERVER_PORT}`)
-})
 
+const { SERVER_PORT } = process.env
+
+useSocket(httpServer)
+httpServer.listen(SERVER_PORT, () => {
+  console.log(`Server running on http://localhost:${SERVER_PORT}`)
+})

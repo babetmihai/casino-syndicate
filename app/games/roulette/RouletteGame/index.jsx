@@ -14,29 +14,32 @@ const RouletteGame = React.memo(() => {
   return (
     <div className="RouletteGame_root">
       <svg className="RouletteGame_table" viewBox="0 0 150 50">
-        <BettingSpot
-          topLeftRadius={2}
-          bottomLeftRadius={2}
-          x={1}
-          y={0}
-          width={1}
-          height={3}
-          color="green"
-          label={0}
-        />
-        {_.range(36).map((index) => {
-          const number = index + 1
-          const y = (index % 3)
-          const x = Math.floor(index / 3) + 2
+        {_.range(37).map((number) => {
+
+          const y = ((number - 1) % 3)
+          const x = Math.floor((number - 1) / 3) + 2
           const color = BLACK_NUMBERS.includes(number) ? "black" : "red"
-          const props = {}
-          if (number === 36) props.bottomRightRadius = 2
-          if (number === 34) props.topRightRadius = 2
+
+          const chipProps = {}
+          const spotProps = {}
+          if (number === 36) spotProps.bottomRightRadius = 2
+          if (number === 34) spotProps.topRightRadius = 2
+          if (number === 0) {
+            spotProps.x = 1
+            spotProps.y = 0
+            spotProps.width = 1
+            spotProps.height = 3
+            spotProps.color = "green"
+            spotProps.bottomLeftRadius = 2
+            spotProps.topLeftRadius = 2
+
+            chipProps.y = 1
+          }
+
 
           return (
             <g key={number}>
               <BettingSpot
-                {...props}
                 x={x}
                 y={y}
                 key={number}
@@ -47,22 +50,23 @@ const RouletteGame = React.memo(() => {
                   newBet[number] += 1
                   setBets(newBet)
                 }}
+                {...spotProps}
               />
               {bets[number] > 0 && 
                 <BettingChip
                   x={x}
                   y={y}
-                  color={color}
-                  label={number}
                   value={bets[number]}
                   onClick={() => {
                     const newBet = [...bets]
                     newBet[number] += 1
                     setBets(newBet)
                   }}
+                  {...spotProps}
+                  {...chipProps}
                 />
               }
-          </g>
+            </g>
           )
         })}
       </svg>

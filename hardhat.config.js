@@ -11,7 +11,7 @@ module.exports = {
       chainId: 1337 // Standard local chain ID
     },
     localhost: {
-      url: process.env.VITE_RPC_URL,
+      url: process.env.RPC_URL,
       chainId: 1337 // Local network
     }
   }

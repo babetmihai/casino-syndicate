@@ -23,138 +23,45 @@ const RouletteGame = React.memo(() => {
           color="green"
           label={0}
         />
-        {_.range(12).map((row) => {
-          return (
-            <g key={row}>
-              {_.range(3).map((column) => {
-                const number = (row * 3) + (3 - column)
-                const x = (row + 1)
-                const y = column
-                const color = BLACK_NUMBERS.includes(number) ? "black" : "red"
-
-                return (
-
-                  <BettingSpot
-                    x={x}
-                    y={y}
-                    key={column}
-                    color={color}
-                    label={number}
-                    onClick={() => {
-                      const newBet = [...bets]
-                      newBet[number] += 1
-                      setBets(newBet)
-                    }}
-                  />
-
-                )
-              })}
-            </g>
-          )
-        })}
-        {_.range(3).map((row) => {
-          const labels = ["1st", "2nd", "3rd"]
+        {_.range(36).map((index) => {
+          const number = index + 1
+          const y = (index % 3)
+          const x = Math.floor(index / 3) + 1
+          const color = BLACK_NUMBERS.includes(number) ? "black" : "red"
           const props = {}
-          if (row === 2) props.bottomRightRadius = 2
-          if (row === 0) props.topRightRadius = 2
+          if (number === 36) props.bottomRightRadius = 2
+          if (number === 34) props.topRightRadius = 2
 
           return (
-            <BettingSpot
-              key={row}
-              x={13}
-              y={row}
-              color="green"
-              label={labels[2 - row]}
-              {...props}
-            />
-          )
-        })}
-        {_.range(3).map((row) => {
-          const labels = ["1st 12", "2nd 12", "3rd 12"]
-          return (
-            <BettingSpot
-              key={row}
-              x={(1 + 4 * row)}
-              y={3}
-              width={4}
-              color="green"
-              label={labels[row]}
-            />
-          )
-        })}
-        <BettingSpot
-          x={1}
-          y={4}
-          width={2}
-          color="green"
-          label={"1 to 18"}
-          bottomLeftRadius={2}
-        />
-        <BettingSpot
-          x={11}
-          y={4}
-          width={2}
-          color="green"
-          label={"19 to 36"}
-          bottomRightRadius={2}
-        />
-        <BettingSpot
-          x={3}
-          y={4}
-          width={2}
-          color="green"
-          label={"EVEN"}
-        />
-        <BettingSpot
-          x={9}
-          y={4}
-          width={2}
-          color="green"
-          label={"ODD"}
-        />
-        <BettingSpot
-          x={5}
-          y={4}
-          width={2}
-          color="red"
-        />
-        <BettingSpot
-          x={7}
-          y={4}
-          width={2}
-          color="black"
-        />
-
-        {_.range(12).map((row) => {
-          return (
-            <g key={row}>
-              {_.range(3).map((column) => {
-                const number = (row * 3) + (3 - column)
-                const x = (row + 1)
-                const y = column
-                const color = BLACK_NUMBERS.includes(number) ? "black" : "red"
-
-                return (
-                  <g key={column}>
-                    {bets[number] > 0 && (
-                      <BettingChip
-                        x={x}
-                        y={y}
-                        color={color}
-                        label={number}
-                        value={bets[number]}
-                        onClick={() => {
-                          const newBet = [...bets]
-                          newBet[number] += 1
-                          setBets(newBet)
-                        }}
-                      />
-                    )}
-
-                  </g>
-                )
-              })}
-            </g>
+            <g key={number}>
+              <BettingSpot
+                {...props}
+                x={x}
+                y={y}
+                key={number}
+                color={color}
+                label={number}
+                onClick={() => {
+                  const newBet = [...bets]
+                  newBet[number] += 1
+                  setBets(newBet)
+                }}
+              />
+              {bets[number] > 0 && 
+                <BettingChip
+                  x={x}
+                  y={y}
+                  color={color}
+                  label={number}
+                  value={bets[number]}
+                  onClick={() => {
+                    const newBet = [...bets]
+                    newBet[number] += 1
+                    setBets(newBet)
+                  }}
+                />
+              }
+          </g>
           )
         })}
       </svg>

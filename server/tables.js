@@ -73,6 +73,9 @@ router.get("/tables/artifact/:type", async (req, res, next) => {
 })
 
 
+// TODO: implement  Commit-Reveal Scheme
+
+
 router.post("/tables/:address/bets", async (req, res, next) => {
   try {
     const { RPC_URL, DEALER_PRIVATE_KEY } = process.env

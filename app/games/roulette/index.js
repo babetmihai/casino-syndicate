@@ -1,13 +1,13 @@
 import { ethers } from "ethers"
 import { actions } from "app/core/store"
 import { EMPTY_OBJECT } from "app/core"
-import { selectContract } from "app/core/tables"
+import { getContract } from "app/core/contracts"
 
 
 export const selectRoulette = (address) => actions.get(`games.roulette.${address}`, EMPTY_OBJECT)
 
 export const fetchRoulette = async (address) => {
-  const contract = selectContract(address)
+  const contract = getContract(address)
   const data = await contract.getTable()
   const TABLE_DATA_FIELDS = ["memberShares", "playerBalance", "totalBalance", "totalShares"]
   const formattedData = TABLE_DATA_FIELDS.reduce((acc, field) => {
@@ -20,7 +20,7 @@ export const fetchRoulette = async (address) => {
 
 
 export const buyTableShares = async ({ balance }, address) => {
-  const contract = await selectContract(address)
+  const contract = getContract(address)
   await window.ethereum.request({ method: "eth_requestAccounts" })
   const tx = await contract.depositShares({
     value: ethers.parseEther(balance.toString())

@@ -12,14 +12,14 @@ import DepositModal from "app/core/tables/DepositModal"
 import { ethers } from "ethers"
 import client from "app/core/client"
 import { actions } from "app/core/store"
-
+import { getContract } from "app/core/contracts"
 const BLACK_NUMBERS = [2, 4, 6, 8, 10, 11, 13, 15, 17, 19, 20, 22, 24, 26, 28, 29, 31, 33, 35]
 
 
-const RouletteGame = React.memo(({ contract, address }) => {
+const RouletteGame = React.memo(({ address }) => {
   const { t } = useTranslation()
   const [bets, setBets] = React.useState(_.range(37).fill(0))
-
+  const contract = getContract(address)
   const totalBet = _.sum(bets)
 
   const { playerBalance } = useSelector(() => selectRoulette(address))

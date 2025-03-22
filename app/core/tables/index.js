@@ -3,50 +3,29 @@ import { actions } from "../store"
 import { EMPTY_OBJECT } from ".."
 import { ethers } from "ethers"
 import { clearLoader, setLoader } from "../loaders"
+import { generateContract } from "../contracts"
 
 export const TABLE_TYPES = {
   Roulette: "Roulette"
 }
 
+
 export const selectTable = (address) => actions.get(`tables.${address}`, EMPTY_OBJECT)
 export const selectTables = () => actions.get("tables", EMPTY_OBJECT)
-export const selectContract = (address) => actions.get(`contracts.${address}`)
 
 
 export const initTable = async (address) => {
   try {
     setLoader(address)
-    const table = await fetchTable(address)
+    const { data: table } = await client.get(`/tables/${address}`)
     await generateContract(address, table.abi)
+    actions.set(`tables.${address}`, table)
     return table
   } catch (error) {
     console.error(error)
   } finally {
     clearLoader(address)
   }
-}
-
-
-const fetchTable = async (address) => {
-  const { data: table } = await client.get(`/tables/${address}`)
-  actions.set(`tables.${address}`, table)
-  return table
-}
-
-const generateContract = async (address, abi) => {
-  await window.ethereum.request({ method: "eth_requestAccounts" })
-  const provider = new ethers.BrowserProvider(window.ethereum)
-  const signer = await provider.getSigner()
-  let retries = 5
-  while (retries > 0) {
-    const code = await provider.getCode(address)
-    if (code !== "0x") break
-    await new Promise(resolve => setTimeout(resolve, 1000)) // Wait 1s
-    retries--
-  }
-  const contract = new ethers.Contract(address, abi, signer)
-  actions.set(`contracts.${address}`, contract)
-  return contract
 }
 
 

@@ -9,11 +9,12 @@ import { useSelector } from "react-redux"
 import { buyTableShares, fetchRoulette, selectRoulette } from ".."
 import { Check, Copy } from "tabler-icons-react"
 import { Link } from "react-router-dom"
+import { getContract } from "app/core/contracts"
 
-
-const RouletteAdmin = ({ address, contract }) => {
+const RouletteAdmin = ({ address }) => {
   const { t } = useTranslation()
   const roulette = useSelector(() => selectRoulette(address))
+  const contract = getContract(address)
   React.useEffect(() => {
     fetchRoulette(address)
   }, [address])

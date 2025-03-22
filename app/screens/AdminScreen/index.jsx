@@ -1,5 +1,5 @@
 import React from "react"
-import { initTable, selectContract, selectTable, TABLE_TYPES } from "app/core/tables"
+import { initTable, selectTable, TABLE_TYPES } from "app/core/tables"
 import { useSelector } from "react-redux"
 import { useParams } from "react-router-dom"
 import RouletteAdmin from "app/games/roulette/RouletteAdmin"
@@ -13,7 +13,6 @@ const AdminScreen = () => {
   const { address } = useParams()
   const { account } = useSelector(() => selectAuth())
   const table = useSelector(() => selectTable(address))
-  const contract = useSelector(() => selectContract(address))
   const loading = useLoader(address)
 
   React.useEffect(() => {
@@ -29,10 +28,9 @@ const AdminScreen = () => {
   const { name, createdBy } = table
   return (
     <AppScreen name={name} onBack={() => history.replace("/")} loading={loading}>
-      {address && contract && createdBy === account &&
+      {address && createdBy === account &&
         <Resolver
           table={table}
-          contract={contract}
           address={address}
         />
       }

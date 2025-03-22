@@ -78,7 +78,9 @@ const RouletteGame = React.memo(({ contract, address }) => {
           {t("withdraw")}
         </Button>
         <Button variant="outline" onClick={async () => {
-          const tx = await contract.postBet(bets.map(bet => bet && ethers.parseEther(bet.toString())))
+          const tx = await contract.postBet(bets.map(bet => bet && ethers.parseEther(bet.toString())), {
+            gasLimit: 1000000
+          })
           await tx.wait()
           fetchRoulette(address)
         }}

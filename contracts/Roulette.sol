@@ -83,7 +83,7 @@ contract Roulette {
 				revert("Total bet amount must equal sent Ether");
 			}
 
-			if (_bets[i] == randomNumber) {
+			if (i == randomNumber) {
 				winningAmount += _bets[i] * 36;
 			} 
 		}

@@ -18,6 +18,8 @@ const RouletteGame = React.memo(({ contract, address }) => {
   const { t } = useTranslation()
   const [bets, setBets] = React.useState(_.range(37).fill(0))
 
+  const totalBet = _.sum(bets)
+
   const { playerBalance } = useSelector(() => selectRoulette(address))
   React.useEffect(() => {
     fetchRoulette(address)
@@ -44,6 +46,9 @@ const RouletteGame = React.memo(({ contract, address }) => {
       </div>
       <Text c="dimmed">
         playerBalance: {playerBalance}
+      </Text>
+      <Text c="dimmed">
+        totalBet: {totalBet}
       </Text>
       <svg className="RouletteGame_table" viewBox="0 0 150 50">
         {_.range(37).map((number) => {

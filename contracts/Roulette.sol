@@ -70,7 +70,7 @@ contract Roulette {
 		uint256 randomNumber = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender))) % 37;
 		uint256 totalBetAmount = 0;
 		uint256 winningAmount = 0;
-		uint256 maxBetAmount = 10000000000000000000;
+		uint256 maxBetAmount = 10 ether;
 
 
 		for (uint256 i = 0; i < 37; i++) {

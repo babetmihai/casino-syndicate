@@ -3,7 +3,7 @@ import "./index.scss"
 import _ from "lodash"
 import BettingSpot from "./BettingSpot"
 import BettingChip from "./BettingChip"
-import { Button } from "@mantine/core"
+import { Button, Text } from "@mantine/core"
 import { useTranslation } from "react-i18next"
 import { fetchRoulette, selectRoulette } from ".."
 import { useSelector } from "react-redux"
@@ -18,7 +18,7 @@ const RouletteGame = React.memo(({ contract, address }) => {
   const { t } = useTranslation()
   const [bets, setBets] = React.useState(_.range(37).fill(0))
 
-  const roulette = useSelector(() => selectRoulette(address))
+  const { playerBalance } = useSelector(() => selectRoulette(address))
   React.useEffect(() => {
     fetchRoulette(address)
   }, [address])
@@ -29,10 +29,12 @@ const RouletteGame = React.memo(({ contract, address }) => {
         <Button
           onClick={() => {
             showModal(DepositModal, {
-              onSubmit: ({ balance }) => {
-                contract.depositBalance({
+              onSubmit: async ({ balance }) => {
+                const tx = await contract.depositBalance({
                   value: ethers.parseEther(balance.toString())
                 })
+                await tx.wait()
+                fetchRoulette(address)
               }
             })
           }}
@@ -40,6 +42,9 @@ const RouletteGame = React.memo(({ contract, address }) => {
           {t("deposit")}
         </Button>
       </div>
+      <Text c="dimmed">
+        playerBalance: {playerBalance}
+      </Text>
       <svg className="RouletteGame_table" viewBox="0 0 150 50">
         {_.range(37).map((number) => {
           const y = ((number - 1) % 3)

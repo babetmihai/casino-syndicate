@@ -10,6 +10,8 @@ import { useSelector } from "react-redux"
 import { showModal } from "app/core/modals"
 import DepositModal from "app/core/tables/DepositModal"
 import { ethers } from "ethers"
+import client from "app/core/client"
+import { actions } from "app/core/store"
 
 const BLACK_NUMBERS = [2, 4, 6, 8, 10, 11, 13, 15, 17, 19, 20, 22, 24, 26, 28, 29, 31, 33, 35]
 
@@ -25,7 +27,7 @@ const RouletteGame = React.memo(({ contract, address }) => {
     fetchRoulette(address)
   }, [address])
 
-
+  // todo: use dealer for posting bets
   React.useEffect(() => {
     // Set up event listener for Deposited events
     contract.on("WinningNumber", (number, totalBetAmount, winningAmount, playerBalance, event) => {
@@ -77,13 +79,13 @@ const RouletteGame = React.memo(({ contract, address }) => {
         >
           {t("withdraw")}
         </Button>
-        <Button variant="outline" onClick={async () => {
-          const tx = await contract.postBet(bets.map(bet => bet && ethers.parseEther(bet.toString())), {
-            gasLimit: 1000000
-          })
-          await tx.wait()
-          fetchRoulette(address)
-        }}
+        <Button
+          variant="outline"
+          onClick={async () => {
+            const { data } = await client.post(`/tables/${address}/bets`, { bets })
+            const { playerBalance } = data
+            actions.set(`games.roulette.${address}.playerBalance`, playerBalance)
+          }}
         >
           {t("postBet")}
         </Button>

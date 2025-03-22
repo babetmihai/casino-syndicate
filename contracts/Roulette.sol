@@ -93,6 +93,34 @@ contract Roulette {
 		
 		emit WinningNumber(randomNumber, totalBetAmount, winningAmount, balances[msg.sender]);
 	}
+
+	function postDealerBet(address account, uint256[37] memory _bets) public payable {
+		uint256 playerBalance = balances[account];
+		uint256 randomNumber = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender))) % 37;
+		uint256 totalBetAmount = 0;
+		uint256 winningAmount = 0;
+		uint256 maxBetAmount = 10 ether;
+
+
+		for (uint256 i = 0; i < 37; i++) {
+			totalBetAmount += _bets[i];
+			if (_bets[i] > maxBetAmount) {
+				revert("Bet amount must be less than maxBetAmount");
+			}
+
+			if (totalBetAmount > playerBalance) {
+				revert("Total bet amount must equal sent Ether");
+			}
+		}
+
+		balances[account] -= totalBetAmount;
+		if (_bets[randomNumber] > 0) {
+			winningAmount +=  _bets[randomNumber] * 36;
+			balances[account] += winningAmount;
+		}	
+
+		emit WinningNumber(randomNumber, totalBetAmount, winningAmount, balances[account]);
+	}
 }
 
 

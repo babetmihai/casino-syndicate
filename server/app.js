@@ -17,9 +17,10 @@ server.get("/", (req, res) => {
 server.use(authRouter)
 server.use(tablesRouter)
 
+
 server.use((err, req, res, next) => {
-  console.log("\n\n")
-  console.error(err.stack)
+  console.error(err)
+  res.status(500).json({ error: "Internal server error" })
 })
 
 

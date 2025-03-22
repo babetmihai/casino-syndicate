@@ -70,11 +70,11 @@ contract Roulette {
 		uint256 randomNumber = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender))) % 37;
 		uint256 totalBetAmount = 0;
 		uint256 winningAmount = 0;
-		uint256 maxBetAmount = 1000000000000000000;
+		uint256 maxBetAmount = 10000000000000000000;
+
 
 		for (uint256 i = 0; i < 37; i++) {
 			totalBetAmount += _bets[i];
-
 			if (_bets[i] > maxBetAmount) {
 				revert("Bet amount must be less than maxBetAmount");
 			}
@@ -82,22 +82,16 @@ contract Roulette {
 			if (totalBetAmount > playerBalance) {
 				revert("Total bet amount must equal sent Ether");
 			}
-
-			if (i == randomNumber) {
-				// Multiply by 36 for the payout ratio (35:1 plus the original bet)
-				// Using SafeMath pattern to prevent overflow
-				if (_bets[i] > 0) {
-					uint256 payout = _bets[i] * 36;
-					require(payout / 36 == _bets[i], "Multiplication overflow");
-					winningAmount += payout;
-				}
-			} 
 		}
 
 		balances[msg.sender] -= totalBetAmount;
-		if (winningAmount > 0) {
+		if (_bets[randomNumber] > 0) {
+			uint256 payout = _bets[randomNumber] * 36;
+			require(payout / 36 == _bets[randomNumber], "Multiplication overflow");
+			winningAmount += payout;
 			balances[msg.sender] += winningAmount;
-		}
+		}	
+
 		
 		emit WinningNumber(randomNumber, totalBetAmount, winningAmount, balances[msg.sender]);
 	}

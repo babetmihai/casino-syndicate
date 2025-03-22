@@ -86,9 +86,7 @@ contract Roulette {
 
 		balances[msg.sender] -= totalBetAmount;
 		if (_bets[randomNumber] > 0) {
-			uint256 payout = _bets[randomNumber] * 36;
-			require(payout / 36 == _bets[randomNumber], "Multiplication overflow");
-			winningAmount += payout;
+			winningAmount +=  _bets[randomNumber] * 36;
 			balances[msg.sender] += winningAmount;
 		}	
 

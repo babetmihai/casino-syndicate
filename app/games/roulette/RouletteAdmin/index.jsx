@@ -15,8 +15,8 @@ const RouletteAdmin = ({ address, contract }) => {
   const { t } = useTranslation()
   const roulette = useSelector(() => selectRoulette(address))
   React.useEffect(() => {
-    fetchRoulette(contract)
-  }, [])
+    fetchRoulette(address)
+  }, [address])
 
   React.useEffect(() => {
     // Set up event listener for Deposited events

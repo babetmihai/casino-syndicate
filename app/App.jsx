@@ -10,9 +10,7 @@ import GameScreen from "./screens/GameScreen"
 
 function App() {
   return (
-    <MantineProvider
-      defaultColorScheme="dark"
-    >
+    <MantineProvider withCssVariables>
       <AppLayout>
         <Switch>
           <Route path="/" exact component={MainScreen} />

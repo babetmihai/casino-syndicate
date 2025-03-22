@@ -29,7 +29,7 @@ const AdminScreen = () => {
   const { name, createdBy } = table
   return (
     <AppScreen name={name} onBack={() => history.replace("/")} loading={loading}>
-      {contract && createdBy === account &&
+      {address && contract && createdBy === account &&
         <Resolver
           table={table}
           contract={contract}

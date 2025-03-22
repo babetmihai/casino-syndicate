@@ -3,19 +3,45 @@ import "./index.scss"
 import _ from "lodash"
 import BettingSpot from "./BettingSpot"
 import BettingChip from "./BettingChip"
-
+import { Button } from "@mantine/core"
+import { useTranslation } from "react-i18next"
+import { fetchRoulette, selectRoulette } from ".."
+import { useSelector } from "react-redux"
+import { showModal } from "app/core/modals"
+import DepositModal from "app/core/tables/DepositModal"
+import { ethers } from "ethers"
 
 const BLACK_NUMBERS = [2, 4, 6, 8, 10, 11, 13, 15, 17, 19, 20, 22, 24, 26, 28, 29, 31, 33, 35]
 
 
-const RouletteGame = React.memo(() => {
+const RouletteGame = React.memo(({ contract, address }) => {
+  const { t } = useTranslation()
   const [bets, setBets] = React.useState(_.range(37).fill(0))
-  console.log(bets)
+
+  const roulette = useSelector(() => selectRoulette(address))
+  React.useEffect(() => {
+    fetchRoulette(address)
+  }, [address])
+
   return (
     <div className="RouletteGame_root">
+      <div className="RouletteGame_header">
+        <Button
+          onClick={() => {
+            showModal(DepositModal, {
+              onSubmit: ({ balance }) => {
+                contract.depositBalance({
+                  value: ethers.parseEther(balance.toString())
+                })
+              }
+            })
+          }}
+        >
+          {t("deposit")}
+        </Button>
+      </div>
       <svg className="RouletteGame_table" viewBox="0 0 150 50">
         {_.range(37).map((number) => {
-
           const y = ((number - 1) % 3)
           const x = Math.floor((number - 1) / 3) + 2
           const color = BLACK_NUMBERS.includes(number) ? "black" : "red"
@@ -51,7 +77,7 @@ const RouletteGame = React.memo(() => {
                 }}
                 {...spotProps}
               />
-              {bets[number] > 0 && 
+              {bets[number] > 0 &&
                 <BettingChip
                   x={x}
                   y={y}

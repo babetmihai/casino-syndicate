@@ -44,7 +44,7 @@ const RouletteAdmin = ({ address, contract }) => {
         <Button
           onClick={() => showModal(DepositModal, {
             onSubmit: async ({ balance }) => {
-              await buyTableShares({ balance }, contract)
+              await buyTableShares({ balance }, address)
             }
           })}
         >

@@ -19,11 +19,12 @@ export const fetchRoulette = async (address) => {
 }
 
 
-export const buyTableShares = async ({ balance }, contract) => {
+export const buyTableShares = async ({ balance }, address) => {
+  const contract = await selectContract(address)
   await window.ethereum.request({ method: "eth_requestAccounts" })
   const tx = await contract.depositShares({
     value: ethers.parseEther(balance.toString())
   })
   await tx.wait()
-  await fetchRoulette(contract)
+  await fetchRoulette(address)
 }

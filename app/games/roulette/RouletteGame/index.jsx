@@ -25,6 +25,31 @@ const RouletteGame = React.memo(({ contract, address }) => {
     fetchRoulette(address)
   }, [address])
 
+
+  React.useEffect(() => {
+    // Set up event listener for Deposited events
+    contract.on("WinningNumber", (number, totalBetAmount, winningAmount, playerBalance, event) => {
+      const deposit = {
+        number,
+        totalBetAmount,
+        winningAmount,
+        playerBalance,
+        txHash: event.transactionHash
+      }
+
+      console.log("WinningNumber:", deposit)
+      console.log(`WinningNumber: ${number}`)
+      console.log(`TotalBetAmount: ${totalBetAmount}`)
+      console.log(`WinningAmount: ${winningAmount}`)
+      console.log(`PlayerBalance: ${playerBalance}`)
+    })
+
+    // Cleanup listener on component unmount
+    return () => {
+      contract.removeAllListeners("WinningNumber")
+    }
+  }, [])
+
   return (
     <div className="RouletteGame_root">
       <div className="RouletteGame_header">
@@ -42,6 +67,23 @@ const RouletteGame = React.memo(({ contract, address }) => {
           }}
         >
           {t("deposit")}
+        </Button>
+        <Button variant="outline" onClick={async () => {
+          const tx = await contract.withdrawBalance()
+          await tx.wait()
+          fetchRoulette(address)
+
+        }}
+        >
+          {t("withdraw")}
+        </Button>
+        <Button variant="outline" onClick={async () => {
+          const tx = await contract.postBet(bets.map(bet => bet && ethers.parseEther(bet.toString())))
+          await tx.wait()
+          fetchRoulette(address)
+        }}
+        >
+          {t("postBet")}
         </Button>
       </div>
       <Text c="dimmed">

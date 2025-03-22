@@ -12,7 +12,11 @@
     height: 100%;
   }
 }
-
+.RouletteGame_header {
+  display: flex;
+  align-items: center;
+  gap: .5rem;
+}
 
 .RouletteBet_root {
   cursor: pointer;

@@ -13,7 +13,7 @@ contract Roulette {
 	mapping(address => uint256) public balances;
 
 	event Deposited(address indexed user, uint256 amount);
-	event WinningNumber(uint256 number);
+	event WinningNumber(uint256 number, uint256 totalBetAmount, uint256 winningAmount, uint256 playerBalance);
 
 
 	function getTable() public view returns (TableDTO memory) {
@@ -70,28 +70,30 @@ contract Roulette {
 		uint256 randomNumber = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender))) % 37;
 		uint256 totalBetAmount = 0;
 		uint256 winningAmount = 0;
-		uint256 maxBetAmount = 100;
+		uint256 maxBetAmount = 1000000000000000000;
 
 		for (uint256 i = 0; i < 37; i++) {
+			totalBetAmount += _bets[i];
+
 			if (_bets[i] > maxBetAmount) {
 				revert("Bet amount must be less than maxBetAmount");
 			}
 
-			if (totalBetAmount + _bets[i] > playerBalance) {
+			if (totalBetAmount > playerBalance) {
 				revert("Total bet amount must equal sent Ether");
 			}
 
 			if (_bets[i] == randomNumber) {
-				totalBetAmount += _bets[i];
 				winningAmount += _bets[i] * 36;
 			} 
 		}
 
+		balances[msg.sender] -= totalBetAmount;
 		if (winningAmount > 0) {
 			balances[msg.sender] += winningAmount;
 		}
 		
-		emit WinningNumber(randomNumber);
+		emit WinningNumber(randomNumber, totalBetAmount, winningAmount, balances[msg.sender]);
 	}
 }
 

@@ -84,7 +84,13 @@ contract Roulette {
 			}
 
 			if (i == randomNumber) {
-				winningAmount += _bets[i] * 36;
+				// Multiply by 36 for the payout ratio (35:1 plus the original bet)
+				// Using SafeMath pattern to prevent overflow
+				if (_bets[i] > 0) {
+					uint256 payout = _bets[i] * 36;
+					require(payout / 36 == _bets[i], "Multiplication overflow");
+					winningAmount += payout;
+				}
 			} 
 		}
 

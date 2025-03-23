@@ -2,7 +2,7 @@ const express = require("express")
 const hre = require("hardhat")
 const db = require("./db")
 const { ethers } = require("ethers")
-
+const { v7: uuidv7 } = require("uuid")
 const router = express.Router()
 const { RPC_URL, DEALER_PRIVATE_KEY } = process.env
 const provider = new ethers.JsonRpcProvider(RPC_URL)
@@ -92,8 +92,8 @@ router.post("/tables/:address/bets", async (req, res, next) => {
     const contract = new ethers.Contract(table.address, table.abi, wallet)
     if (!isCommiting) {
       isCommiting = true
-      const number = Math.floor(Math.random() * 37)
-      const salt = ethers.randomBytes(32)
+      const number = uuidv7()
+      const salt = uuidv7()
       tx = await contract.commit(number, salt, { gasLimit: 500000 })
       tx.wait()
       tx = await contract.setRevealDeadline(10 * 1000)
@@ -127,3 +127,6 @@ router.post("/tables/:address/bets", async (req, res, next) => {
     isPosting --
   }
 })
+
+
+module.exports = router

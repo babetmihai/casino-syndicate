@@ -92,9 +92,10 @@ router.post("/tables/:address/bets", async (req, res, next) => {
     const contract = new ethers.Contract(table.address, table.abi, wallet)
     if (!isCommiting) {
       isCommiting = true
-      const number = uuidv7()
-      const salt = uuidv7()
-      tx = await contract.commit(number, salt, { gasLimit: 500000 })
+      const secret = process.env.TABLE_SECRET || "my-custom-secret"
+      const value = uuidv7() + "-" + secret
+      const hash = ethers.solidityPackedKeccak256(["string", "string"], [value, secret])
+      tx = await contract.commit(hash, { gasLimit: 500000 })
       tx.wait()
       tx = await contract.setRevealDeadline(10 * 1000)
       tx.wait()
@@ -104,7 +105,7 @@ router.post("/tables/:address/bets", async (req, res, next) => {
           await new Promise(resolve => setTimeout(resolve, 1 * 1000))
           if (!isPosting) {
             try {
-              tx = await contract.reveal(number, salt)
+              tx = await contract.reveal(value, secret)
               await tx.wait()
               isCommiting = false
               isRevealing = false

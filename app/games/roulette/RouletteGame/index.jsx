@@ -11,7 +11,6 @@ import { showModal } from "app/core/modals"
 import DepositModal from "app/core/tables/DepositModal"
 import { ethers } from "ethers"
 import client from "app/core/client"
-import { actions } from "app/core/store"
 import { getContract, getProvider } from "app/core/contracts"
 import { clearLoader, setLoader, useLoader } from "app/core/loaders"
 
@@ -79,7 +78,6 @@ const RouletteGame = React.memo(({ address }) => {
           const tx = await contract.withdrawBalance()
           await tx.wait()
           fetchRoulette(address)
-
         }}
         >
           {t("withdraw")}

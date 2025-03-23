@@ -128,7 +128,7 @@ const RouletteGame = React.memo(({ address }) => {
             spotProps.topRightRadius = 2
             spotProps.topLeftRadius = 2
 
-            chipProps.y = 1
+            chipProps.x = 1
           }
 
           return (

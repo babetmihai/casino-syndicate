@@ -100,7 +100,7 @@ router.post("/tables/:address/bets", async (req, res, next) => {
       tx.wait()
       setTimeout(async () => {
         isRevealing = true
-        while (!isCommiting) {
+        while (isRevealing) {
           await new Promise(resolve => setTimeout(resolve, 1 * 1000))
           if (!isPosting) {
             try {

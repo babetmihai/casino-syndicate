@@ -109,23 +109,23 @@ const RouletteGame = React.memo(({ address }) => {
       <Text c="dimmed">
         totalBet: {totalBet}
       </Text>
-      <svg className="RouletteGame_table" viewBox="0 0 150 50">
+      <svg className="RouletteGame_table" viewBox="0 0 30 150">
         {_.range(37).map((number) => {
-          const y = ((number - 1) % 3)
-          const x = Math.floor((number - 1) / 3) + 2
+          const x = ((number - 1) % 3)
+          const y = Math.floor((number - 1) / 3) + 2
           const color = BLACK_NUMBERS.includes(number) ? "black" : "red"
 
           const chipProps = {}
           const spotProps = {}
           if (number === 36) spotProps.bottomRightRadius = 2
-          if (number === 34) spotProps.topRightRadius = 2
+          if (number === 34) spotProps.bottomLeftRadius = 2
           if (number === 0) {
-            spotProps.x = 1
-            spotProps.y = 0
-            spotProps.width = 1
-            spotProps.height = 3
+            spotProps.x = 0
+            spotProps.y = 1
+            spotProps.width = 3
+            spotProps.height = 1
             spotProps.color = "green"
-            spotProps.bottomLeftRadius = 2
+            spotProps.topRightRadius = 2
             spotProps.topLeftRadius = 2
 
             chipProps.y = 1

@@ -75,38 +75,55 @@ router.get("/tables/artifact/:type", async (req, res, next) => {
   }
 })
 
-
-// TODO: implement  Commit-Reveal Scheme
-
+// TODO: move to redis
+let isPosting = 0
+let isCommiting = false
+let isRevealing = false
 
 router.post("/tables/:address/bets", async (req, res, next) => {
   try {
+    if (isRevealing) throw new Error("revealing_is_in_progress")
+    isPosting ++
     const { account } = res.locals
     const { address } = req.params
     const { bets } = req.body
     const table = await db.get(address)
 
     const contract = new ethers.Contract(table.address, table.abi, wallet)
+    if (!isCommiting) {
+      isCommiting = true
+      const number = Math.floor(Math.random() * 37)
+      const salt = ethers.randomBytes(32)
+      tx = await contract.commit(number, salt, { gasLimit: 500000 })
+      tx.wait()
+      tx = await contract.setRevealDeadline(10 * 1000)
+      tx.wait()
+      setTimeout(async () => {
+        isRevealing = true
+        while (!isCommiting) {
+          await new Promise(resolve => setTimeout(resolve, 1 * 1000))
+          if (!isPosting) {
+            try {
+              tx = await contract.reveal(number, salt)
+              await tx.wait()
+              isCommiting = false
+              isRevealing = false
+            } catch {
+              // do nothing
+            }
+          }
+
+        }
+      }, 10 * 1000)
+    }
     const tx = await contract.postDealerBet(account, bets.map(bet => bet && ethers.parseEther(bet.toString())), {
       gasLimit: 500000
     })
-    // Wait for the transaction to be mined
-    const receipt = await tx.wait(1)
-    const winningNumberEvent = receipt.logs
-      .map(log => contract.interface.parseLog(log))
-      .find(event => event && event.name === "WinningNumber")
-
-    if (!winningNumberEvent) throw new Error("no_event_found")
-    const [number, totalBetAmount, winningAmount, playerBalance] = winningNumberEvent.args
-    res.json({
-      number: Number(number),
-      totalBetAmount: ethers.formatEther(totalBetAmount),
-      winningAmount: ethers.formatEther(winningAmount),
-      playerBalance: ethers.formatEther(playerBalance),
-      txHash: tx.hash
-    })
+    const receipt = await tx.wait()
+    res.json({ txHash: receipt.transactionHash })
   } catch (error) {
     next(error)
+  } finally {
+    isPosting --
   }
 })
-module.exports = router

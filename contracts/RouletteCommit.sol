@@ -48,7 +48,7 @@ contract RouletteCommit {
 		});
 	}
 
-	function depositShares() public payable returns (bool) {
+	function depositShares() public payable {
 		require(msg.value > 0, "Must send some Ether");
     uint256 previousBalance = address(this).balance - msg.value;
     uint256 memberShares;
@@ -63,8 +63,6 @@ contract RouletteCommit {
     totalShares += memberShares;
     shares[msg.sender] += memberShares;
     emit Deposited(msg.sender, msg.value);
-
-		return true;
 	}
 
 	function withdrawShares() external {
@@ -101,7 +99,7 @@ contract RouletteCommit {
 		revealDeadline = block.timestamp + _timeInSeconds;
 	}
 
-	function postBet(address account, uint256[37] memory _bets) public payable onlyHouse {
+	function postBet(address account, uint256[37] memory _bets) external onlyHouse {
 		uint256 playerBalance = balances[account];
 		uint256 totalBetAmount = 0;
 		uint256 maxBetAmount = 10 ether;

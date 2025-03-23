@@ -13,7 +13,7 @@ import { ethers } from "ethers"
 import client from "app/core/client"
 import { getContract, getProvider } from "app/core/contracts"
 import { clearLoader, setLoader, useLoader } from "app/core/loaders"
-
+import { Card } from "@mantine/core"
 const BLACK_NUMBERS = [2, 4, 6, 8, 10, 11, 13, 15, 17, 19, 20, 22, 24, 26, 28, 29, 31, 33, 35]
 
 
@@ -107,61 +107,63 @@ const RouletteGame = React.memo(({ address }) => {
       <Text c="dimmed">
         totalBet: {totalBet}
       </Text>
-      <svg className="RouletteGame_table" viewBox="0 0 30 150">
-        {_.range(37).map((number) => {
-          const x = ((number - 1) % 3)
-          const y = Math.floor((number - 1) / 3) + 2
-          const color = BLACK_NUMBERS.includes(number) ? "black" : "red"
+      <Card className="RouletteGame_table" shadow="lg" radius="lg">
+        <svg viewBox="0 0 30 130">
+          {_.range(37).map((number) => {
+            const x = ((number - 1) % 3)
+            const y = Math.floor((number - 1) / 3) + 1
+            const color = BLACK_NUMBERS.includes(number) ? "black" : "red"
 
-          const chipProps = {}
-          const spotProps = {}
-          if (number === 36) spotProps.bottomRightRadius = 2
-          if (number === 34) spotProps.bottomLeftRadius = 2
-          if (number === 0) {
-            spotProps.x = 0
-            spotProps.y = 1
-            spotProps.width = 3
-            spotProps.height = 1
-            spotProps.color = "green"
-            spotProps.topRightRadius = 2
-            spotProps.topLeftRadius = 2
+            const chipProps = {}
+            const spotProps = {}
+            if (number === 36) spotProps.bottomRightRadius = 2
+            if (number === 34) spotProps.bottomLeftRadius = 2
+            if (number === 0) {
+              spotProps.x = 0
+              spotProps.y = 0
+              spotProps.width = 3
+              spotProps.height = 1
+              spotProps.color = "green"
+              spotProps.topRightRadius = 2
+              spotProps.topLeftRadius = 2
 
-            chipProps.x = 1
-          }
+              chipProps.x = 1
+            }
 
-          return (
-            <g key={number}>
-              <BettingSpot
-                x={x}
-                y={y}
-                key={number}
-                color={color}
-                label={number}
-                onClick={() => {
-                  const newBet = [...bets]
-                  newBet[number] += 1
-                  setBets(newBet)
-                }}
-                {...spotProps}
-              />
-              {bets[number] > 0 &&
-                <BettingChip
+            return (
+              <g key={number}>
+                <BettingSpot
                   x={x}
                   y={y}
-                  value={bets[number]}
+                  key={number}
+                  color={color}
+                  label={number}
                   onClick={() => {
                     const newBet = [...bets]
                     newBet[number] += 1
                     setBets(newBet)
                   }}
                   {...spotProps}
-                  {...chipProps}
                 />
-              }
-            </g>
-          )
-        })}
-      </svg>
+                {bets[number] > 0 &&
+                  <BettingChip
+                    x={x}
+                    y={y}
+                    value={bets[number]}
+                    onClick={() => {
+                      const newBet = [...bets]
+                      newBet[number] += 1
+                      setBets(newBet)
+                    }}
+                    {...spotProps}
+                    {...chipProps}
+                  />
+                }
+              </g>
+            )
+          })}
+        </svg>
+      </Card>
     </div>
   )
 })

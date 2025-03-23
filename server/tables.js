@@ -90,7 +90,7 @@ router.post("/tables/:address/bets", async (req, res, next) => {
       gasLimit: 500000
     })
     // Wait for the transaction to be mined
-    const receipt = await tx.wait()
+    const receipt = await tx.wait(1)
     const winningNumberEvent = receipt.logs
       .map(log => contract.interface.parseLog(log))
       .find(event => event && event.name === "WinningNumber")

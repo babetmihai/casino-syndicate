@@ -1,6 +1,15 @@
 import { ethers } from "ethers"
 
 const contracts = {}
+let provider
+
+export const getProvider = () => {
+  if (!provider) {
+    provider = new ethers.BrowserProvider(window.ethereum)
+  }
+  return provider
+}
+
 
 export const getContract = (address) => {
   return contracts[address]
@@ -17,7 +26,7 @@ export const clearContracts = () => {
 
 export const generateContract = async (address, abi) => {
   await window.ethereum.request({ method: "eth_requestAccounts" })
-  const provider = new ethers.BrowserProvider(window.ethereum)
+  const provider = getProvider()
   const signer = await provider.getSigner()
   let retries = 5
   while (retries > 0) {

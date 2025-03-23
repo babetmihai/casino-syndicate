@@ -75,7 +75,7 @@ router.get("/tables/artifact/:type", async (req, res, next) => {
   }
 })
 
-// TODO: move to redis
+// TODO: move to redis, add bull instad of setTimeout
 let isPosting = 0
 let isCommiting = false
 let isRevealing = false

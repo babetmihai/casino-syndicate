@@ -39,6 +39,7 @@
     "react-redux": "^9.2.0",
     "react-router": "^5.3.4",
     "react-router-dom": "^5.3.4",
+    "redis": "^4.7.0",
     "redux": "^5.0.1",
     "sass": "^1.85.1",
     "socket.io": "^4.8.1",

@@ -75,7 +75,7 @@ router.get("/tables/artifact/:type", async (req, res, next) => {
   }
 })
 
-// TODO: move to redis, add bull instad of setTimeout
+// TODO: move to db
 let isPosting = 0
 let isCommiting = false
 let isRevealing = false
@@ -116,7 +116,7 @@ router.post("/tables/:address/bets", async (req, res, next) => {
         }
       }, 10 * 1000)
     }
-    const tx = await contract.postDealerBet(account, bets.map(bet => bet && ethers.parseEther(bet.toString())), {
+    const tx = await contract.postBet(account, bets.map(bet => bet && ethers.parseEther(bet.toString())), {
       gasLimit: 500000
     })
     const receipt = await tx.wait()

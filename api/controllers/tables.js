@@ -15,7 +15,6 @@ router.get("/tables/:address", async (req, res, next) => {
   }
 })
 
-
 router.get("/tables", async (req, res, next) => {
   try {
     const { account } = res.locals

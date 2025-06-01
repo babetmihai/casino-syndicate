@@ -4,8 +4,8 @@ dotenv.config()
 const express = require("express")
 const cors = require("cors")
 
-const authRouter = require("./auth")
-const tablesRouter = require("./tables")
+const authController = require("./controllers/auth")
+const tablesController = require("./controllers/tables")
 
 
 const server = express()
@@ -16,8 +16,8 @@ server.get("/", (req, res) => {
   res.send("Server is running")
 })
 
-server.use(authRouter)
-server.use(tablesRouter)
+server.use(authController)
+server.use(tablesController)
 
 
 server.use((err, req, res, next) => {

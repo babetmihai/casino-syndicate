@@ -1,8 +1,9 @@
 const express = require("express")
 const hre = require("hardhat")
-const db = require("./db")
-const router = express.Router()
+const db = require("../core/db")
 
+
+const router = express.Router()
 
 router.get("/tables/:address", async (req, res, next) => {
   try {

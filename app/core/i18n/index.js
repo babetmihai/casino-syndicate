@@ -5,18 +5,18 @@ import _ from "lodash"
 import { actions } from "../store"
 
 
-const DEFAULT_LANGUGAGE = "en"
+const DEFAULT_LANGUAGE = "en"
 
 
 export const loadLanguage = () => {
-  const language = actions.get("language", DEFAULT_LANGUGAGE)
+  const language = actions.get("language", DEFAULT_LANGUAGE)
   actions.set("language", language)
 
   i18n
     .use(initReactI18next)
     .init({
       lng: language,
-      fallbackLng: DEFAULT_LANGUGAGE,
+      fallbackLng: DEFAULT_LANGUAGE,
       returnEmptyString: false,
       resources: {
         en: {

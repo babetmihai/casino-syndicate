@@ -4,7 +4,8 @@ import _ from "lodash"
 
 const VERSION = 1
 const PERSISTENT_PATHS = [
-  "auth"
+  "auth",
+  "language"
 ]
 
 localforage.config({
@@ -30,15 +31,13 @@ export const storageMiddleware = (store) => (next) => (action) => {
 }
 
 export const loadStorage = async () => {
-  const acc = {}
   for (const path of PERSISTENT_PATHS) {
     await localforage.getItem(path)
       .then((value) => {
-        _.setWith(acc, path, _.defaultTo(value, undefined), Object)
+        if (value != null) actions.set(path, value)
       })
       .catch(_.noop)
   }
-  actions.set(acc)
 }
 
 export default localforage

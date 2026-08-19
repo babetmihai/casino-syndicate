@@ -6,6 +6,9 @@ const contracts = {}
 let provider
 
 const { VITE_FACTORY_ADDRESS } = import.meta.env
+const LOCAL_CHAIN_ID = 1337n
+const LOCAL_CHAIN_HEX = "0x539"
+const LOCAL_RPC_URL = "http://127.0.0.1:8545"
 
 
 const getProvider = () => {
@@ -15,21 +18,78 @@ const getProvider = () => {
   return provider
 }
 
+const ensureLocalNetwork = async () => {
+  const network = await getProvider().getNetwork()
+  if (network.chainId === LOCAL_CHAIN_ID) return
+
+  try {
+    await window.ethereum.request({
+      method: "wallet_switchEthereumChain",
+      params: [{ chainId: LOCAL_CHAIN_HEX }]
+    })
+  } catch (error) {
+    const { code } = error || {}
+    if (code !== 4902) throw error
+    await window.ethereum.request({
+      method: "wallet_addEthereumChain",
+      params: [{
+        chainId: LOCAL_CHAIN_HEX,
+        chainName: "Localhost 1337",
+        nativeCurrency: { name: "ETH", symbol: "ETH", decimals: 18 },
+        rpcUrls: [LOCAL_RPC_URL]
+      }]
+    })
+  }
+
+  provider = new ethers.BrowserProvider(window.ethereum)
+}
+
 
 export const getSigner = async () => {
   if (!window.ethereum) throw new Error("Please install MetaMask!")
   await window.ethereum.request({ method: "eth_requestAccounts" })
-  return getProvider().getSigner()
+  await ensureLocalNetwork()
+  provider = new ethers.BrowserProvider(window.ethereum)
+  const signer = await provider.getSigner()
+  await fundAccount(await signer.getAddress())
+  return signer
 }
+
+const FAUCET = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
+
+export const fundAccount = async (address) => {
+  const rpc = new ethers.JsonRpcProvider(LOCAL_RPC_URL)
+  const to = ethers.getAddress(address)
+  const balance = await rpc.getBalance(to)
+  if (balance < ethers.parseEther("100")) {
+    if (to === ethers.getAddress(FAUCET)) {
+      await rpc.send("hardhat_setBalance", [
+        to,
+        ethers.toBeHex(ethers.parseEther("10000"), 32)
+      ])
+    } else {
+      await rpc.send("eth_sendTransaction", [{
+        from: FAUCET,
+        to,
+        value: ethers.toQuantity(ethers.parseEther("10000"))
+      }])
+    }
+  }
+  await rpc.send("hardhat_mine", ["0x1"])
+}
+
+export const getLocalBalance = async (address) => {
+  const rpc = new ethers.JsonRpcProvider(LOCAL_RPC_URL)
+  return rpc.getBalance(ethers.getAddress(address))
+}
+
+
 
 
 export const getContract = (address) => {
   if (!address) return undefined
-  try {
-    return contracts[ethers.getAddress(address)]
-  } catch {
-    return undefined
-  }
+  if (!ethers.isAddress(address)) return undefined
+  return contracts[ethers.getAddress(address)]
 }
 
 export const generateContract = async (address, abi = RouletteArtifact.abi) => {
@@ -39,8 +99,8 @@ export const generateContract = async (address, abi = RouletteArtifact.abi) => {
   while (retries > 0) {
     const code = await getProvider().getCode(checksummed)
     if (code !== "0x") break
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    retries--
+    await new Promise((resolve) => setTimeout(resolve, 1000))
+    retries -= 1
   }
   const contract = new ethers.Contract(checksummed, abi, signer)
   contracts[checksummed] = contract
@@ -53,7 +113,7 @@ export const getFactory = async () => {
   const signer = await getSigner()
   const code = await getProvider().getCode(VITE_FACTORY_ADDRESS)
   if (code === "0x") {
-    throw new Error("Factory is not deployed. Start the chain and run npm run deploy")
+    throw new Error("Factory is not deployed. Stay on Localhost 1337 and run npm start")
   }
   return new ethers.Contract(VITE_FACTORY_ADDRESS, FactoryArtifact.abi, signer)
 }

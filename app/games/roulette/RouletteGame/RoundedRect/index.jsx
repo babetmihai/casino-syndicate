@@ -16,47 +16,38 @@ const RoundedRect = ({
   strokeWidth = 1,
   onClick
 }) => {
-  // Create a d3-path object
   const p = path()
-
-  // Starting point (top-left corner)
   p.moveTo(x + topLeftRadius, y)
 
-  // Top edge to top-right
   if (topRightRadius) {
     p.lineTo(x + width - topRightRadius, y)
-    p.quadraticCurveTo(x + width, y, x + width, y + topRightRadius) // Round top-right
+    p.quadraticCurveTo(x + width, y, x + width, y + topRightRadius)
   } else {
     p.lineTo(x + width, y)
   }
 
-  // Right edge to bottom-right
   if (bottomRightRadius) {
     p.lineTo(x + width, y + height - bottomRightRadius)
-    p.quadraticCurveTo(x + width, y + height, x + width - bottomRightRadius, y + height) // Round bottom-right
+    p.quadraticCurveTo(x + width, y + height, x + width - bottomRightRadius, y + height)
   } else {
     p.lineTo(x + width, y + height)
   }
 
-  // Bottom edge to bottom-left
   if (bottomLeftRadius) {
     p.lineTo(x + bottomLeftRadius, y + height)
-    p.quadraticCurveTo(x, y + height, x, y + height - bottomLeftRadius) // Round bottom-left
+    p.quadraticCurveTo(x, y + height, x, y + height - bottomLeftRadius)
   } else {
     p.lineTo(x, y + height)
   }
 
-  // Left edge back to top-left
   if (topLeftRadius) {
     p.lineTo(x, y + topLeftRadius)
-    p.quadraticCurveTo(x, y, x + topLeftRadius, y) // Round top-left
+    p.quadraticCurveTo(x, y, x + topLeftRadius, y)
   } else {
     p.lineTo(x, y)
   }
 
-  p.closePath() // Close the shape
-
-  // Convert the path to a string
+  p.closePath()
   const d = p.toString()
 
   return (

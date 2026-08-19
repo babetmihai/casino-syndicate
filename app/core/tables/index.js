@@ -4,6 +4,7 @@ import { ethers } from "ethers"
 import { clearLoader, setLoader } from "../loaders"
 import { generateContract, getFactory } from "../contracts"
 import { selectAuth } from "../auth"
+import _ from "lodash"
 
 export const TABLE_TYPES = {
   Roulette: "Roulette"
@@ -20,65 +21,36 @@ const TABLE_TYPE_BY_ID = {
 
 export const selectTable = (address) => {
   if (!address) return EMPTY_OBJECT
-  try {
-    return actions.get(`tables.${ethers.getAddress(address)}`, EMPTY_OBJECT)
-  } catch {
-    return EMPTY_OBJECT
-  }
+  if (!ethers.isAddress(address)) return EMPTY_OBJECT
+  return actions.get(`tables.${ethers.getAddress(address)}`, EMPTY_OBJECT)
 }
+
 export const selectTables = () => actions.get("tables", EMPTY_OBJECT)
 
 
-const toTable = ({ game, name, createdBy, createdAt, gameType }) => {
-  const address = ethers.getAddress(game)
-  return {
-    address,
-    name,
-    createdBy: ethers.getAddress(createdBy),
-    createdAt: Number(createdAt),
-    type: TABLE_TYPE_BY_ID[Number(gameType)]
-  }
-}
-
-
 export const initTable = async (address) => {
+  setLoader(address)
   try {
-    setLoader(address)
     await generateContract(address)
     const factory = await getFactory()
     const table = toTable(await factory.getGame(address))
     actions.set(`tables.${table.address}`, table)
-    return table
-  } catch (error) {
-    console.error(error)
   } finally {
     clearLoader(address)
   }
 }
 
-
 export const fetchTables = async () => {
   const { account } = selectAuth()
   if (!account) {
     actions.set("tables", {})
-    return {}
+    return
   }
 
-  try {
-    const factory = await getFactory()
-    const rows = await factory.getGamesByCreator(account)
-    const tables = rows.reduce((acc, row) => {
-      const table = toTable(row)
-      acc[table.address] = table
-      return acc
-    }, {})
-    actions.set("tables", tables)
-    return tables
-  } catch (error) {
-    console.error(error)
-    actions.set("tables", {})
-    return {}
-  }
+  const factory = await getFactory()
+  const rows = await factory.getGamesByCreator(account)
+  const tables = _.keyBy(rows.map(toTable), "address")
+  actions.set("tables", tables)
 }
 
 export const createTable = async (values) => {
@@ -94,8 +66,9 @@ export const createTable = async (values) => {
   for (const log of receipt.logs) {
     try {
       const parsed = factory.interface.parseLog(log)
-      if (parsed?.name === "GameCreated") {
-        address = parsed.args.game
+      const { name: eventName, args = {} } = parsed || {}
+      if (eventName === "GameCreated") {
+        address = args.game
         break
       }
     } catch {
@@ -105,7 +78,18 @@ export const createTable = async (values) => {
 
   if (!address) throw new Error("GameCreated event not found")
 
-  const table = await initTable(address)
+  await initTable(address)
   await fetchTables()
-  return table
+}
+
+
+const toTable = ({ game, name, createdBy, createdAt, gameType } = {}) => {
+  const address = ethers.getAddress(game)
+  return {
+    address,
+    name,
+    createdBy: ethers.getAddress(createdBy),
+    createdAt: Number(createdAt),
+    type: TABLE_TYPE_BY_ID[Number(gameType)]
+  }
 }

@@ -11,6 +11,8 @@ import { selectAuth } from "../../core/auth"
 
 const AppHeader = ({ name, onBack }) => {
   const auth = useSelector(() => selectAuth())
+  const { account } = auth || {}
+
   return (
     <Card
       shadow="sm"
@@ -21,15 +23,19 @@ const AppHeader = ({ name, onBack }) => {
     >
       <div className="AppHeader_left">
         {onBack && (
-          <ActionIcon variant="light" color="gray" onClick={onBack}>
+          <ActionIcon
+            variant="light"
+            color="gray"
+            onClick={onBack}
+          >
             <ArrowLeft />
           </ActionIcon>
         )}
         <Title order={3}>{name}</Title>
       </div>
-      <div className="AppHeader_right" >
-        {auth.account && <AuthMenu /> }
-        {!auth.account &&
+      <div className="AppHeader_right">
+        {account && <AuthMenu />}
+        {!account &&
           <Button
             onClick={() => showModal(AuthModal)}
             variant="light"
@@ -42,7 +48,6 @@ const AppHeader = ({ name, onBack }) => {
         }
       </div>
     </Card>
-
   )
 }
 

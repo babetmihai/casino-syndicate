@@ -72,8 +72,7 @@ contract Roulette {
 		delete balances[msg.sender];
 	}
 
-	function postBet(uint256[37] memory _bets) external {
-		uint256 playerBalance = balances[msg.sender];
+	function postBet(uint256[37] memory _bets) external payable {
 		uint256 randomNumber = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender))) % 37;
 		uint256 totalBetAmount = 0;
 		uint256 winningAmount = 0;
@@ -84,18 +83,15 @@ contract Roulette {
 			if (_bets[i] > maxBetAmount) {
 				revert("Bet amount must be less than maxBetAmount");
 			}
-
-			if (totalBetAmount > playerBalance) {
-				revert("Total bet amount must equal sent Ether");
-			}
 		}
 
 		require(totalBetAmount > 0, "Must bet some Ether");
+		require(msg.value == totalBetAmount, "Total bet amount must equal sent Ether");
 
-		balances[msg.sender] -= totalBetAmount;
 		if (_bets[randomNumber] > 0) {
-			winningAmount += _bets[randomNumber] * 36;
-			balances[msg.sender] += winningAmount;
+			winningAmount = _bets[randomNumber] * 36;
+			require(address(this).balance >= winningAmount, "Table cannot cover this win");
+			payable(msg.sender).transfer(winningAmount);
 		}
 
 		emit WinningNumber(randomNumber, totalBetAmount, winningAmount, balances[msg.sender]);

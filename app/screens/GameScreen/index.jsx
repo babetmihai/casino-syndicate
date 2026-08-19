@@ -3,41 +3,27 @@ import { initTable, selectTable, TABLE_TYPES } from "app/core/tables"
 import { useSelector } from "react-redux"
 import { useParams } from "react-router-dom"
 import AppScreen from "app/components/AppScreen"
-import { useLoader } from "app/core/loaders"
 import RouletteGame from "app/games/roulette/RouletteGame"
 
 
 const GameScreen = () => {
   const { address } = useParams()
   const table = useSelector(() => selectTable(address))
-  const loading = useLoader(address)
 
   React.useEffect(() => {
-    if (address) initTable(address)
+    if (!address) return
+    initTable(address)
   }, [address])
 
-  const { name } = table
+  const { name, type } = table || {}
 
   return (
-    <AppScreen
-      name={name}
-      loading={loading}
-    >
-      <Resolver
-        table={table}
-        address={address}
-      />
+    <AppScreen name={name}>
+      {type === TABLE_TYPES.Roulette &&
+        <RouletteGame address={address} />
+      }
     </AppScreen>
   )
-}
-
-
-const Resolver = ({ table, ...props }) => {
-  const { type } = table
-  switch (type) {
-    case (TABLE_TYPES.Roulette): return <RouletteGame {...props} />
-    default: return null
-  }
 }
 
 export default GameScreen

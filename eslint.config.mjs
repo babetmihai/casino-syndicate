@@ -1,92 +1,122 @@
 import globals from "globals"
 import pluginReact from "eslint-plugin-react"
+import reactHooks from "eslint-plugin-react-hooks"
 
+const reactJsxRuntimeRules = pluginReact.configs.flat["jsx-runtime"].rules
+const reactHooksRecommended = reactHooks.configs["recommended-latest"]
 
-/** @type {import('eslint').Linter.Config[]} */
 export default [
-  { files: ["**/*.{js,mjs,cjs,jsx}"] },
-  { languageOptions: { globals: {
-    ...globals.node,
-    ...globals.browser
-  } } },
-  pluginReact.configs.flat.recommended,
+  { ignores: ["dist/**", "artifacts/**", "cache/**", "contracts/**", "vite.config.mjs", "eslint.config.mjs"] },
   {
-    ignores: ["**/*.sol"],
+    files: ["app/**/*.{js,mjs,jsx}", "scripts/**/*.js", "test/**/*.js", "hardhat.config.js"],
+    plugins: {
+      ...pluginReact.configs.flat.recommended.plugins,
+      ...reactHooksRecommended.plugins
+    },
+    languageOptions: {
+      ...pluginReact.configs.flat.recommended.languageOptions,
+      globals: {
+        ...globals.browser,
+        ...globals.node
+      }
+    },
+    settings: {
+      react: {
+        version: "detect"
+      }
+    },
     rules: {
-      "react/jsx-no-target-blank": "off",
-      "semi": [
+      ...pluginReact.configs.flat.recommended.rules,
+      ...reactJsxRuntimeRules,
+      ...reactHooksRecommended.rules,
+      "react/display-name": "off",
+      quotes: ["warn", "double"],
+      semi: ["warn", "never"],
+      indent: [
         "warn",
-        "never"
+        2,
+        {
+          SwitchCase: 1
+        }
       ],
+      "react-hooks/exhaustive-deps": "off",
+      "react/jsx-indent": [
+        "warn",
+        2,
+        {
+          indentLogicalExpressions: true
+        }
+      ],
+      "comma-dangle": ["warn", "never"],
       "no-multi-spaces": "warn",
-      "padded-blocks": 0,
-      "comma-dangle": [
-        "warn",
-        "never"
-      ],
+      "padded-blocks": "off",
       "object-curly-spacing": [
         "warn",
         "always"
       ],
       "brace-style": "warn",
       "no-unused-vars": [
-        "warn"
+        "warn",
+        {
+          varsIgnorePattern: "^React$"
+        }
       ],
       "max-len": [
         "warn",
-        120,
+        160,
         4,
         {
-          "ignoreComments": true
+          ignoreComments: true
         }
+      ],
+      "react/jsx-max-props-per-line": [
+        "warn",
+        {
+          maximum: { single: 3, multi: 1 }
+        }
+      ],
+      "react/jsx-first-prop-new-line": [
+        "warn",
+        "multiline-multiprop"
       ],
       "space-infix-ops": "warn",
       "no-trailing-spaces": "warn",
-      "indent": [
-        "warn",
-        2,
-        {
-          "SwitchCase": 1
-        }
-      ],
       "linebreak-style": [
         "warn",
         "unix"
       ],
-      "quotes": [
-        "warn",
-        "double"
-      ],
+      "no-fallthrough": "warn",
+      "no-unneeded-ternary": "warn",
       "no-extra-semi": "off",
       "no-extra-boolean-cast": "warn",
       "no-console": "warn",
       "key-spacing": [
         "warn",
         {
-          "beforeColon": false,
-          "afterColon": true
+          beforeColon: false,
+          afterColon: true
         }
       ],
       "comma-spacing": [
         "warn",
         {
-          "before": false,
-          "after": true
+          before: false,
+          after: true
         }
       ],
       "semi-spacing": [
         "warn",
         {
-          "before": false,
-          "after": true
+          before: false,
+          after: true
         }
       ],
       "space-before-function-paren": [
         "warn",
         {
-          "asyncArrow": "always",
-          "named": "never",
-          "anonymous": "never"
+          asyncArrow: "always",
+          named: "never",
+          anonymous: "never"
         }
       ],
       "space-before-blocks": [
@@ -95,9 +125,9 @@ export default [
       "no-multiple-empty-lines": [
         "warn",
         {
-          "max": 2,
-          "maxEOF": 1,
-          "maxBOF": 1
+          max: 2,
+          maxEOF: 1,
+          maxBOF: 1
         }
       ],
       "spaced-comment": [
@@ -112,11 +142,10 @@ export default [
         2
       ],
       "react/jsx-no-duplicate-props": "warn",
-      "react/display-name": 0,
       "keyword-spacing": [
         "warn",
         {
-          "before": true
+          before: true
         }
       ],
       "space-in-parens": [
@@ -125,13 +154,6 @@ export default [
       ],
       "arrow-spacing": [
         "warn"
-      ],
-      "react/jsx-indent": [
-        "warn",
-        2,
-        {
-          "indentLogicalExpressions": true
-        }
       ],
       "react/jsx-indent-props": [
         "warn",
@@ -148,7 +170,6 @@ export default [
         {}
       ],
       "react/jsx-no-undef": "error",
-      "no-undef": "error",
       "react/jsx-pascal-case": "warn",
       "react/jsx-wrap-multilines": "warn",
       "react/jsx-no-bind": 0,
@@ -156,8 +177,13 @@ export default [
         "warn",
         "never"
       ],
-      "react/prop-types": "off",
-      "react-hooks/exhaustive-deps": "off"
+      "react/prop-types": "off"
+    }
+  },
+  {
+    files: ["scripts/**/*.js", "hardhat.config.js", "test/**/*.js"],
+    rules: {
+      "no-console": "off"
     }
   }
 ]

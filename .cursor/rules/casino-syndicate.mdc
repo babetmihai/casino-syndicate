@@ -1,0 +1,33 @@
+---
+description: Casino Syndicate project conventions (from Autobom)
+alwaysApply: true
+---
+
+# Casino Syndicate
+
+Vite/React/Redux UI (`app`), Hardhat contracts (`contracts`). `GameFactory` creates games by `GameType`; roulette is one type. Redux via `app/core/store.js`.
+
+## Style
+
+- No semicolons, no trailing commas, double quotes, 2-space indent, max 160 cols
+- Prefer lodash (`import _ from "lodash"`) at call site over one-off helpers or native equivalents
+- No one-off named helpers/wrappers — extract only when reused 2+ times
+- Destructure with `|| {}` / `|| []`; avoid `?.` for field reads (optional calls OK)
+- No nested ternaries; name booleans. JSX: `&&` not ternary. Imperative: `if`, not `&&`
+- No defensive code: no try/catch unless recovering; no fallbacks for required data/env
+- Rem for custom sizes (often `0.75rem`). Minimal diffs
+
+## UI (`app`)
+
+- Imports from `app/`: `core/`, `screens/`, `components/`, `games/`
+- `actions`/`store` from `app/core/store.js`
+- `React.useState` etc. — never destructure built-ins from `"react"` (third-party hooks unprefixed)
+- Redux only: `actions.get/set/update/unset`; `useSelector(() => selectX())`; fetch then select
+- Domain modules: selectors → fetchers → mutators → mappers. Fetchers write store only (no side effects)
+- Loaders: `setLoader`/`clearLoader`. No nested components, no single-use hooks/JSX vars — Redux + core/games instead
+- Mantine + SCSS (not Tailwind). Persist via `PERSISTENT_PATHS` — never localforage from domain modules
+
+## Contracts
+
+- Game logic lives on the game contract (`Roulette.sol`). Factory only creates, indexes, and stores `GameType`
+- Solidity keeps required semicolons; do not apply the JS style rules to `.sol`

@@ -1,16 +1,28 @@
 import { ethers } from "ethers"
 import { actions } from "../store"
 import { EMPTY_OBJECT } from ".."
+import { fundAccount, getLocalBalance, getSigner } from "../contracts"
 
 
 export const selectAuth = () => actions.get("auth", EMPTY_OBJECT)
 
 
 export const logout = () => actions.unset("auth")
+
+export const fetchBalance = async (account) => {
+  const balance = await getLocalBalance(account)
+  actions.set("auth.balance", ethers.formatEther(balance))
+}
+
 export const login = async () => {
-  await window.ethereum.request({ method: "eth_requestAccounts" })
-  const provider = new ethers.BrowserProvider(window.ethereum)
-  const signer = await provider.getSigner()
+  const signer = await getSigner()
   const account = await signer.getAddress()
   actions.set("auth", { account })
+  await fetchBalance(account)
+}
+
+export const requestTestEth = async () => {
+  const { account } = selectAuth()
+  await fundAccount(account)
+  await fetchBalance(account)
 }

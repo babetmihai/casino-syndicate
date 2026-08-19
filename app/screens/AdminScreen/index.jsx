@@ -5,7 +5,6 @@ import { useParams } from "react-router-dom"
 import RouletteAdmin from "app/games/roulette/RouletteAdmin"
 import AppScreen from "app/components/AppScreen"
 import history from "app/core/history"
-import { useLoader } from "app/core/loaders"
 import { selectAuth } from "app/core/auth"
 import { ethers } from "ethers"
 
@@ -14,39 +13,31 @@ const AdminScreen = () => {
   const { address } = useParams()
   const { account } = useSelector(() => selectAuth())
   const table = useSelector(() => selectTable(address))
-  const loading = useLoader(address)
 
   React.useEffect(() => {
-    if (address) initTable(address)
-      .then((loaded) => {
-        if (!loaded?.createdBy || !account) return
-        if (ethers.getAddress(loaded.createdBy) !== ethers.getAddress(account)) {
-          history.replace(`/tables/${address}`)
-        }
-      })
-  }, [address])
+    if (!address) return
+    initTable(address).then(() => {
+      const { createdBy } = selectTable(address) || {}
+      if (!createdBy || !account) return
+      if (ethers.getAddress(createdBy) !== ethers.getAddress(account)) {
+        history.replace(`/tables/${address}`)
+      }
+    })
+  }, [address, account])
 
+  const { name, createdBy, type } = table || {}
+  const isOwner = createdBy && account && ethers.getAddress(createdBy) === ethers.getAddress(account)
 
-  const { name, createdBy } = table
   return (
-    <AppScreen name={name} onBack={() => history.replace("/")} loading={loading}>
-      {address && createdBy && account && ethers.getAddress(createdBy) === ethers.getAddress(account) &&
-        <Resolver
-          table={table}
-          address={address}
-        />
+    <AppScreen
+      name={name}
+      onBack={() => history.replace("/")}
+    >
+      {address && isOwner && type === TABLE_TYPES.Roulette &&
+        <RouletteAdmin address={address} />
       }
     </AppScreen>
   )
-}
-
-
-const Resolver = ({ table, ...props }) => {
-  const { type } = table
-  switch (type) {
-    case (TABLE_TYPES.Roulette): return <RouletteAdmin {...props} />
-    default: return null
-  }
 }
 
 export default AdminScreen

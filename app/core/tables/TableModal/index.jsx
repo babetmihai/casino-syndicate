@@ -1,4 +1,3 @@
-
 import { Button, Modal, TextInput, Text } from "@mantine/core"
 import React from "react"
 import { hideModal } from "app/core/modals"
@@ -18,13 +17,13 @@ const TableModal = ({ onSubmit }) => {
     validationSchema: Yup.object({
       name: Yup.string().required(t("name_required"))
     }),
-    onSubmit: async (values, formik) => {
+    onSubmit: async (values, form) => {
+      form.setSubmitting(true)
       try {
-        formik.setSubmitting(true)
         await onSubmit(values)
         hideModal()
       } finally {
-        formik.setSubmitting(false)
+        form.setSubmitting(false)
       }
     }
   })

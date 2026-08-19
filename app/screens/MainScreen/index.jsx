@@ -16,12 +16,16 @@ import { ethers } from "ethers"
 const MainScreen = () => {
   const { t } = useTranslation()
   const { account } = useSelector(() => selectAuth())
-
   const tables = useSelector(() => selectTables())
+
   React.useEffect(() => {
     fetchTables()
   }, [account])
 
+  const ownedTables = _.orderBy(Object.values(tables), ["createdAt"], ["desc"]).filter((table) => {
+    const { createdBy } = table || {}
+    return createdBy && account && ethers.getAddress(createdBy) === ethers.getAddress(account)
+  })
 
   return (
     <AppScreen name={t("casino_syndicate")}>
@@ -40,22 +44,29 @@ const MainScreen = () => {
           }
         </div>
         <div className="MainScreen_tables">
-          {_.orderBy(Object.values(tables), ["createdAt"], ["desc"])
-            .filter(({ createdBy }) => createdBy && account && ethers.getAddress(createdBy) === ethers.getAddress(account))
-            .map((table) => (
-              <Card
-                onClick={() => history.push(`/tables/${table.address}/admin`)}
-                key={table.address}
-                className="MainScreen_table"
-              >
-                <div className="MainScreen_table_name">{table.name}</div>
-                <div className="MainScreen_table_address">{table.address}</div>
-              </Card>
-            ))}
+          {ownedTables.map((table) => (
+            <TableCard
+              key={table.address}
+              table={table}
+            />
+          ))}
         </div>
       </div>
     </AppScreen>
   )
 }
+
+const TableCard = React.memo(({ table }) => {
+  const { name, address } = table || {}
+  return (
+    <Card
+      onClick={() => history.push(`/tables/${address}/admin`)}
+      className="MainScreen_table"
+    >
+      <div className="MainScreen_table_name">{name}</div>
+      <div className="MainScreen_table_address">{address}</div>
+    </Card>
+  )
+})
 
 export default MainScreen

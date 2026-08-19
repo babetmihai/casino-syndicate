@@ -1,6 +1,5 @@
 import React from "react"
 import "./index.scss"
-import _ from "lodash"
 import RoundedRect from "../RoundedRect"
 
 const SIZE = 10
@@ -14,6 +13,7 @@ const BettingSpot = React.memo(({
   height = 1,
   size = SIZE,
   onClick,
+  winner,
   ...props
 }) => {
   return (
@@ -24,8 +24,8 @@ const BettingSpot = React.memo(({
         y={y * size}
         width={width * size}
         height={height * size}
-        strokeWidth={0.3}
-        stroke="white"
+        strokeWidth={winner ? 0.8 : 0.3}
+        stroke={winner ? "gold" : "white"}
         fill={color}
         onClick={onClick}
       />

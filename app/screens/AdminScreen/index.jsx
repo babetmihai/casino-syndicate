@@ -7,7 +7,8 @@ import AppScreen from "app/components/AppScreen"
 import history from "app/core/history"
 import { selectAuth } from "app/core/auth"
 import { ethers } from "ethers"
-import { Button } from "@mantine/core"
+import { PlayIcon } from "@phosphor-icons/react"
+import { AppFab } from "app/components/AppFabs"
 
 
 const AdminScreen = () => {
@@ -33,10 +34,13 @@ const AdminScreen = () => {
     <AppScreen
       name={name || "Manage"}
       onBack={() => history.replace("/")}
-      actions={
-        <Button onClick={() => history.push(`/tables/${address}`)}>
-          Play
-        </Button>
+      fabs={
+        <AppFab
+          label="Play"
+          onClick={() => history.push(`/tables/${address}`)}
+        >
+          <PlayIcon size={30} />
+        </AppFab>
       }
     >
       {address && isOwner && type === TABLE_TYPES.Roulette &&

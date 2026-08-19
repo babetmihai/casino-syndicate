@@ -4,10 +4,11 @@ import { useSelector } from "react-redux"
 import { useParams } from "react-router-dom"
 import AppScreen from "app/components/AppScreen"
 import RouletteGame from "app/games/roulette/RouletteGame"
-import history from "app/core/history"
-import { Button } from "@mantine/core"
 import { selectAuth } from "app/core/auth"
-import { ethers } from "ethers"
+import { showModal } from "app/core/modals"
+import AuthModal from "app/core/auth/AuthModal"
+import { AppFab } from "app/components/AppFabs"
+import { WalletIcon } from "@phosphor-icons/react"
 
 
 const GameScreen = () => {
@@ -20,20 +21,19 @@ const GameScreen = () => {
     initTable(address)
   }, [address])
 
-  const { name, type, createdBy } = table || {}
-  const isOwner = createdBy && account && ethers.getAddress(createdBy) === ethers.getAddress(account)
+  const { name, type } = table || {}
 
   return (
     <AppScreen
-      name={name || "Table"}
-      onBack={() => history.replace("/")}
-      actions={isOwner && (
-        <Button
-          variant="subtle"
-          onClick={() => history.push(`/tables/${address}/admin`)}
+      name={name || type}
+      raisedFabs
+      fabs={!account && (
+        <AppFab
+          label="Connect"
+          onClick={() => showModal(AuthModal)}
         >
-          Manage
-        </Button>
+          <WalletIcon size={30} />
+        </AppFab>
       )}
     >
       {type === TABLE_TYPES.Roulette &&

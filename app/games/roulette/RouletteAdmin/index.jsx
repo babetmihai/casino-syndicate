@@ -6,7 +6,7 @@ import DepositModal from "app/core/tables/DepositModal"
 import "./index.scss"
 import { useSelector } from "react-redux"
 import { buyTableShares, fetchRoulette, selectRoulette } from ".."
-import { Check, Copy } from "tabler-icons-react"
+import { CheckIcon, CopyIcon } from "@phosphor-icons/react"
 
 
 const STAT_LABELS = {
@@ -48,8 +48,8 @@ const RouletteAdmin = ({ address }) => {
                 color={copied ? "teal" : "gray"}
                 aria-label="Copy link"
               >
-                {copied && <Check size={16} />}
-                {!copied && <Copy size={16} />}
+                {copied && <CheckIcon size={16} />}
+                {!copied && <CopyIcon size={16} />}
               </ActionIcon>
             )}
           </CopyButton>

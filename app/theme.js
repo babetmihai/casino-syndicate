@@ -16,8 +16,7 @@ export const theme = createTheme({
     },
     ActionIcon: {
       defaultProps: {
-        variant: "subtle",
-        color: "gray"
+        variant: "subtle"
       }
     },
     Modal: {

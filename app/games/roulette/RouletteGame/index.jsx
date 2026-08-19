@@ -1,53 +1,113 @@
 import React from "react"
 import "./index.scss"
 import _ from "lodash"
-import BettingSpot from "./BettingSpot"
-import BettingChip from "./BettingChip"
-import { Button, Card, Text } from "@mantine/core"
+import { Button, Card, Text, UnstyledButton } from "@mantine/core"
 import { useTranslation } from "react-i18next"
 import { fetchRoulette, postRouletteBet, selectRoulette } from ".."
 import { useSelector } from "react-redux"
 import { clearLoader, setLoader, useLoader } from "app/core/loaders"
-
-const BLACK_NUMBERS = [2, 4, 6, 8, 10, 11, 13, 15, 17, 19, 20, 22, 24, 26, 28, 29, 31, 33, 35]
+import { fetchBalance, selectAuth } from "app/core/auth"
+import RouletteTable from "./RouletteTable"
+import { CHIP_VALUES, MAX_NUMBER_BET } from "../chips"
 
 
 const RouletteGame = React.memo(({ address }) => {
   const { t } = useTranslation()
   const [bets, setBets] = React.useState(_.range(37).fill(0))
+  const [chip, setChip] = React.useState(1)
   const totalBet = _.sum(bets)
   const postingBet = useLoader("postingBet")
+  const { account, balance } = useSelector(() => selectAuth()) || {}
   const { lastSpin } = useSelector(() => selectRoulette(address)) || {}
   const { number: winningNumber, winningAmount } = lastSpin || {}
   const won = lastSpin && Number(winningAmount) > 0
   const canSpin = totalBet > 0 && !postingBet
+  let balanceLabel = "0 ETH"
+  if (balance) {
+    balanceLabel = `${Number(balance).toLocaleString(undefined, { maximumFractionDigits: 2 })} ETH`
+  }
 
   React.useEffect(() => {
     fetchRoulette(address)
   }, [address])
 
+  React.useEffect(() => {
+    if (!account) return
+    fetchBalance(account)
+  }, [account])
+
+  const addBet = (number) => {
+    const nextBets = [...bets]
+    const nextValue = nextBets[number] + chip
+    if (nextValue > MAX_NUMBER_BET) return
+    nextBets[number] = nextValue
+    setBets(nextBets)
+  }
+
   return (
     <div className="RouletteGame_root">
-      <div className="RouletteGame_toolbar">
-        <Text size="sm" c="dimmed">
-          Bet {totalBet} ETH
-        </Text>
-        <div className="RouletteGame_actions">
-          {totalBet > 0 &&
-            <Button
-              variant="subtle"
-              onClick={() => setBets(_.range(37).fill(0))}
-            >
-              Clear
-            </Button>
+      <Card className="RouletteGame_sheet" padding={0}>
+        <div className="RouletteGame_top">
+          <div className="RouletteGame_status">
+            <Text size="sm" c="dimmed">
+              Balance {balanceLabel}
+            </Text>
+            <Text size="sm">
+              Bet {totalBet} ETH
+            </Text>
+            {totalBet > 0 &&
+              <Button
+                variant="subtle"
+                onClick={() => setBets(_.range(37).fill(0))}
+              >
+                Clear
+              </Button>
+            }
+          </div>
+          {lastSpin && won &&
+            <Text size="sm" c="teal">
+              Won {winningAmount} ETH · {winningNumber}
+            </Text>
           }
+          {lastSpin && !won &&
+            <Text size="sm" c="dimmed">
+              No win · {winningNumber}
+            </Text>
+          }
+        </div>
+        <div className="RouletteGame_board">
+          <RouletteTable
+            bets={bets}
+            winningNumber={lastSpin ? winningNumber : undefined}
+            onNumberClick={addBet}
+          />
+        </div>
+        <div className="RouletteGame_dock">
+          <div className="RouletteGame_chips">
+            {CHIP_VALUES.map((value) => (
+              <UnstyledButton
+                key={value}
+                className="RouletteGame_chip"
+                data-value={value}
+                data-selected={chip === value}
+                aria-label={`${value} chip`}
+                aria-pressed={chip === value}
+                onClick={() => setChip(value)}
+              >
+                {value}
+              </UnstyledButton>
+            ))}
+          </div>
           <Button
+            className="RouletteGame_place"
+            size="lg"
             loading={postingBet}
             disabled={!canSpin}
             onClick={async () => {
               setLoader("postingBet")
               try {
                 await postRouletteBet(address, bets)
+                if (account) await fetchBalance(account)
               } finally {
                 clearLoader("postingBet")
               }
@@ -56,89 +116,8 @@ const RouletteGame = React.memo(({ address }) => {
             {t("place_bet")}
           </Button>
         </div>
-      </div>
-      {lastSpin &&
-        <Card className="RouletteGame_result">
-          <Text fw={500}>
-            Winning number {winningNumber}
-          </Text>
-          {won &&
-            <Text size="sm" c="teal">
-              Won {winningAmount} ETH
-            </Text>
-          }
-          {!won &&
-            <Text size="sm" c="dimmed">
-              No win
-            </Text>
-          }
-        </Card>
-      }
-      <Card className="RouletteGame_table">
-        <svg viewBox="0 0 30 130">
-          {_.range(37).map((number) => (
-            <RouletteSpot
-              key={number}
-              number={number}
-              bets={bets}
-              setBets={setBets}
-              winner={lastSpin && winningNumber === number}
-            />
-          ))}
-        </svg>
       </Card>
     </div>
-  )
-})
-
-const RouletteSpot = React.memo(({ number, bets, setBets, winner }) => {
-  const x = ((number - 1) % 3)
-  const y = Math.floor((number - 1) / 3) + 1
-  const isZero = number === 0
-  let color = "red"
-  if (isZero) color = "green"
-  if (BLACK_NUMBERS.includes(number)) color = "black"
-  const hasBet = bets[number] > 0
-
-  const addBet = () => {
-    const nextBets = [...bets]
-    nextBets[number] += 1
-    setBets(nextBets)
-  }
-
-  const spotProps = {}
-  if (number === 36) spotProps.bottomRightRadius = 2
-  if (number === 34) spotProps.bottomLeftRadius = 2
-  if (isZero) {
-    spotProps.x = 0
-    spotProps.y = 0
-    spotProps.width = 3
-    spotProps.height = 1
-    spotProps.topRightRadius = 2
-    spotProps.topLeftRadius = 2
-  }
-
-  return (
-    <g>
-      <BettingSpot
-        x={x}
-        y={y}
-        color={color}
-        label={number}
-        onClick={addBet}
-        winner={winner}
-        {...spotProps}
-      />
-      {hasBet &&
-        <BettingChip
-          x={isZero ? 1 : x}
-          y={y}
-          value={bets[number]}
-          onClick={addBet}
-          {...spotProps}
-        />
-      }
-    </g>
   )
 })
 

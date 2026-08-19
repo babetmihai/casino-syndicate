@@ -7,10 +7,13 @@ import { createTable, fetchTables, selectTables } from "app/core/tables"
 import { Button, Card, Text } from "@mantine/core"
 import { showModal } from "app/core/modals"
 import TableModal from "app/core/tables/TableModal"
+import AuthModal from "app/core/auth/AuthModal"
 import history from "app/core/history"
 import _ from "lodash"
 import { selectAuth } from "app/core/auth"
 import { ethers } from "ethers"
+import { PlusIcon, WalletIcon } from "@phosphor-icons/react"
+import { AppFab } from "app/components/AppFabs"
 
 
 const MainScreen = () => {
@@ -37,11 +40,26 @@ const MainScreen = () => {
   return (
     <AppScreen
       name={t("casino_syndicate")}
-      actions={account && (
-        <Button onClick={openCreate}>
-          {t("create_table")}
-        </Button>
-      )}
+      fabs={
+        <>
+          {account &&
+            <AppFab
+              label={t("create_table")}
+              onClick={openCreate}
+            >
+              <PlusIcon size={30} />
+            </AppFab>
+          }
+          {!account &&
+            <AppFab
+              label="Connect"
+              onClick={() => showModal(AuthModal)}
+            >
+              <WalletIcon size={30} />
+            </AppFab>
+          }
+        </>
+      }
     >
       <div className="MainScreen_content">
         {!account &&
@@ -50,14 +68,9 @@ const MainScreen = () => {
           </Text>
         }
         {account && isEmpty &&
-          <div className="MainScreen_empty">
-            <Text c="dimmed" ta="center">
-              No tables yet.
-            </Text>
-            <Button onClick={openCreate}>
-              {t("create_table")}
-            </Button>
-          </div>
+          <Text c="dimmed" ta="center" py="xl">
+            No tables yet.
+          </Text>
         }
         <div className="MainScreen_tables">
           {ownedTables.map((table) => (

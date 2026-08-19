@@ -55,26 +55,15 @@ export const getSigner = async () => {
   return signer
 }
 
-const FAUCET = "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266"
-
 export const fundAccount = async (address) => {
   const rpc = new ethers.JsonRpcProvider(LOCAL_RPC_URL)
   const to = ethers.getAddress(address)
   const balance = await rpc.getBalance(to)
-  if (balance < ethers.parseEther("100")) {
-    if (to === ethers.getAddress(FAUCET)) {
-      await rpc.send("hardhat_setBalance", [
-        to,
-        ethers.toBeHex(ethers.parseEther("10000"), 32)
-      ])
-    } else {
-      await rpc.send("eth_sendTransaction", [{
-        from: FAUCET,
-        to,
-        value: ethers.toQuantity(ethers.parseEther("10000"))
-      }])
-    }
-  }
+  if (balance >= ethers.parseEther("100")) return
+  await rpc.send("hardhat_setBalance", [
+    to,
+    ethers.toBeHex(ethers.parseEther("10000"), 32)
+  ])
   await rpc.send("hardhat_mine", ["0x1"])
 }
 

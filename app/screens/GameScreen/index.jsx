@@ -26,13 +26,12 @@ const GameScreen = () => {
   return (
     <AppScreen
       name={name || type}
-      raisedFabs
       fabs={!account && (
         <AppFab
           label="Connect"
           onClick={() => showModal(AuthModal)}
         >
-          <WalletIcon size={30} />
+          <WalletIcon size={24} />
         </AppFab>
       )}
     >

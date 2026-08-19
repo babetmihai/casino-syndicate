@@ -1,29 +1,23 @@
 import React from "react"
+import { createPortal } from "react-dom"
 import "./index.scss"
-import { ActionIcon, Affix, Tooltip } from "@mantine/core"
+import { ActionIcon, Tooltip } from "@mantine/core"
 
 
-export const AppFabs = ({ children, raised }) => {
-  return (
-    <Affix
-      className="AppFabs_root"
-      position={{
-        bottom: raised ? "10rem" : "1.5rem",
-        right: "1.5rem"
-      }}
-    >
+export const AppFabs = ({ children }) => {
+  return createPortal(
+    <div className="AppFabs_root">
       {children}
-    </Affix>
+    </div>,
+    document.body
   )
 }
 
-export const AppFab = ({ label, children, onClick, secondary }) => {
+export const AppFab = ({ label, children, onClick, secondary, selected, disabled, loading, className, dataValue }) => {
   let variant = "filled"
-  let size = 60
-  if (secondary) {
-    variant = "default"
-    size = 48
-  }
+  if (secondary) variant = "default"
+  let fabClass = "AppFab_root"
+  if (className) fabClass = `${fabClass} ${className}`
 
   return (
     <Tooltip
@@ -32,10 +26,15 @@ export const AppFab = ({ label, children, onClick, secondary }) => {
       withArrow
     >
       <ActionIcon
-        size={size}
+        className={fabClass}
         radius="xl"
         variant={variant}
         aria-label={label}
+        aria-pressed={selected}
+        data-selected={selected}
+        data-value={dataValue}
+        disabled={disabled}
+        loading={loading}
         onClick={onClick}
       >
         {children}

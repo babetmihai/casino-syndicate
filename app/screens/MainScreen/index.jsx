@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next"
 import "./index.scss"
 import { useSelector } from "react-redux"
 import { createTable, fetchTables, selectTables } from "app/core/tables"
-import { Button, Card, Text } from "@mantine/core"
+import { ActionIcon, Card, Text, Tooltip } from "@mantine/core"
 import { showModal } from "app/core/modals"
 import TableModal from "app/core/tables/TableModal"
 import AuthModal from "app/core/auth/AuthModal"
@@ -12,7 +12,7 @@ import history from "app/core/history"
 import _ from "lodash"
 import { selectAuth } from "app/core/auth"
 import { ethers } from "ethers"
-import { PlusIcon, WalletIcon } from "@phosphor-icons/react"
+import { GearIcon, PlusIcon, WalletIcon } from "@phosphor-icons/react"
 import { AppFab } from "app/components/AppFabs"
 
 
@@ -47,7 +47,7 @@ const MainScreen = () => {
               label={t("create_table")}
               onClick={openCreate}
             >
-              <PlusIcon size={30} />
+              <PlusIcon size={24} />
             </AppFab>
           }
           {!account &&
@@ -55,7 +55,7 @@ const MainScreen = () => {
               label="Connect"
               onClick={() => showModal(AuthModal)}
             >
-              <WalletIcon size={30} />
+              <WalletIcon size={24} />
             </AppFab>
           }
         </>
@@ -98,15 +98,24 @@ const TableCard = React.memo(({ table }) => {
         <Text fw={500}>{name}</Text>
         <Text size="sm" c="dimmed">{shortAddress}</Text>
       </div>
-      <Button
-        variant="subtle"
-        onClick={(event) => {
-          event.stopPropagation()
-          history.push(`/tables/${address}/admin`)
-        }}
+      <Tooltip
+        label="Manage"
+        position="left"
+        withArrow
       >
-        Manage
-      </Button>
+        <ActionIcon
+          variant="subtle"
+          color="gray"
+          size="lg"
+          aria-label="Manage"
+          onClick={(event) => {
+            event.stopPropagation()
+            history.push(`/tables/${address}/admin`)
+          }}
+        >
+          <GearIcon size={22} />
+        </ActionIcon>
+      </Tooltip>
     </Card>
   )
 })

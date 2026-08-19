@@ -49,7 +49,7 @@ const AdminScreen = () => {
               }
             })}
           >
-            <CoinsIcon size={30} />
+            <CoinsIcon size={24} />
           </AppFab>
           <AppFab
             secondary

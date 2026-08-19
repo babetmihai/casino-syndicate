@@ -3,7 +3,7 @@ import "./index.scss"
 import AppHeader from "../AppHeader"
 import { AppFabs } from "../AppFabs"
 
-const AppScreen = ({ name, children, onBack, header = true, fabs, raisedFabs }) => {
+const AppScreen = ({ name, children, onBack, header = true, fabs }) => {
   return (
     <>
       {header &&
@@ -16,7 +16,7 @@ const AppScreen = ({ name, children, onBack, header = true, fabs, raisedFabs }) 
         {children}
       </div>
       {fabs &&
-        <AppFabs raised={raisedFabs}>
+        <AppFabs>
           {fabs}
         </AppFabs>
       }

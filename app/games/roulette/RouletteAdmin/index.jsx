@@ -4,6 +4,13 @@ import "./index.scss"
 import { useSelector } from "react-redux"
 import { fetchRoulette, selectRoulette } from ".."
 import { CheckIcon, CopyIcon } from "@phosphor-icons/react"
+import { arc, pie } from "d3-shape"
+import _ from "lodash"
+
+
+const CHART_SIZE = 192
+const CHART_OUTER = 88
+const CHART_INNER = 62
 
 
 const RouletteAdmin = ({ address }) => {
@@ -11,13 +18,21 @@ const RouletteAdmin = ({ address }) => {
   const { memberShares, totalBalance } = roulette
   const share = Number(memberShares) || 0
   const bankroll = Number(totalBalance) || 0
-  const hasShare = share > 0
+  const rest = _.max([bankroll - share, 0])
   const tableUrl = `${window.location.origin}/#/tables/${address}`
-  let bankrollLabel = `${totalBalance || "0"} ETH bankroll`
-  if (hasShare && bankroll > 0) {
-    const pct = Math.round((share / bankroll) * 100)
-    bankrollLabel = `${pct}% of ${totalBalance} ETH`
-  }
+  let pct = 0
+  if (bankroll > 0) pct = Math.round((share / bankroll) * 100)
+
+  const pieData = []
+  if (share > 0) pieData.push({ key: "yours", value: share, color: "var(--mantine-color-indigo-6)" })
+  if (rest > 0) pieData.push({ key: "rest", value: rest, color: "var(--mantine-color-gray-3)" })
+  if (pieData.length === 0) pieData.push({ key: "rest", value: 1, color: "var(--mantine-color-gray-3)" })
+
+  const sliceArc = arc().innerRadius(CHART_INNER).outerRadius(CHART_OUTER)
+  const arcs = pie()
+    .sort(null)
+    .padAngle(pieData.length > 1 ? 0.04 : 0)
+    .value((d) => d.value)(pieData)
 
   React.useEffect(() => {
     fetchRoulette(address)
@@ -26,11 +41,40 @@ const RouletteAdmin = ({ address }) => {
   return (
     <div className="RouletteAdmin_content">
       <div className="RouletteAdmin_share">
-        <Text size="sm" c="dimmed">Your share</Text>
-        <Text className="RouletteAdmin_shareValue">
-          {memberShares || "0"} ETH
-        </Text>
-        <Text size="sm" c="dimmed">{bankrollLabel}</Text>
+        <div className="RouletteAdmin_chart">
+          <svg
+            viewBox={`0 0 ${CHART_SIZE} ${CHART_SIZE}`}
+            className="RouletteAdmin_pie"
+          >
+            <g transform={`translate(${CHART_SIZE / 2}, ${CHART_SIZE / 2})`}>
+              {arcs.map((item) => (
+                <path
+                  key={item.data.key}
+                  d={sliceArc(item)}
+                  fill={item.data.color}
+                />
+              ))}
+            </g>
+          </svg>
+          <div className="RouletteAdmin_chartCenter">
+            <Text className="RouletteAdmin_shareValue">
+              {memberShares || "0"} ETH
+            </Text>
+            <Text size="sm" c="dimmed">{pct}%</Text>
+          </div>
+        </div>
+        <div className="RouletteAdmin_legend">
+          <div className="RouletteAdmin_legendItem">
+            <span className="RouletteAdmin_swatch is-yours" />
+            <Text size="sm">You</Text>
+            <Text size="sm" c="dimmed">{memberShares || "0"} ETH</Text>
+          </div>
+          <div className="RouletteAdmin_legendItem">
+            <span className="RouletteAdmin_swatch is-rest" />
+            <Text size="sm">Table</Text>
+            <Text size="sm" c="dimmed">{rest} ETH</Text>
+          </div>
+        </div>
       </div>
       <Card className="RouletteAdmin_invite">
         <div className="RouletteAdmin_inviteInfo">

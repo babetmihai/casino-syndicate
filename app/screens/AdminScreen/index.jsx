@@ -8,10 +8,11 @@ import { buyTableShares, selectRoulette, withdrawTableShares } from "app/games/r
 import AppScreen from "app/components/AppScreen"
 import history from "app/core/history"
 import { fetchBalance, selectAuth } from "app/core/auth"
-import { ArrowDownIcon, CoinsIcon, PlayIcon, WalletIcon } from "@phosphor-icons/react"
+import { CoinsIcon, HandWithdrawIcon, PlayIcon, WalletIcon } from "@phosphor-icons/react"
 import { AppFab } from "app/components/AppFabs"
 import { showModal } from "app/core/modals"
 import DepositModal from "app/core/tables/DepositModal"
+import WithdrawModal from "app/core/tables/WithdrawModal"
 import AuthModal from "app/core/auth/AuthModal"
 
 
@@ -23,7 +24,6 @@ const AdminScreen = () => {
   const roulette = useSelector(() => selectRoulette(address)) || {}
   const { memberShares } = roulette
   const hasShare = (Number(memberShares) || 0) > 0
-  const [withdrawing, setWithdrawing] = React.useState(false)
 
   React.useEffect(() => {
     if (!address) return
@@ -63,18 +63,15 @@ const AdminScreen = () => {
             <AppFab
               secondary
               label="Withdraw"
-              loading={withdrawing}
-              onClick={async () => {
-                setWithdrawing(true)
-                try {
-                  await withdrawTableShares(address)
+              onClick={() => showModal(WithdrawModal, {
+                max: Number(memberShares),
+                onSubmit: async ({ balance }) => {
+                  await withdrawTableShares({ balance }, address)
                   await fetchBalance(account)
-                } finally {
-                  setWithdrawing(false)
                 }
-              }}
+              })}
             >
-              <ArrowDownIcon size={24} />
+              <HandWithdrawIcon size={24} />
             </AppFab>
           }
           <AppFab

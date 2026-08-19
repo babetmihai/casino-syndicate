@@ -61,12 +61,26 @@ contract Roulette {
 		emit Deposited(msg.sender, msg.value);
 	}
 
-	function withdrawShares() external {
+	function withdrawShares(uint256 amount) external {
+		require(amount > 0, "Must withdraw some Ether");
 		uint256 memberShares = shares[msg.sender];
 		require(memberShares > 0, "Must have shares to withdraw");
-		uint256 amount = (address(this).balance * memberShares) / totalShares;
-		totalShares -= memberShares;
-		delete shares[msg.sender];
+		uint256 bankroll = address(this).balance;
+		uint256 owned = (bankroll * memberShares) / totalShares;
+		require(amount <= owned, "Amount exceeds share");
+
+		uint256 burned = memberShares;
+		if (amount < owned) {
+			burned = (amount * totalShares) / bankroll;
+			require(burned > 0, "Share calculation resulted in zero");
+			require(burned < memberShares, "Must withdraw remaining share");
+		}
+
+		totalShares -= burned;
+		shares[msg.sender] -= burned;
+		if (shares[msg.sender] == 0) {
+			delete shares[msg.sender];
+		}
 		payable(msg.sender).transfer(amount);
 	}
 

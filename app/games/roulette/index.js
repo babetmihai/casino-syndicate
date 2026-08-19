@@ -41,10 +41,12 @@ export const buyTableShares = async ({ balance }, address) => {
   await fetchRoulette(address)
 }
 
-export const withdrawTableShares = async (address) => {
+export const withdrawTableShares = async ({ balance }, address) => {
   let contract = getContract(address)
   if (!contract) contract = await generateContract(address)
-  const tx = await contract.withdrawShares()
+  const tx = await contract.withdrawShares(
+    ethers.parseEther(Number(balance).toString())
+  )
   await tx.wait()
   await fetchRoulette(address)
 }

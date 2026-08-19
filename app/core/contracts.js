@@ -1,6 +1,6 @@
 import { ethers } from "ethers"
 import RouletteArtifact from "artifacts/contracts/Roulette.sol/Roulette.json"
-import FactoryArtifact from "artifacts/contracts/RouletteFactory.sol/RouletteFactory.json"
+import FactoryArtifact from "artifacts/contracts/GameFactory.sol/GameFactory.json"
 
 const contracts = {}
 let provider

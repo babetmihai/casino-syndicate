@@ -1,11 +1,11 @@
 const hre = require("hardhat")
 
 async function main() {
-  const Factory = await hre.ethers.getContractFactory("RouletteFactory")
+  const Factory = await hre.ethers.getContractFactory("GameFactory")
   const factory = await Factory.deploy()
   await factory.waitForDeployment()
   const address = await factory.getAddress()
-  console.log(`RouletteFactory deployed to: ${address}`)
+  console.log(`GameFactory deployed to: ${address}`)
   console.log("Set VITE_FACTORY_ADDRESS to this address in .env")
 }
 

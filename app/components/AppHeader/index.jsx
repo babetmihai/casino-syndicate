@@ -1,6 +1,6 @@
 import React from "react"
 import "./index.scss"
-import { Button, Card, Title, ActionIcon } from "@mantine/core"
+import { Button, Paper, Title, ActionIcon } from "@mantine/core"
 import { useSelector } from "react-redux"
 import { showModal } from "../../core/modals"
 import AuthModal from "../../core/auth/AuthModal"
@@ -9,45 +9,41 @@ import { ArrowLeft, Wallet } from "tabler-icons-react"
 import { selectAuth } from "../../core/auth"
 
 
-const AppHeader = ({ name, onBack }) => {
+const AppHeader = ({ name, onBack, actions }) => {
   const auth = useSelector(() => selectAuth())
   const { account } = auth || {}
 
   return (
-    <Card
-      shadow="sm"
-      p="sm"
-      mih="4.25rem"
-      gap="md"
-      className="AppHeader_root"
-    >
+    <Paper className="AppHeader_root" shadow="xs" radius={0}>
       <div className="AppHeader_left">
         {onBack && (
           <ActionIcon
-            variant="light"
+            variant="subtle"
             color="gray"
             onClick={onBack}
+            aria-label="Back"
           >
-            <ArrowLeft />
+            <ArrowLeft size={20} />
           </ActionIcon>
         )}
-        <Title order={3}>{name}</Title>
+        <Title order={4} fw={500} lineClamp={1}>
+          {name}
+        </Title>
       </div>
       <div className="AppHeader_right">
+        {actions}
         {account && <AuthMenu />}
         {!account &&
           <Button
             onClick={() => showModal(AuthModal)}
-            variant="light"
-            color="gray"
-            radius="md"
-            leftSection={<Wallet />}
+            variant="filled"
+            leftSection={<Wallet size={16} />}
           >
             Connect
           </Button>
         }
       </div>
-    </Card>
+    </Paper>
   )
 }
 

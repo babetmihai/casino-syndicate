@@ -1,5 +1,5 @@
 import React from "react"
-import { ActionIcon, Button, Card, CopyButton, Text } from "@mantine/core"
+import { ActionIcon, Button, Card, CopyButton, Text, TextInput } from "@mantine/core"
 import { useTranslation } from "react-i18next"
 import { showModal } from "app/core/modals"
 import DepositModal from "app/core/tables/DepositModal"
@@ -7,12 +7,17 @@ import "./index.scss"
 import { useSelector } from "react-redux"
 import { buyTableShares, fetchRoulette, selectRoulette } from ".."
 import { Check, Copy } from "tabler-icons-react"
-import { Link } from "react-router-dom"
 
+
+const STAT_LABELS = {
+  totalBalance: "Table bankroll",
+  totalShares: "Total shares",
+  memberShares: "Your shares"
+}
 
 const RouletteAdmin = ({ address }) => {
   const { t } = useTranslation()
-  const roulette = useSelector(() => selectRoulette(address))
+  const roulette = useSelector(() => selectRoulette(address)) || {}
 
   React.useEffect(() => {
     fetchRoulette(address)
@@ -22,44 +27,45 @@ const RouletteAdmin = ({ address }) => {
 
   return (
     <div className="RouletteAdmin_content">
-      <div className="RouletteAdmin_header">
-        <Button
-          onClick={() => showModal(DepositModal, {
-            onSubmit: async ({ balance }) => {
-              await buyTableShares({ balance }, address)
-            }
-          })}
-        >
-          {t("deposit")}
-        </Button>
-        <Button variant="subtle">
-          {t("withdraw")}
-        </Button>
-        <Link to={`/tables/${address}`}>
-          <Button variant="subtle">
-            {t("play")}
-          </Button>
-        </Link>
-      </div>
-      <Card className="RouletteAdmin_url">
-        <Text flex={1}>{tableUrl}</Text>
-        <CopyButton value={tableUrl}>
-          {({ copied, copy }) => (
-            <ActionIcon
-              onClick={copy}
-              color={copied ? "green" : "gray"}
-            >
-              {copied && <Check />}
-              {!copied && <Copy />}
-            </ActionIcon>
-          )}
-        </CopyButton>
+      <Button
+        onClick={() => showModal(DepositModal, {
+          onSubmit: async ({ balance }) => {
+            await buyTableShares({ balance }, address)
+          }
+        })}
+      >
+        {t("fund_table")}
+      </Button>
+      <TextInput
+        label="Player link"
+        value={tableUrl}
+        readOnly
+        rightSection={
+          <CopyButton value={tableUrl}>
+            {({ copied, copy }) => (
+              <ActionIcon
+                onClick={copy}
+                color={copied ? "teal" : "gray"}
+                aria-label="Copy link"
+              >
+                {copied && <Check size={16} />}
+                {!copied && <Copy size={16} />}
+              </ActionIcon>
+            )}
+          </CopyButton>
+        }
+      />
+      <Card className="RouletteAdmin_stats">
+        {Object.keys(STAT_LABELS).map((key) => (
+          <div className="RouletteAdmin_stat" key={key}>
+            <Text size="sm" c="dimmed">{STAT_LABELS[key]}</Text>
+            <Text fw={500}>
+              {roulette[key] || "0"}
+              {key === "totalBalance" && " ETH"}
+            </Text>
+          </div>
+        ))}
       </Card>
-      {Object.entries(roulette).map(([key, value]) => (
-        <Text c="dimmed" key={key}>
-          {key}: {value}
-        </Text>
-      ))}
     </div>
   )
 }

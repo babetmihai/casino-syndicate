@@ -7,10 +7,6 @@ import { Button, Card, Text } from "@mantine/core"
 import { useTranslation } from "react-i18next"
 import { fetchRoulette, postRouletteBet, selectRoulette } from ".."
 import { useSelector } from "react-redux"
-import { showModal } from "app/core/modals"
-import DepositModal from "app/core/tables/DepositModal"
-import { ethers } from "ethers"
-import { getContract } from "app/core/contracts"
 import { clearLoader, setLoader, useLoader } from "app/core/loaders"
 
 const BLACK_NUMBERS = [2, 4, 6, 8, 10, 11, 13, 15, 17, 19, 20, 22, 24, 26, 28, 29, 31, 33, 35]
@@ -19,12 +15,12 @@ const BLACK_NUMBERS = [2, 4, 6, 8, 10, 11, 13, 15, 17, 19, 20, 22, 24, 26, 28, 2
 const RouletteGame = React.memo(({ address }) => {
   const { t } = useTranslation()
   const [bets, setBets] = React.useState(_.range(37).fill(0))
-  const contract = getContract(address)
   const totalBet = _.sum(bets)
   const postingBet = useLoader("postingBet")
-  const { playerBalance = "0", lastSpin } = useSelector(() => selectRoulette(address)) || {}
+  const { lastSpin } = useSelector(() => selectRoulette(address)) || {}
   const { number: winningNumber, winningAmount } = lastSpin || {}
   const won = lastSpin && Number(winningAmount) > 0
+  const canSpin = totalBet > 0 && !postingBet
 
   React.useEffect(() => {
     fetchRoulette(address)
@@ -32,69 +28,53 @@ const RouletteGame = React.memo(({ address }) => {
 
   return (
     <div className="RouletteGame_root">
-      <div className="RouletteGame_header">
-        <Button
-          onClick={() => {
-            showModal(DepositModal, {
-              onSubmit: async ({ balance }) => {
-                const tx = await contract.depositBalance({
-                  value: ethers.parseEther(balance.toString())
-                })
-                await tx.wait()
-                await fetchRoulette(address)
+      <div className="RouletteGame_toolbar">
+        <Text size="sm" c="dimmed">
+          Bet {totalBet} ETH
+        </Text>
+        <div className="RouletteGame_actions">
+          {totalBet > 0 &&
+            <Button
+              variant="subtle"
+              onClick={() => setBets(_.range(37).fill(0))}
+            >
+              Clear
+            </Button>
+          }
+          <Button
+            loading={postingBet}
+            disabled={!canSpin}
+            onClick={async () => {
+              setLoader("postingBet")
+              try {
+                await postRouletteBet(address, bets)
+              } finally {
+                clearLoader("postingBet")
               }
-            })
-          }}
-        >
-          {t("deposit")}
-        </Button>
-        <Button
-          variant="outline"
-          onClick={async () => {
-            const tx = await contract.withdrawBalance()
-            await tx.wait()
-            await fetchRoulette(address)
-          }}
-        >
-          {t("withdraw")}
-        </Button>
-        <Button
-          variant="outline"
-          loading={postingBet}
-          onClick={async () => {
-            setLoader("postingBet")
-            try {
-              await postRouletteBet(address, bets)
-            } finally {
-              clearLoader("postingBet")
-            }
-          }}
-        >
-          {t("postBet")}
-        </Button>
+            }}
+          >
+            {t("place_bet")}
+          </Button>
+        </div>
       </div>
-      <Text c="dimmed">
-        playerBalance: {playerBalance} ETH
-      </Text>
-      <Text c="dimmed">
-        totalBet: {totalBet}
-      </Text>
       {lastSpin &&
-        <Text fw={700}>
-          Winning number: {winningNumber}
-        </Text>
+        <Card className="RouletteGame_result">
+          <Text fw={500}>
+            Winning number {winningNumber}
+          </Text>
+          {won &&
+            <Text size="sm" c="teal">
+              Won {winningAmount} ETH
+            </Text>
+          }
+          {!won &&
+            <Text size="sm" c="dimmed">
+              No win
+            </Text>
+          }
+        </Card>
       }
-      {won &&
-        <Text c="green">
-          Won {winningAmount} ETH
-        </Text>
-      }
-      {lastSpin && !won &&
-        <Text c="dimmed">
-          No win
-        </Text>
-      }
-      <Card className="RouletteGame_table" shadow="lg" radius="lg">
+      <Card className="RouletteGame_table">
         <svg viewBox="0 0 30 130">
           {_.range(37).map((number) => (
             <RouletteSpot

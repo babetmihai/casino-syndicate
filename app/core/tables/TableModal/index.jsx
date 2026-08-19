@@ -1,4 +1,4 @@
-import { Button, Modal, TextInput, Text } from "@mantine/core"
+import { Button, Group, Modal, TextInput, Text } from "@mantine/core"
 import React from "react"
 import { hideModal } from "app/core/modals"
 import { useFormik } from "formik"
@@ -32,42 +32,32 @@ const TableModal = ({ onSubmit }) => {
     <Modal
       opened
       onClose={hideModal}
-      title={<Text size="xl" fw={700}>{t("create_table")}</Text>}
-      centered
-      size="sm"
-      radius="md"
+      title={<Text fw={500}>{t("create_table")}</Text>}
     >
-      <div className="TableModal_form">
-        <TextInput
-          name="name"
-          label="Name"
-          placeholder="Name"
-          onChange={(event) => {
-            formik.setFieldValue("name", event.target.value)
-          }}
-        />
-      </div>
-      <div className="TableModal_buttons">
+      <TextInput
+        name="name"
+        label="Table name"
+        placeholder="Saturday night"
+        data-autofocus
+        onChange={(event) => {
+          formik.setFieldValue("name", event.target.value)
+        }}
+      />
+      <Group justify="flex-end" gap="sm" mt="md">
         <Button
-          fullWidth
-          variant="filled"
-          color="blue"
-          size="md"
-          loading={formik.isSubmitting}
-          onClick={formik.handleSubmit}
-        >
-          {t("ok")}
-        </Button>
-        <Button
-          fullWidth
-          variant="outline"
+          variant="subtle"
           color="gray"
-          size="md"
           onClick={hideModal}
         >
           {t("cancel")}
         </Button>
-      </div>
+        <Button
+          loading={formik.isSubmitting}
+          onClick={formik.handleSubmit}
+        >
+          {t("create")}
+        </Button>
+      </Group>
     </Modal>
   )
 }

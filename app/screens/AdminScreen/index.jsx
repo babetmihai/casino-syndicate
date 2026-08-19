@@ -7,6 +7,7 @@ import AppScreen from "app/components/AppScreen"
 import history from "app/core/history"
 import { selectAuth } from "app/core/auth"
 import { ethers } from "ethers"
+import { Button } from "@mantine/core"
 
 
 const AdminScreen = () => {
@@ -30,8 +31,13 @@ const AdminScreen = () => {
 
   return (
     <AppScreen
-      name={name}
+      name={name || "Manage"}
       onBack={() => history.replace("/")}
+      actions={
+        <Button onClick={() => history.push(`/tables/${address}`)}>
+          Play
+        </Button>
+      }
     >
       {address && isOwner && type === TABLE_TYPES.Roulette &&
         <RouletteAdmin address={address} />

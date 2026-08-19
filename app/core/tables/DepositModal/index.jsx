@@ -1,4 +1,4 @@
-import { Button, Modal, NumberInput, Text } from "@mantine/core"
+import { Button, Group, Modal, NumberInput, Text } from "@mantine/core"
 import React from "react"
 import { hideModal } from "app/core/modals"
 import { useFormik } from "formik"
@@ -10,10 +10,10 @@ const DepositModal = ({ onSubmit }) => {
   const { t } = useTranslation()
   const formik = useFormik({
     initialValues: {
-      balance: 0
+      balance: 10
     },
     validationSchema: Yup.object({
-      balance: Yup.number().required(t("balance_required"))
+      balance: Yup.number().moreThan(0, t("balance_required"))
     }),
     onSubmit: async (values, form) => {
       form.setSubmitting(true)
@@ -30,41 +30,32 @@ const DepositModal = ({ onSubmit }) => {
     <Modal
       opened
       onClose={hideModal}
-      title={<Text size="xl" fw={700}>{t("deposit")}</Text>}
-      centered
-      size="sm"
-      radius="md"
+      title={<Text fw={500}>{t("fund_table")}</Text>}
     >
-      <div className="DepositModal_form">
-        <NumberInput
-          label="Balance"
-          placeholder="Balance"
-          onChange={(value) => {
-            formik.setFieldValue("balance", value)
-          }}
-        />
-      </div>
-      <div className="DepositModal_buttons">
+      <NumberInput
+        label="Amount (ETH)"
+        min={0}
+        decimalScale={4}
+        value={formik.values.balance}
+        onChange={(value) => {
+          formik.setFieldValue("balance", value)
+        }}
+      />
+      <Group justify="flex-end" gap="sm" mt="md">
         <Button
-          fullWidth
-          variant="filled"
-          color="blue"
-          size="md"
-          loading={formik.isSubmitting}
-          onClick={formik.handleSubmit}
-        >
-          {t("ok")}
-        </Button>
-        <Button
-          fullWidth
-          variant="outline"
+          variant="subtle"
           color="gray"
-          size="md"
           onClick={hideModal}
         >
           {t("cancel")}
         </Button>
-      </div>
+        <Button
+          loading={formik.isSubmitting}
+          onClick={formik.handleSubmit}
+        >
+          {t("deposit")}
+        </Button>
+      </Group>
     </Modal>
   )
 }

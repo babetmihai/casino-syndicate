@@ -1,7 +1,6 @@
 import React from "react"
-import { Modal, Text, Button } from "@mantine/core"
+import { Modal, Text, Button, Group } from "@mantine/core"
 import { hideModal } from "../../modals"
-import "./index.scss"
 import { useTranslation } from "react-i18next"
 import { login } from ".."
 
@@ -12,34 +11,28 @@ const AuthModal = () => {
     <Modal
       opened
       onClose={hideModal}
-      title={<Text size="xl" fw={700}>{t("connect_to_wallet")}</Text>}
-      centered
-      size="sm"
-      radius="md"
+      title={<Text fw={500}>{t("connect_wallet")}</Text>}
     >
-      <div className="AuthModal_buttons">
+      <Text size="sm" c="dimmed" mb="md">
+        Use MetaMask on Localhost 1337.
+      </Text>
+      <Group justify="flex-end" gap="sm">
         <Button
-          fullWidth
-          variant="filled"
-          color="blue"
-          size="md"
+          variant="subtle"
+          color="gray"
+          onClick={hideModal}
+        >
+          {t("cancel")}
+        </Button>
+        <Button
           onClick={async () => {
             await login()
             hideModal()
           }}
         >
-          {t("metamask")}
+          MetaMask
         </Button>
-        <Button
-          fullWidth
-          variant="outline"
-          color="gray"
-          size="md"
-          onClick={hideModal}
-        >
-          {t("cancel")}
-        </Button>
-      </div>
+      </Group>
     </Modal>
   )
 }

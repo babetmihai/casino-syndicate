@@ -6,11 +6,12 @@ import AppLayout from "./components/AppLayout"
 import { MantineProvider } from "@mantine/core"
 import AdminScreen from "./screens/AdminScreen"
 import GameScreen from "./screens/GameScreen"
+import { theme } from "./theme"
 
 
 function App() {
   return (
-    <MantineProvider withCssVariables>
+    <MantineProvider theme={theme} withCssVariables>
       <AppLayout>
         <Switch>
           <Route path="/" exact component={MainScreen} />

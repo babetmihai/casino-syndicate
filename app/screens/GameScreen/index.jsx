@@ -5,7 +5,6 @@ import { useParams } from "react-router-dom"
 import AppScreen from "app/components/AppScreen"
 import { useLoader } from "app/core/loaders"
 import RouletteGame from "app/games/roulette/RouletteGame"
-import { useSocket } from "app/core/socket"
 
 
 const GameScreen = () => {
@@ -18,10 +17,6 @@ const GameScreen = () => {
   }, [address])
 
   const { name } = table
-
-  useSocket(address, () => {
-
-  })
 
   return (
     <AppScreen
@@ -40,7 +35,7 @@ const GameScreen = () => {
 const Resolver = ({ table, ...props }) => {
   const { type } = table
   switch (type) {
-    case (TABLE_TYPES.Roulette): return <RouletteGame table={table} {...props} />
+    case (TABLE_TYPES.Roulette): return <RouletteGame {...props} />
     default: return null
   }
 }

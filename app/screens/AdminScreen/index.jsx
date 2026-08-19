@@ -7,6 +7,7 @@ import AppScreen from "app/components/AppScreen"
 import history from "app/core/history"
 import { useLoader } from "app/core/loaders"
 import { selectAuth } from "app/core/auth"
+import { ethers } from "ethers"
 
 
 const AdminScreen = () => {
@@ -17,8 +18,9 @@ const AdminScreen = () => {
 
   React.useEffect(() => {
     if (address) initTable(address)
-      .then(({ createdBy }) => {
-        if (createdBy !== account) {
+      .then((loaded) => {
+        if (!loaded?.createdBy || !account) return
+        if (ethers.getAddress(loaded.createdBy) !== ethers.getAddress(account)) {
           history.replace(`/tables/${address}`)
         }
       })
@@ -28,7 +30,7 @@ const AdminScreen = () => {
   const { name, createdBy } = table
   return (
     <AppScreen name={name} onBack={() => history.replace("/")} loading={loading}>
-      {address && createdBy === account &&
+      {address && createdBy && account && ethers.getAddress(createdBy) === ethers.getAddress(account) &&
         <Resolver
           table={table}
           address={address}
@@ -42,7 +44,7 @@ const AdminScreen = () => {
 const Resolver = ({ table, ...props }) => {
   const { type } = table
   switch (type) {
-    case (TABLE_TYPES.Roulette): return <RouletteAdmin table={table} {...props} />
+    case (TABLE_TYPES.Roulette): return <RouletteAdmin {...props} />
     default: return null
   }
 }

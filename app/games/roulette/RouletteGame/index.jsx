@@ -3,17 +3,15 @@ import "./index.scss"
 import _ from "lodash"
 import BettingSpot from "./BettingSpot"
 import BettingChip from "./BettingChip"
-import { Button, Text } from "@mantine/core"
+import { Button, Card, Text } from "@mantine/core"
 import { useTranslation } from "react-i18next"
 import { fetchRoulette, selectRoulette } from ".."
 import { useSelector } from "react-redux"
 import { showModal } from "app/core/modals"
 import DepositModal from "app/core/tables/DepositModal"
 import { ethers } from "ethers"
-import client from "app/core/client"
-import { getContract, getProvider } from "app/core/contracts"
+import { getContract } from "app/core/contracts"
 import { clearLoader, setLoader, useLoader } from "app/core/loaders"
-import { Card } from "@mantine/core"
 const BLACK_NUMBERS = [2, 4, 6, 8, 10, 11, 13, 15, 17, 19, 20, 22, 24, 26, 28, 29, 31, 33, 35]
 
 
@@ -31,9 +29,8 @@ const RouletteGame = React.memo(({ address }) => {
     fetchRoulette(address)
   }, [address])
 
-  // todo: use dealer for posting bets
   React.useEffect(() => {
-    // Set up event listener for Deposited events
+    if (!contract) return
     contract.on("WinningNumber", (number, totalBetAmount, winningAmount, playerBalance, event) => {
       const deposit = {
         number,
@@ -54,7 +51,7 @@ const RouletteGame = React.memo(({ address }) => {
     return () => {
       contract.removeAllListeners("WinningNumber")
     }
-  }, [])
+  }, [contract])
 
   return (
     <div className="RouletteGame_root">
@@ -88,10 +85,10 @@ const RouletteGame = React.memo(({ address }) => {
           onClick={async () => {
             try {
               setLoader("postingBet")
-              const { data } = await client.post(`/tables/${address}/bets`, { bets })
-              const { txHash } = data
-              const provider = getProvider()
-              await provider.waitForTransaction(txHash)
+              const tx = await contract.postBet(
+                bets.map((bet) => ethers.parseEther((bet || 0).toString()))
+              )
+              await tx.wait()
               await fetchRoulette(address)
             } finally {
               clearLoader("postingBet")

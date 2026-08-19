@@ -10,6 +10,7 @@ import TableModal from "app/core/tables/TableModal"
 import history from "app/core/history"
 import _ from "lodash"
 import { selectAuth } from "app/core/auth"
+import { ethers } from "ethers"
 
 
 const MainScreen = () => {
@@ -40,7 +41,7 @@ const MainScreen = () => {
         </div>
         <div className="MainScreen_tables">
           {_.orderBy(Object.values(tables), ["createdAt"], ["desc"])
-            .filter(({ createdBy }) => createdBy && createdBy === account)
+            .filter(({ createdBy }) => createdBy && account && ethers.getAddress(createdBy) === ethers.getAddress(account))
             .map((table) => (
               <Card
                 onClick={() => history.push(`/tables/${table.address}/admin`)}

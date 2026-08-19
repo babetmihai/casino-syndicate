@@ -20,7 +20,7 @@ const RouletteAdmin = ({ address }) => {
   }, [address])
 
   React.useEffect(() => {
-    // Set up event listener for Deposited events
+    if (!contract) return
     contract.on("Deposited", (user, amount, event) => {
       const deposit = {
         user,
@@ -36,7 +36,7 @@ const RouletteAdmin = ({ address }) => {
     return () => {
       contract.removeAllListeners("Deposited")
     }
-  }, [])
+  }, [contract])
 
   const tableUrl = `${window.location.origin}/#/tables/${address}`
   return (

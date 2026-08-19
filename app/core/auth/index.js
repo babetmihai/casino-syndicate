@@ -1,6 +1,5 @@
 import { ethers } from "ethers"
 import { actions } from "../store"
-import client from "../client"
 import { EMPTY_OBJECT } from ".."
 
 
@@ -13,10 +12,5 @@ export const login = async () => {
   const provider = new ethers.BrowserProvider(window.ethereum)
   const signer = await provider.getSigner()
   const account = await signer.getAddress()
-  const { nonce } = await client.post("/auth/nonce", { account })
-    .then(({ data }) => data)
-  const signature = await signer.signMessage(nonce)
-  const { token } = await client.post("/auth/login", { account, signature })
-    .then(({ data }) => data)
-  actions.set("auth", { token, account })
+  actions.set("auth", { account })
 }

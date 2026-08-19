@@ -1,9 +1,12 @@
 {
   "compilerOptions": {
     "baseUrl": ".",
-    "paths": {
+    "paths":     {
       "app/*": [
         "./app/*"
+      ],
+      "artifacts/*": [
+        "./artifacts/*"
       ]
     }
   }

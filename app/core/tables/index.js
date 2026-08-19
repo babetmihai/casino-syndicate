@@ -1,25 +1,49 @@
-import client from "../client"
 import { actions } from "../store"
 import { EMPTY_OBJECT } from ".."
 import { ethers } from "ethers"
 import { clearLoader, setLoader } from "../loaders"
-import { generateContract } from "../contracts"
+import { generateContract, getFactory } from "../contracts"
+import { selectAuth } from "../auth"
 
 export const TABLE_TYPES = {
   Roulette: "Roulette"
 }
 
 
-export const selectTable = (address) => actions.get(`tables.${address}`, EMPTY_OBJECT)
+export const selectTable = (address) => {
+  if (!address) return EMPTY_OBJECT
+  try {
+    return actions.get(`tables.${ethers.getAddress(address)}`, EMPTY_OBJECT)
+  } catch {
+    return EMPTY_OBJECT
+  }
+}
 export const selectTables = () => actions.get("tables", EMPTY_OBJECT)
+
+
+const toTable = ({ table, name, createdBy, createdAt }) => {
+  const address = ethers.getAddress(table)
+  return {
+    address,
+    name,
+    createdBy: ethers.getAddress(createdBy),
+    createdAt: Number(createdAt),
+    type: TABLE_TYPES.Roulette
+  }
+}
 
 
 export const initTable = async (address) => {
   try {
     setLoader(address)
-    const { data: table } = await client.get(`/tables/${address}`)
-    await generateContract(address, table.abi)
-    actions.set(`tables.${address}`, table)
+    const contract = await generateContract(address)
+    const [name, createdBy, createdAt] = await Promise.all([
+      contract.name(),
+      contract.createdBy(),
+      contract.createdAt()
+    ])
+    const table = toTable({ table: address, name, createdBy, createdAt })
+    actions.set(`tables.${table.address}`, table)
     return table
   } catch (error) {
     console.error(error)
@@ -30,38 +54,51 @@ export const initTable = async (address) => {
 
 
 export const fetchTables = async () => {
-  const { data } = await client.get("/tables")
-  const tables = data.reduce((acc, table) => {
-    acc[table.address] = table
-    return acc
-  }, {})
-  actions.set("tables", tables)
-  return tables
+  const { account } = selectAuth()
+  if (!account) {
+    actions.set("tables", {})
+    return {}
+  }
+
+  try {
+    const factory = await getFactory()
+    const rows = await factory.getTablesByCreator(account)
+    const tables = rows.reduce((acc, row) => {
+      const table = toTable(row)
+      acc[table.address] = table
+      return acc
+    }, {})
+    actions.set("tables", tables)
+    return tables
+  } catch (error) {
+    console.error(error)
+    actions.set("tables", {})
+    return {}
+  }
 }
 
 export const createTable = async (values) => {
-  const { name, type } = values
-  if (!window.ethereum) throw new Error("Please install MetaMask!")
-  await window.ethereum.request({ method: "eth_requestAccounts" })
+  const { name } = values
+  const factory = await getFactory()
+  const tx = await factory.createTable(name)
+  const receipt = await tx.wait()
 
-  const provider = new ethers.BrowserProvider(window.ethereum)
-  const signer = await provider.getSigner()
+  let address
+  for (const log of receipt.logs) {
+    try {
+      const parsed = factory.interface.parseLog(log)
+      if (parsed?.name === "TableCreated") {
+        address = parsed.args.table
+        break
+      }
+    } catch {
+      // ignore logs from other contracts
+    }
+  }
 
-  const { data: artifact } = await client.get(`/tables/artifact/${type}`)
-  const { abi, bytecode } = artifact
+  if (!address) throw new Error("TableCreated event not found")
 
-  const factory = new ethers.ContractFactory(abi, bytecode, signer)
-  const contract = await factory.deploy()
-  await contract.waitForDeployment()
-  const address = await contract.getAddress()
-
-  const { data: table } = await client.post("/tables", {
-    name,
-    type,
-    abi,
-    address
-  })
-  actions.set(`tables.${address}`, table)
+  const table = await initTable(address)
+  await fetchTables()
   return table
 }
-

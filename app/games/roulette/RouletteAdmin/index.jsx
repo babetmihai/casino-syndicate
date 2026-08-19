@@ -71,7 +71,7 @@ const RouletteAdmin = ({ address }) => {
           </div>
           <div className="RouletteAdmin_legendItem">
             <span className="RouletteAdmin_swatch is-rest" />
-            <Text size="sm">Table</Text>
+            <Text size="sm">Others</Text>
             <Text size="sm" c="dimmed">{rest} ETH</Text>
           </div>
         </div>

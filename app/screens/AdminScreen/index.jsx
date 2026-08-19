@@ -8,7 +8,7 @@ import { buyTableShares, selectRoulette, withdrawTableShares } from "app/games/r
 import AppScreen from "app/components/AppScreen"
 import history from "app/core/history"
 import { fetchBalance, selectAuth } from "app/core/auth"
-import { CoinsIcon, HandWithdrawIcon, PlayIcon, WalletIcon } from "@phosphor-icons/react"
+import { HandDepositIcon, HandWithdrawIcon, PlayIcon, WalletIcon } from "@phosphor-icons/react"
 import { AppFab } from "app/components/AppFabs"
 import { showModal } from "app/core/modals"
 import DepositModal from "app/core/tables/DepositModal"
@@ -38,8 +38,15 @@ const AdminScreen = () => {
       onBack={() => history.replace("/")}
       fabs={
         <>
+          <AppFab
+            label="Play"
+            onClick={() => history.push(`/tables/${address}`)}
+          >
+            <PlayIcon size={24} />
+          </AppFab>
           {account &&
             <AppFab
+              secondary
               label={t("fund_table")}
               onClick={() => showModal(DepositModal, {
                 onSubmit: async ({ balance }) => {
@@ -48,11 +55,12 @@ const AdminScreen = () => {
                 }
               })}
             >
-              <CoinsIcon size={24} />
+              <HandDepositIcon size={24} />
             </AppFab>
           }
           {!account &&
             <AppFab
+              secondary
               label="Connect"
               onClick={() => showModal(AuthModal)}
             >
@@ -74,13 +82,6 @@ const AdminScreen = () => {
               <HandWithdrawIcon size={24} />
             </AppFab>
           }
-          <AppFab
-            secondary
-            label="Play"
-            onClick={() => history.push(`/tables/${address}`)}
-          >
-            <PlayIcon size={24} />
-          </AppFab>
         </>
       }
     >

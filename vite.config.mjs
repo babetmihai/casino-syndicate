@@ -4,7 +4,8 @@ import react from "@vitejs/plugin-react"
 import path from "path"
 
 
-export default defineConfig({
+export default defineConfig(({ command }) => ({
+  base: command === "build" ? "./" : "/",
   plugins: [react()],
   publicDir: "./app/public",
   resolve: {
@@ -16,4 +17,4 @@ export default defineConfig({
   server: {
     port: 3000
   }
-})
+}))

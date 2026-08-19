@@ -1,5 +1,6 @@
 require("dotenv").config()
 require("@nomicfoundation/hardhat-toolbox")
+require("events").EventEmitter.defaultMaxListeners = 32
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {

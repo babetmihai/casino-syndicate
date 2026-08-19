@@ -11,6 +11,14 @@ const LOCAL_CHAIN_HEX = "0x539"
 const LOCAL_RPC_URL = "http://127.0.0.1:8545"
 
 
+let localRpc
+
+const getLocalRpc = () => {
+  if (!localRpc) localRpc = new ethers.JsonRpcProvider(LOCAL_RPC_URL)
+  return localRpc
+}
+
+
 const getProvider = () => {
   if (!provider) {
     provider = new ethers.BrowserProvider(window.ethereum)
@@ -56,7 +64,7 @@ export const getSigner = async () => {
 }
 
 export const fundAccount = async (address) => {
-  const rpc = new ethers.JsonRpcProvider(LOCAL_RPC_URL)
+  const rpc = getLocalRpc()
   const to = ethers.getAddress(address)
   const balance = await rpc.getBalance(to)
   if (balance >= ethers.parseEther("100")) return
@@ -68,8 +76,7 @@ export const fundAccount = async (address) => {
 }
 
 export const getLocalBalance = async (address) => {
-  const rpc = new ethers.JsonRpcProvider(LOCAL_RPC_URL)
-  return rpc.getBalance(ethers.getAddress(address))
+  return getLocalRpc().getBalance(ethers.getAddress(address))
 }
 
 

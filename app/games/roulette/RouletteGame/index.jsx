@@ -2,15 +2,18 @@ import React from "react"
 import { createPortal } from "react-dom"
 import "./index.scss"
 import _ from "lodash"
-import { Card, Text, ActionIcon, Tooltip } from "@mantine/core"
+import { Card, Text } from "@mantine/core"
 import { useTranslation } from "react-i18next"
-import { fetchRoulette, postRouletteBet, selectRoulette } from ".."
+import { fetchRoulette, postRouletteBet, pushSpinHistory, selectRoulette } from ".."
 import { useSelector } from "react-redux"
 import { fetchBalance, selectAuth } from "app/core/auth"
 import RouletteTable from "./RouletteTable"
 import { CHIP_VALUES, MAX_NUMBER_BET } from "../chips"
-import { PlayIcon, XIcon } from "@phosphor-icons/react"
+import { EraserIcon, PlayIcon } from "@phosphor-icons/react"
 import { AppFab, AppFabs } from "app/components/AppFabs"
+
+
+const BLACK_NUMBERS = [2, 4, 6, 8, 10, 11, 13, 15, 17, 19, 20, 22, 24, 26, 28, 29, 31, 33, 35]
 
 
 const RouletteGame = React.memo(({ address }) => {
@@ -20,16 +23,22 @@ const RouletteGame = React.memo(({ address }) => {
   const [pickingChip, setPickingChip] = React.useState(false)
   const [revealing, setRevealing] = React.useState(false)
   const [landingNumber, setLandingNumber] = React.useState(null)
+  const [showBanner, setShowBanner] = React.useState(false)
+  const historyRef = React.useRef(null)
+  const historyDrag = React.useRef({ active: false, x: 0, left: 0 })
   const totalBet = _.sum(bets)
   const { account, balance } = useSelector(() => selectAuth()) || {}
-  const { lastSpin } = useSelector(() => selectRoulette(address)) || {}
+  const { lastSpin, history = [] } = useSelector(() => selectRoulette(address)) || {}
   const { number: winningNumber, winningAmount } = lastSpin || {}
   const won = lastSpin && Number(winningAmount) > 0
   const showResult = lastSpin && !revealing
   const canSpin = totalBet > 0 && !revealing
+  let bannerColor = "red"
+  if (winningNumber === 0) bannerColor = "green"
+  if (_.includes(BLACK_NUMBERS, winningNumber)) bannerColor = "black"
   let balanceLabel = "0 ETH"
   if (balance) {
-    balanceLabel = `${Number(balance).toLocaleString(undefined, { maximumFractionDigits: 2 })} ETH`
+    balanceLabel = `${parseInt(balance, 10)} ETH`
   }
 
   React.useEffect(() => {
@@ -40,6 +49,23 @@ const RouletteGame = React.memo(({ address }) => {
     if (!account) return
     fetchBalance(account)
   }, [account])
+
+  React.useEffect(() => {
+    if (!showResult) {
+      setShowBanner(false)
+      return
+    }
+    setShowBanner(true)
+    pushSpinHistory(address, winningNumber)
+    const timer = _.delay(() => setShowBanner(false), 2500)
+    return () => clearTimeout(timer)
+  }, [showResult, winningNumber])
+
+  React.useEffect(() => {
+    const node = historyRef.current
+    if (!node) return
+    node.scrollLeft = node.scrollWidth
+  }, [history])
 
   const addBet = (number) => {
     if (revealing) return
@@ -53,6 +79,45 @@ const RouletteGame = React.memo(({ address }) => {
   return (
     <div className="RouletteGame_root">
       <Card className="RouletteGame_sheet" padding={0}>
+        <div
+          ref={historyRef}
+          className="RouletteGame_history"
+          onPointerDown={(event) => {
+            const node = historyRef.current
+            if (!node) return
+            historyDrag.current = { active: true, x: event.clientX, left: node.scrollLeft }
+            node.setPointerCapture(event.pointerId)
+          }}
+          onPointerMove={(event) => {
+            if (!historyDrag.current.active) return
+            const node = historyRef.current
+            if (!node) return
+            node.scrollLeft = historyDrag.current.left - (event.clientX - historyDrag.current.x)
+          }}
+          onPointerUp={() => {
+            historyDrag.current.active = false
+          }}
+          onPointerCancel={() => {
+            historyDrag.current.active = false
+          }}
+        >
+          {history.map((number, index) => {
+            let color = "red"
+            if (number === 0) color = "green"
+            if (_.includes(BLACK_NUMBERS, number)) color = "black"
+            let className = "RouletteGame_historyItem"
+            if (index === history.length - 1) className = "RouletteGame_historyItem is-latest"
+            return (
+              <div
+                key={`${index}-${number}`}
+                className={className}
+                data-color={color}
+              >
+                {number}
+              </div>
+            )
+          })}
+        </div>
         <div className="RouletteGame_board">
           <RouletteTable
             bets={bets}
@@ -63,46 +128,50 @@ const RouletteGame = React.memo(({ address }) => {
             onReveal={() => {
               setRevealing(false)
               setLandingNumber(null)
+              const nextBets = _.range(37).fill(0)
+              if (Number(winningAmount) > 0) nextBets[winningNumber] = bets[winningNumber]
+              setBets(nextBets)
             }}
           />
         </div>
       </Card>
       {createPortal(
-        <div className="RouletteGame_hud">
-          <Text size="sm" c="dimmed">
-            Balance {balanceLabel}
-          </Text>
-          <div className="RouletteGame_hudBet">
+        <>
+          <div className="RouletteGame_hud">
+            <Text size="sm" c="dimmed">
+              Balance {balanceLabel}
+            </Text>
             <Text size="sm">
               Bet {totalBet} ETH
             </Text>
-            {totalBet > 0 && !revealing &&
-              <Tooltip
-                label="Clear"
-                withArrow
-              >
-                <ActionIcon
-                  variant="subtle"
-                  color="gray"
-                  aria-label="Clear"
-                  onClick={() => setBets(_.range(37).fill(0))}
-                >
-                  <XIcon size={18} />
-                </ActionIcon>
-              </Tooltip>
+            {showResult && won &&
+              <Text size="sm" c="teal">
+                Won {winningAmount} ETH
+              </Text>
             }
           </div>
-          {showResult && won &&
-            <Text size="sm" c="teal">
-              Won {winningAmount} ETH · {winningNumber}
-            </Text>
+          {showBanner &&
+            <div className="RouletteGame_bannerLayer">
+              <Card
+                className="RouletteGame_banner"
+                shadow="md"
+                data-color={bannerColor}
+              >
+                <Text size="sm" className="RouletteGame_bannerLabel">
+                  Winning number
+                </Text>
+                <Text className="RouletteGame_bannerNumber">
+                  {winningNumber}
+                </Text>
+                {won &&
+                  <Text size="sm">
+                    Won {winningAmount} ETH
+                  </Text>
+                }
+              </Card>
+            </div>
           }
-          {showResult && !won &&
-            <Text size="sm" c="dimmed">
-              No win · {winningNumber}
-            </Text>
-          }
-        </div>,
+        </>,
         document.body
       )}
       {account &&
@@ -125,6 +194,14 @@ const RouletteGame = React.memo(({ address }) => {
             }}
           >
             <PlayIcon size={24} />
+          </AppFab>
+          <AppFab
+            secondary
+            label="Clear"
+            disabled={totalBet === 0 || revealing}
+            onClick={() => setBets(_.range(37).fill(0))}
+          >
+            <EraserIcon size={24} />
           </AppFab>
           {CHIP_VALUES.map((value) => {
             const isCurrent = value === chip

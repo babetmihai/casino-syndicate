@@ -4,53 +4,79 @@ import { useSelector } from "react-redux"
 import { useParams } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import RouletteAdmin from "app/games/roulette/RouletteAdmin"
-import { buyTableShares } from "app/games/roulette"
+import { buyTableShares, selectRoulette, withdrawTableShares } from "app/games/roulette"
 import AppScreen from "app/components/AppScreen"
 import history from "app/core/history"
-import { selectAuth } from "app/core/auth"
-import { ethers } from "ethers"
-import { CoinsIcon, PlayIcon } from "@phosphor-icons/react"
+import { fetchBalance, selectAuth } from "app/core/auth"
+import { ArrowDownIcon, CoinsIcon, PlayIcon, WalletIcon } from "@phosphor-icons/react"
 import { AppFab } from "app/components/AppFabs"
 import { showModal } from "app/core/modals"
 import DepositModal from "app/core/tables/DepositModal"
+import AuthModal from "app/core/auth/AuthModal"
 
 
 const AdminScreen = () => {
   const { t } = useTranslation()
   const { address } = useParams()
-  const { account } = useSelector(() => selectAuth())
+  const { account } = useSelector(() => selectAuth()) || {}
   const table = useSelector(() => selectTable(address))
+  const roulette = useSelector(() => selectRoulette(address)) || {}
+  const { memberShares } = roulette
+  const hasShare = (Number(memberShares) || 0) > 0
+  const [withdrawing, setWithdrawing] = React.useState(false)
 
   React.useEffect(() => {
     if (!address) return
-    initTable(address).then(() => {
-      const { createdBy } = selectTable(address) || {}
-      if (!createdBy || !account) return
-      if (ethers.getAddress(createdBy) !== ethers.getAddress(account)) {
-        history.replace(`/tables/${address}`)
-      }
-    })
-  }, [address, account])
+    initTable(address)
+  }, [address])
 
-  const { name, createdBy, type } = table || {}
-  const isOwner = createdBy && account && ethers.getAddress(createdBy) === ethers.getAddress(account)
+  const { name, type } = table || {}
 
   return (
     <AppScreen
       name={name || "Manage"}
       onBack={() => history.replace("/")}
-      fabs={isOwner &&
+      fabs={
         <>
-          <AppFab
-            label={t("fund_table")}
-            onClick={() => showModal(DepositModal, {
-              onSubmit: async ({ balance }) => {
-                await buyTableShares({ balance }, address)
-              }
-            })}
-          >
-            <CoinsIcon size={24} />
-          </AppFab>
+          {account &&
+            <AppFab
+              label={t("fund_table")}
+              onClick={() => showModal(DepositModal, {
+                onSubmit: async ({ balance }) => {
+                  await buyTableShares({ balance }, address)
+                  await fetchBalance(account)
+                }
+              })}
+            >
+              <CoinsIcon size={24} />
+            </AppFab>
+          }
+          {!account &&
+            <AppFab
+              label="Connect"
+              onClick={() => showModal(AuthModal)}
+            >
+              <WalletIcon size={24} />
+            </AppFab>
+          }
+          {hasShare &&
+            <AppFab
+              secondary
+              label="Withdraw"
+              loading={withdrawing}
+              onClick={async () => {
+                setWithdrawing(true)
+                try {
+                  await withdrawTableShares(address)
+                  await fetchBalance(account)
+                } finally {
+                  setWithdrawing(false)
+                }
+              }}
+            >
+              <ArrowDownIcon size={24} />
+            </AppFab>
+          }
           <AppFab
             secondary
             label="Play"
@@ -61,7 +87,7 @@ const AdminScreen = () => {
         </>
       }
     >
-      {address && isOwner && type === TABLE_TYPES.Roulette &&
+      {address && type === TABLE_TYPES.Roulette &&
         <RouletteAdmin address={address} />
       }
     </AppScreen>

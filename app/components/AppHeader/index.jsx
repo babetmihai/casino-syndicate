@@ -7,7 +7,7 @@ import { selectAuth } from "../../core/auth"
 import AuthMenu from "../../core/auth/AuthMenu"
 
 
-const AppHeader = ({ name, onBack }) => {
+const AppHeader = ({ name, onBack, action }) => {
   const { account } = useSelector(() => selectAuth()) || {}
 
   return (
@@ -30,6 +30,7 @@ const AppHeader = ({ name, onBack }) => {
         }
       </div>
       <div className="AppHeader_right">
+        {action}
         {account && <AuthMenu />}
       </div>
     </Paper>

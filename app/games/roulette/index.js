@@ -7,6 +7,9 @@ import { generateContract, getContract } from "app/core/contracts"
 const roulettePath = (address) => `games.roulette.${ethers.getAddress(address)}`
 
 
+const formatEth = (value) => ethers.formatEther(value).replace(/\.0+$/, "")
+
+
 export const selectRoulette = (address) => {
   if (!address || !ethers.isAddress(address)) return EMPTY_OBJECT
   return actions.get(roulettePath(address), EMPTY_OBJECT)
@@ -21,10 +24,10 @@ export const fetchRoulette = async (address) => {
   const totalShares = row[2]
   const totalBalance = row[3]
   actions.update(roulettePath(address), {
-    memberShares: ethers.formatEther(memberShares),
-    playerBalance: ethers.formatEther(playerBalance),
-    totalShares: ethers.formatEther(totalShares),
-    totalBalance: ethers.formatEther(totalBalance)
+    memberShares: formatEth(memberShares),
+    playerBalance: formatEth(playerBalance),
+    totalShares: formatEth(totalShares),
+    totalBalance: formatEth(totalBalance)
   })
 }
 
@@ -32,8 +35,16 @@ export const buyTableShares = async ({ balance }, address) => {
   let contract = getContract(address)
   if (!contract) contract = await generateContract(address)
   const tx = await contract.depositShares({
-    value: ethers.parseEther(balance.toString())
+    value: ethers.parseEther(Number(balance).toString())
   })
+  await tx.wait()
+  await fetchRoulette(address)
+}
+
+export const withdrawTableShares = async (address) => {
+  let contract = getContract(address)
+  if (!contract) contract = await generateContract(address)
+  const tx = await contract.withdrawShares()
   await tx.wait()
   await fetchRoulette(address)
 }
@@ -51,6 +62,16 @@ export const postRouletteBet = async (address, bets) => {
   return lastSpin
 }
 
+export const pushSpinHistory = (address, number) => {
+  actions.update(roulettePath(address), (current) => {
+    const { history = [] } = current || {}
+    return {
+      ...current,
+      history: [...history, number]
+    }
+  })
+}
+
 
 const readWinningNumber = (contract, receipt) => {
   const { logs = [] } = receipt || {}
@@ -61,9 +82,9 @@ const readWinningNumber = (contract, receipt) => {
       if (name !== "WinningNumber") continue
       return {
         number: Number(args.number),
-        totalBetAmount: ethers.formatEther(args.totalBetAmount),
-        winningAmount: ethers.formatEther(args.winningAmount),
-        playerBalance: ethers.formatEther(args.playerBalance)
+        totalBetAmount: formatEth(args.totalBetAmount),
+        winningAmount: formatEth(args.winningAmount),
+        playerBalance: formatEth(args.playerBalance)
       }
     } catch {
       // ignore logs from other contracts

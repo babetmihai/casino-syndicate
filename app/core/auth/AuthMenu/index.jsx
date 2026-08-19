@@ -12,7 +12,7 @@ const AuthMenu = () => {
   const shortAccount = `${account.slice(0, 6)}…${account.slice(-4)}`
   let balanceLabel = "0 ETH"
   if (balance) {
-    balanceLabel = `${Number(balance).toLocaleString(undefined, { maximumFractionDigits: 2 })} ETH`
+    balanceLabel = `${parseInt(balance, 10)} ETH`
   }
 
   React.useEffect(() => {

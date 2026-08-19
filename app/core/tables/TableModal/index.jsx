@@ -47,8 +47,10 @@ const TableModal = ({ onSubmit }) => {
       />
       <NumberInput
         label="Amount (ETH)"
-        min={0}
-        decimalScale={4}
+        min={1}
+        step={1}
+        allowDecimal={false}
+        hideControls
         mt="md"
         value={formik.values.balance}
         onChange={(value) => {

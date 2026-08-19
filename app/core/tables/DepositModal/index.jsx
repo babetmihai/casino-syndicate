@@ -34,8 +34,10 @@ const DepositModal = ({ onSubmit }) => {
     >
       <NumberInput
         label="Amount (ETH)"
-        min={0}
-        decimalScale={4}
+        min={1}
+        step={1}
+        allowDecimal={false}
+        hideControls
         value={formik.values.balance}
         onChange={(value) => {
           formik.setFieldValue("balance", value)

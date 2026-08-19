@@ -9,13 +9,50 @@
   -webkit-tap-highlight-color: transparent;
 }
 
-.spot-flash .spot-body {
+.RouletteTable_spot {
+  cursor: pointer;
+}
+
+.RouletteTable_spotBody {
+  stroke: var(--mantine-color-gray-2);
+  stroke-width: 1;
+}
+
+.RouletteTable_spot:hover .RouletteTable_spotBody {
+  stroke: var(--mantine-color-indigo-6);
+  filter: url(#spotLift);
+}
+
+.RouletteTable_spot.is-flash .RouletteTable_spotBody,
+.RouletteTable_spot.is-winner .RouletteTable_spotBody {
+  stroke: var(--mantine-color-indigo-6);
   stroke-width: 2.5;
+  filter: url(#winnerLift);
+}
+
+.RouletteTable_spot.is-flash .RouletteTable_spotBody {
   animation: numberFlash 0.12s ease-out;
 }
 
-.spot-winner .spot-body {
+.RouletteTable_spot.is-winner .RouletteTable_spotBody {
   animation: winnerPulse 1.6s ease-in-out infinite;
+}
+
+.RouletteTable_spotLabel,
+.RouletteTable_chipValue {
+  font-family: Roboto, Helvetica, Arial, sans-serif;
+  font-weight: 500;
+  pointer-events: none;
+}
+
+.RouletteTable_chip {
+  pointer-events: none;
+  animation: chipDrop 0.16s ease-out;
+}
+
+.RouletteTable_spark {
+  opacity: 0.55;
+  animation: sparkBurst 0.36s ease-out forwards;
 }
 
 @keyframes numberFlash {
@@ -34,5 +71,19 @@
   }
   50% {
     stroke-width: 2.4;
+  }
+}
+
+@keyframes chipDrop {
+  from {
+    opacity: 0;
+    transform: translateY(-0.5rem);
+  }
+}
+
+@keyframes sparkBurst {
+  to {
+    transform: translate(var(--dx), var(--dy));
+    opacity: 0;
   }
 }

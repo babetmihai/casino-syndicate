@@ -60,7 +60,7 @@ export const createTable = async (values) => {
 
   const factory = await getFactory()
   const tx = await factory.createGame(name, gameType, {
-    value: ethers.parseEther(balance.toString())
+    value: ethers.parseEther(Number(balance).toString())
   })
   const receipt = await tx.wait()
 

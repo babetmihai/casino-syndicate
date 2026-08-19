@@ -67,28 +67,28 @@ process.on("SIGTERM", shutdown)
 
 
 const main = async () => {
+  await runNpx(["hardhat", "compile"])
+
+  let startedChain = false
   try {
     await pingRpc()
     console.log(`Using existing Hardhat node at ${rpcUrl}`)
-  } catch (error) {
+  } catch {
     console.log("Starting Hardhat node...")
     const chain = spawnNpx(["hardhat", "node"])
+    startedChain = true
     chain.on("exit", (code) => {
-      if (code) {
-        shutdown()
-        process.exit(code)
-      }
+      shutdown()
+      process.exit(code || 0)
     })
     await waitForRpc()
   }
 
   await runNpx(["hardhat", "run", "scripts/deploy.js", "--network", "localhost"])
+  console.log("Contracts deployed. Run npm run ui in another terminal.")
 
-  const ui = spawnNpx(["vite"])
-  ui.on("exit", (code) => {
-    shutdown()
-    process.exit(code || 0)
-  })
+  if (!startedChain) return
+  console.log("Chain running. Press Ctrl+C to stop.")
 }
 
 main().catch((error) => {

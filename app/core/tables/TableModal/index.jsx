@@ -1,4 +1,4 @@
-import { Button, Group, Modal, TextInput, Text } from "@mantine/core"
+import { Button, Group, Modal, NumberInput, TextInput, Text } from "@mantine/core"
 import React from "react"
 import { hideModal } from "app/core/modals"
 import { useFormik } from "formik"
@@ -12,10 +12,12 @@ const TableModal = ({ onSubmit }) => {
   const formik = useFormik({
     initialValues: {
       name: "",
-      type: TABLE_TYPES.Roulette
+      type: TABLE_TYPES.Roulette,
+      balance: 10
     },
     validationSchema: Yup.object({
-      name: Yup.string().required(t("name_required"))
+      name: Yup.string().required(t("name_required")),
+      balance: Yup.number().moreThan(0, t("balance_required"))
     }),
     onSubmit: async (values, form) => {
       form.setSubmitting(true)
@@ -41,6 +43,16 @@ const TableModal = ({ onSubmit }) => {
         data-autofocus
         onChange={(event) => {
           formik.setFieldValue("name", event.target.value)
+        }}
+      />
+      <NumberInput
+        label="Amount (ETH)"
+        min={0}
+        decimalScale={4}
+        mt="md"
+        value={formik.values.balance}
+        onChange={(value) => {
+          formik.setFieldValue("balance", value)
         }}
       />
       <Group justify="flex-end" gap="sm" mt="md">

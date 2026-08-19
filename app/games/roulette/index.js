@@ -4,8 +4,6 @@ import { EMPTY_OBJECT } from "app/core"
 import { generateContract, getContract } from "app/core/contracts"
 
 
-const TABLE_DATA_FIELDS = ["memberShares", "playerBalance", "totalBalance", "totalShares"]
-
 const roulettePath = (address) => `games.roulette.${ethers.getAddress(address)}`
 
 
@@ -17,12 +15,17 @@ export const selectRoulette = (address) => {
 export const fetchRoulette = async (address) => {
   let contract = getContract(address)
   if (!contract) contract = await generateContract(address)
-  const data = await contract.getTable()
-  const formattedData = TABLE_DATA_FIELDS.reduce((acc, field) => {
-    acc[field] = ethers.formatEther(data[field] || 0)
-    return acc
-  }, {})
-  actions.update(roulettePath(address), formattedData)
+  const row = await contract.getTable()
+  const memberShares = row[0]
+  const playerBalance = row[1]
+  const totalShares = row[2]
+  const totalBalance = row[3]
+  actions.update(roulettePath(address), {
+    memberShares: ethers.formatEther(memberShares),
+    playerBalance: ethers.formatEther(playerBalance),
+    totalShares: ethers.formatEther(totalShares),
+    totalBalance: ethers.formatEther(totalBalance)
+  })
 }
 
 export const buyTableShares = async ({ balance }, address) => {
@@ -45,6 +48,7 @@ export const postRouletteBet = async (address, bets) => {
   const lastSpin = readWinningNumber(contract, receipt)
   await fetchRoulette(address)
   if (lastSpin) actions.update(roulettePath(address), { lastSpin })
+  return lastSpin
 }
 
 

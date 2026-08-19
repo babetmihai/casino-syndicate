@@ -28,12 +28,14 @@ contract GameFactory {
 		string name
 	);
 
-	function createGame(string calldata name, GameType gameType) external returns (address game) {
+	function createGame(string calldata name, GameType gameType) external payable returns (address game) {
+		require(msg.value > 0, "Must fund table");
 		if (gameType == GameType.Roulette) {
-			game = address(new Roulette(name, msg.sender));
+			game = address(new Roulette{value: msg.value}(name, msg.sender));
 		} else {
 			revert("Unsupported game type");
 		}
+		require(game.balance == msg.value, "Funding failed");
 
 		uint256 index = games.length;
 		games.push(GameInfo({

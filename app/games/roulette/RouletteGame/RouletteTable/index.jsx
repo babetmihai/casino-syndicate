@@ -24,27 +24,49 @@ const COLORS = {
 }
 
 
-const RouletteTable = React.memo(({ bets, winningNumber, onNumberClick }) => {
+const RouletteTable = React.memo(({ bets, winningNumber, landingNumber, spinning, onNumberClick, onReveal }) => {
   const svgRef = React.useRef(null)
   const clickRef = React.useRef(onNumberClick)
-  const prevWinRef = React.useRef(undefined)
+  const landingRef = React.useRef(landingNumber)
+  const onRevealRef = React.useRef(onReveal)
+  const litRef = React.useRef(winningNumber)
+  const [litNumber, setLitNumber] = React.useState(winningNumber)
   clickRef.current = onNumberClick
+  landingRef.current = landingNumber
+  onRevealRef.current = onReveal
+  litRef.current = litNumber
 
   const spots = React.useMemo(() => _.range(37).map((number) => ({
     number,
     bet: bets[number] || 0,
-    winner: winningNumber === number,
+    winner: !spinning && litNumber === number,
+    flash: spinning && litNumber === number,
     ...spotLayout(number)
-  })), [bets, winningNumber])
+  })), [bets, litNumber, spinning])
 
   React.useEffect(() => {
     drawTable(svgRef.current, spots, clickRef)
-    const winnerSpot = _.find(spots, { winner: true })
-    if (winnerSpot && prevWinRef.current !== winningNumber) {
-      burstSparkles(svgRef.current, winnerSpot)
-    }
-    prevWinRef.current = winningNumber
-  }, [spots, winningNumber])
+  }, [spots])
+
+  React.useEffect(() => {
+    if (!spinning) return
+    return runNumberFlash({
+      from: litRef.current,
+      getWinner: () => landingRef.current,
+      onTick: setLitNumber,
+      onDone: (winner) => {
+        setLitNumber(winner)
+        burstSparkles(svgRef.current, { number: winner, ...spotLayout(winner) })
+        if (onRevealRef.current) onRevealRef.current()
+      }
+    })
+  }, [spinning])
+
+  React.useEffect(() => {
+    if (spinning) return
+    if (winningNumber == null) return
+    setLitNumber(winningNumber)
+  }, [spinning, winningNumber])
 
   return (
     <svg
@@ -143,14 +165,16 @@ const drawTable = (node, spots, clickRef) => {
       clickRef.current(d.number)
     })
     .on("mouseenter", function(event, d) {
+      const lit = d.winner || d.flash
       select(this).select(".spot-body")
-        .attr("filter", d.winner ? "url(#winnerLift)" : "url(#spotLift)")
+        .attr("filter", lit ? "url(#winnerLift)" : "url(#spotLift)")
         .attr("stroke", COLORS.winner)
     })
     .on("mouseleave", function(event, d) {
+      const lit = d.winner || d.flash
       select(this).select(".spot-body")
-        .attr("filter", d.winner ? "url(#winnerLift)" : null)
-        .attr("stroke", d.winner ? COLORS.winner : COLORS.stroke)
+        .attr("filter", lit ? "url(#winnerLift)" : null)
+        .attr("stroke", lit ? COLORS.winner : COLORS.stroke)
     })
 
   enter.append("path").attr("class", "spot-body")
@@ -164,13 +188,30 @@ const drawTable = (node, spots, clickRef) => {
     .text((d) => d.number)
 
   const all = enter.merge(cells)
-  all.attr("class", (d) => d.winner ? "spot spot-winner" : "spot")
+  all.attr("class", (d) => {
+    let className = "spot"
+    if (d.flash) className = "spot spot-flash"
+    if (d.winner) className = "spot spot-winner"
+    return className
+  })
   all.select(".spot-body")
     .attr("d", (d) => roundedRect(d.x + 2, d.y + 2, d.w - 4, d.h - 4, 8))
-    .attr("fill", (d) => d.color)
-    .attr("stroke", (d) => d.winner ? COLORS.winner : COLORS.stroke)
-    .attr("stroke-width", (d) => d.winner ? 2 : 1)
-    .attr("filter", (d) => d.winner ? "url(#winnerLift)" : null)
+    .attr("fill", (d) => {
+      if (d.flash) return COLORS.winner
+      return d.color
+    })
+    .attr("stroke", (d) => {
+      if (d.winner || d.flash) return COLORS.winner
+      return COLORS.stroke
+    })
+    .attr("stroke-width", (d) => {
+      if (d.winner || d.flash) return 2.5
+      return 1
+    })
+    .attr("filter", (d) => {
+      if (d.winner || d.flash) return "url(#winnerLift)"
+      return null
+    })
 
   all.select(".spot-label")
     .attr("x", (d) => d.x + d.w / 2)
@@ -233,6 +274,58 @@ const chipStack = (spot) => {
 const chipTransform = (d, extraY) => {
   const offset = (d.index - 1.5) * 4
   return `translate(${d.x + d.w / 2 + offset}, ${d.y + d.h / 2 - d.index * 3 - extraY})`
+}
+
+const WHEEL = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26]
+const SPIN_MS = 45
+const SLOW_STEPS = 12
+
+const runNumberFlash = ({ from, getWinner, onTick, onDone }) => {
+  let timer
+  let stopped = false
+  let steps = 0
+  let startIndex = _.indexOf(WHEEL, from)
+  if (startIndex < 0) startIndex = 0
+  let index = startIndex
+
+  onTick(WHEEL[index])
+
+  const tick = () => {
+    if (stopped) return
+    index = (index + 1) % WHEEL.length
+    steps += 1
+    onTick(WHEEL[index])
+
+    const winner = getWinner()
+    if (winner == null) {
+      timer = _.delay(tick, SPIN_MS)
+      return
+    }
+
+    const winnerIndex = _.indexOf(WHEEL, winner)
+    const distance = (winnerIndex - startIndex + WHEEL.length) % WHEEL.length
+    const minSteps = WHEEL.length * 3 + distance
+    if (steps >= minSteps && index === winnerIndex) {
+      onDone(winner)
+      return
+    }
+
+    let remaining = minSteps - steps
+    if (steps >= minSteps) remaining = (winnerIndex - index + WHEEL.length) % WHEEL.length
+    let delay = SPIN_MS
+    if (remaining <= SLOW_STEPS) {
+      const t = 1 - remaining / SLOW_STEPS
+      delay = SPIN_MS + t * t * 280
+    }
+    timer = _.delay(tick, delay)
+  }
+
+  timer = _.delay(tick, SPIN_MS)
+
+  return () => {
+    stopped = true
+    clearTimeout(timer)
+  }
 }
 
 const burstSparkles = (node, spot) => {

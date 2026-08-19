@@ -54,12 +54,14 @@ export const fetchTables = async () => {
 }
 
 export const createTable = async (values) => {
-  const { name, type } = values
+  const { name, type, balance } = values
   const gameType = TABLE_TYPE_IDS[type]
   if (gameType === undefined) throw new Error("Unsupported game type")
 
   const factory = await getFactory()
-  const tx = await factory.createGame(name, gameType)
+  const tx = await factory.createGame(name, gameType, {
+    value: ethers.parseEther(balance.toString())
+  })
   const receipt = await tx.wait()
 
   let address

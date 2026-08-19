@@ -9,8 +9,22 @@
   -webkit-tap-highlight-color: transparent;
 }
 
+.spot-flash .spot-body {
+  stroke-width: 2.5;
+  animation: numberFlash 0.12s ease-out;
+}
+
 .spot-winner .spot-body {
   animation: winnerPulse 1.6s ease-in-out infinite;
+}
+
+@keyframes numberFlash {
+  from {
+    stroke-width: 1;
+  }
+  to {
+    stroke-width: 2.5;
+  }
 }
 
 @keyframes winnerPulse {

@@ -5,7 +5,6 @@ import { Button, Card, Text, UnstyledButton } from "@mantine/core"
 import { useTranslation } from "react-i18next"
 import { fetchRoulette, postRouletteBet, selectRoulette } from ".."
 import { useSelector } from "react-redux"
-import { clearLoader, setLoader, useLoader } from "app/core/loaders"
 import { fetchBalance, selectAuth } from "app/core/auth"
 import RouletteTable from "./RouletteTable"
 import { CHIP_VALUES, MAX_NUMBER_BET } from "../chips"
@@ -15,13 +14,15 @@ const RouletteGame = React.memo(({ address }) => {
   const { t } = useTranslation()
   const [bets, setBets] = React.useState(_.range(37).fill(0))
   const [chip, setChip] = React.useState(1)
+  const [revealing, setRevealing] = React.useState(false)
+  const [landingNumber, setLandingNumber] = React.useState(null)
   const totalBet = _.sum(bets)
-  const postingBet = useLoader("postingBet")
   const { account, balance } = useSelector(() => selectAuth()) || {}
   const { lastSpin } = useSelector(() => selectRoulette(address)) || {}
   const { number: winningNumber, winningAmount } = lastSpin || {}
   const won = lastSpin && Number(winningAmount) > 0
-  const canSpin = totalBet > 0 && !postingBet
+  const showResult = lastSpin && !revealing
+  const canSpin = totalBet > 0 && !revealing
   let balanceLabel = "0 ETH"
   if (balance) {
     balanceLabel = `${Number(balance).toLocaleString(undefined, { maximumFractionDigits: 2 })} ETH`
@@ -37,6 +38,7 @@ const RouletteGame = React.memo(({ address }) => {
   }, [account])
 
   const addBet = (number) => {
+    if (revealing) return
     const nextBets = [...bets]
     const nextValue = nextBets[number] + chip
     if (nextValue > MAX_NUMBER_BET) return
@@ -55,7 +57,7 @@ const RouletteGame = React.memo(({ address }) => {
             <Text size="sm">
               Bet {totalBet} ETH
             </Text>
-            {totalBet > 0 &&
+            {totalBet > 0 && !revealing &&
               <Button
                 variant="subtle"
                 onClick={() => setBets(_.range(37).fill(0))}
@@ -64,12 +66,12 @@ const RouletteGame = React.memo(({ address }) => {
               </Button>
             }
           </div>
-          {lastSpin && won &&
+          {showResult && won &&
             <Text size="sm" c="teal">
               Won {winningAmount} ETH · {winningNumber}
             </Text>
           }
-          {lastSpin && !won &&
+          {showResult && !won &&
             <Text size="sm" c="dimmed">
               No win · {winningNumber}
             </Text>
@@ -78,8 +80,14 @@ const RouletteGame = React.memo(({ address }) => {
         <div className="RouletteGame_board">
           <RouletteTable
             bets={bets}
-            winningNumber={lastSpin ? winningNumber : undefined}
+            winningNumber={showResult ? winningNumber : undefined}
+            landingNumber={landingNumber}
+            spinning={revealing}
             onNumberClick={addBet}
+            onReveal={() => {
+              setRevealing(false)
+              setLandingNumber(null)
+            }}
           />
         </div>
         <div className="RouletteGame_dock">
@@ -101,15 +109,18 @@ const RouletteGame = React.memo(({ address }) => {
           <Button
             className="RouletteGame_place"
             size="lg"
-            loading={postingBet}
+            loading={revealing}
             disabled={!canSpin}
             onClick={async () => {
-              setLoader("postingBet")
+              let spin
+              setRevealing(true)
+              setLandingNumber(null)
               try {
-                await postRouletteBet(address, bets)
+                spin = await postRouletteBet(address, bets)
+                if (spin) setLandingNumber(spin.number)
                 if (account) await fetchBalance(account)
               } finally {
-                clearLoader("postingBet")
+                if (!spin) setRevealing(false)
               }
             }}
           >

@@ -24,7 +24,9 @@ describe("UI flow: create, view, play roulette", () => {
     const factory = await Factory.deploy()
     await factory.waitForDeployment()
 
-    const createTx = await factory.connect(creator).createGame("Test Table", TABLE_TYPE_IDS.Roulette)
+    const createTx = await factory.connect(creator).createGame("Test Table", TABLE_TYPE_IDS.Roulette, {
+      value: ethers.parseEther("100")
+    })
     const receipt = await createTx.wait()
 
     let createdAddress
@@ -59,7 +61,22 @@ describe("UI flow: create, view, play roulette", () => {
     })
 
     const roulette = await ethers.getContractAt("Roulette", createdAddress)
-    await (await roulette.connect(creator).depositShares({ value: ethers.parseEther("100") })).wait()
+    expect(await ethers.provider.getBalance(createdAddress)).to.equal(ethers.parseEther("100"))
+    expect(await ethers.provider.getBalance(factory.target)).to.equal(0n)
+
+    const afterCreate = await roulette.connect(creator).getTable()
+    expect(afterCreate.memberShares).to.equal(ethers.parseEther("100"))
+    expect(afterCreate.totalShares).to.equal(ethers.parseEther("100"))
+    expect(afterCreate.totalBalance).to.equal(ethers.parseEther("100"))
+    expect(afterCreate[0]).to.equal(afterCreate.memberShares)
+    expect(afterCreate[2]).to.equal(afterCreate.totalShares)
+    expect(afterCreate[3]).to.equal(afterCreate.totalBalance)
+
+    await (await roulette.connect(creator).depositShares({ value: ethers.parseEther("2") })).wait()
+    const afterTopUp = await roulette.connect(creator).getTable()
+    expect(afterTopUp.totalBalance).to.equal(ethers.parseEther("102"))
+    expect(afterTopUp.memberShares).to.equal(ethers.parseEther("102"))
+    expect(afterTopUp.totalShares).to.equal(ethers.parseEther("102"))
 
     const bets = Array(37).fill(0n)
     bets[0] = ethers.parseEther("1")
@@ -77,5 +94,40 @@ describe("UI flow: create, view, play roulette", () => {
 
     expect(winEvent, "WinningNumber event not found").to.not.equal(undefined)
     expect(winEvent.args.totalBetAmount).to.equal(ethers.parseEther("1"))
+  })
+
+  it("keeps the owner at 100% of the bankroll after a house win and a top-up", async () => {
+    const [creator, player] = await ethers.getSigners()
+    const Factory = await ethers.getContractFactory("GameFactory")
+    const factory = await Factory.deploy()
+    await factory.waitForDeployment()
+
+    const createTx = await factory.connect(creator).createGame("Bankroll Table", TABLE_TYPE_IDS.Roulette, {
+      value: ethers.parseEther("100")
+    })
+    const receipt = await createTx.wait()
+    const created = receipt.logs
+      .map((log) => {
+        try {
+          return factory.interface.parseLog(log)
+        } catch {
+          return null
+        }
+      })
+      .find((parsed) => parsed && parsed.name === "GameCreated")
+    const roulette = await ethers.getContractAt("Roulette", created.args.game)
+
+    const bets = Array(37).fill(ethers.parseEther("1"))
+    await (await roulette.connect(player).postBet(bets, { value: ethers.parseEther("37") })).wait()
+
+    const afterBet = await roulette.connect(creator).getTable()
+    expect(afterBet.totalBalance).to.equal(ethers.parseEther("101"))
+    expect(afterBet.memberShares).to.equal(ethers.parseEther("101"))
+
+    await (await roulette.connect(creator).depositShares({ value: ethers.parseEther("10") })).wait()
+    const afterFund = await roulette.connect(creator).getTable()
+    expect(afterFund.totalBalance).to.equal(ethers.parseEther("111"))
+    expect(afterFund.memberShares).to.equal(ethers.parseEther("111"))
+    expect(afterFund.totalShares).to.equal(ethers.parseEther("111"))
   })
 })

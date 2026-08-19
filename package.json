@@ -1,15 +1,9 @@
 {
   "name": "casino-syndicate",
   "scripts": {
-    "start": "node scripts/start.js",
-    "prestart": "hardhat compile",
-    "dev": "vite",
-    "predev": "hardhat compile",
-    "prebuild": "hardhat compile",
-    "chain": "hardhat node",
-    "compile": "hardhat compile",
-    "deploy": "hardhat run scripts/deploy.js --network localhost",
-    "build": "vite build",
+    "ui": "vite",
+    "chain": "node scripts/chain.js",
+    "build": "hardhat compile && vite build",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },

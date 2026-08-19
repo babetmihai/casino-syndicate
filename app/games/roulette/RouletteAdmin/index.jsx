@@ -1,11 +1,8 @@
 import React from "react"
-import { ActionIcon, Button, Card, CopyButton, Text, TextInput } from "@mantine/core"
-import { useTranslation } from "react-i18next"
-import { showModal } from "app/core/modals"
-import DepositModal from "app/core/tables/DepositModal"
+import { ActionIcon, Card, CopyButton, Text, TextInput } from "@mantine/core"
 import "./index.scss"
 import { useSelector } from "react-redux"
-import { buyTableShares, fetchRoulette, selectRoulette } from ".."
+import { fetchRoulette, selectRoulette } from ".."
 import { CheckIcon, CopyIcon } from "@phosphor-icons/react"
 
 
@@ -16,7 +13,6 @@ const STAT_LABELS = {
 }
 
 const RouletteAdmin = ({ address }) => {
-  const { t } = useTranslation()
   const roulette = useSelector(() => selectRoulette(address)) || {}
 
   React.useEffect(() => {
@@ -27,15 +23,6 @@ const RouletteAdmin = ({ address }) => {
 
   return (
     <div className="RouletteAdmin_content">
-      <Button
-        onClick={() => showModal(DepositModal, {
-          onSubmit: async ({ balance }) => {
-            await buyTableShares({ balance }, address)
-          }
-        })}
-      >
-        {t("fund_table")}
-      </Button>
       <TextInput
         label="Player link"
         value={tableUrl}
@@ -60,8 +47,7 @@ const RouletteAdmin = ({ address }) => {
           <div className="RouletteAdmin_stat" key={key}>
             <Text size="sm" c="dimmed">{STAT_LABELS[key]}</Text>
             <Text fw={500}>
-              {roulette[key] || "0"}
-              {key === "totalBalance" && " ETH"}
+              {roulette[key] || "0"} ETH
             </Text>
           </div>
         ))}

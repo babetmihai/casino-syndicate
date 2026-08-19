@@ -21,29 +21,37 @@ contract Roulette {
 	event Deposited(address indexed user, uint256 amount);
 	event WinningNumber(uint256 number, uint256 totalBetAmount, uint256 winningAmount, uint256 playerBalance);
 
-	constructor(string memory _name, address _createdBy) {
+	constructor(string memory _name, address _createdBy) payable {
 		name = _name;
 		createdBy = _createdBy;
 		createdAt = block.timestamp;
+		if (msg.value > 0) {
+			totalShares = msg.value;
+			shares[_createdBy] = msg.value;
+			emit Deposited(_createdBy, msg.value);
+		}
 	}
 
 	function getTable() public view returns (TableDTO memory) {
+		uint256 bankroll = address(this).balance;
+		uint256 owned = 0;
+		if (totalShares > 0) {
+			owned = (bankroll * shares[msg.sender]) / totalShares;
+		}
 		return TableDTO({
-			memberShares: shares[msg.sender],
+			memberShares: owned,
 			playerBalance: balances[msg.sender],
-			totalBalance: address(this).balance,
-			totalShares: totalShares
+			totalShares: bankroll,
+			totalBalance: bankroll
 		});
 	}
 
 	function depositShares() public payable {
 		require(msg.value > 0, "Must send some Ether");
 		uint256 previousBalance = address(this).balance - msg.value;
-		uint256 memberShares;
-
-		if (previousBalance == 0) {
-			memberShares = msg.value;
-		} else {
+		uint256 memberShares = msg.value;
+		bool ownsAll = totalShares > 0 && shares[msg.sender] == totalShares;
+		if (totalShares > 0 && previousBalance > 0 && !ownsAll) {
 			memberShares = (msg.value * totalShares) / previousBalance;
 			require(memberShares > 0, "Share calculation resulted in zero");
 		}
@@ -54,10 +62,12 @@ contract Roulette {
 	}
 
 	function withdrawShares() external {
-		require(shares[msg.sender] > 0, "Must have shares to withdraw");
-		payable(msg.sender).transfer(shares[msg.sender]);
-		totalShares -= shares[msg.sender];
+		uint256 memberShares = shares[msg.sender];
+		require(memberShares > 0, "Must have shares to withdraw");
+		uint256 amount = (address(this).balance * memberShares) / totalShares;
+		totalShares -= memberShares;
 		delete shares[msg.sender];
+		payable(msg.sender).transfer(amount);
 	}
 
 	function depositBalance() external payable {

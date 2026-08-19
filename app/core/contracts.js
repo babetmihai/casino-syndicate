@@ -102,7 +102,7 @@ export const getFactory = async () => {
   const signer = await getSigner()
   const code = await getProvider().getCode(VITE_FACTORY_ADDRESS)
   if (code === "0x") {
-    throw new Error("Factory is not deployed. Stay on Localhost 1337 and run npm start")
+    throw new Error("Factory is not deployed. Stay on Localhost 1337 and run npm run chain")
   }
   return new ethers.Contract(VITE_FACTORY_ADDRESS, FactoryArtifact.abi, signer)
 }

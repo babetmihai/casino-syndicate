@@ -17,7 +17,14 @@ export const AppFabs = ({ children, raised }) => {
   )
 }
 
-export const AppFab = ({ label, children, onClick }) => {
+export const AppFab = ({ label, children, onClick, secondary }) => {
+  let variant = "filled"
+  let size = 60
+  if (secondary) {
+    variant = "default"
+    size = 48
+  }
+
   return (
     <Tooltip
       label={label}
@@ -25,9 +32,9 @@ export const AppFab = ({ label, children, onClick }) => {
       withArrow
     >
       <ActionIcon
-        size={60}
+        size={size}
         radius="xl"
-        variant="filled"
+        variant={variant}
         aria-label={label}
         onClick={onClick}
       >

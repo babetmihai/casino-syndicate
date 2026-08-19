@@ -30,9 +30,8 @@ const RouletteGame = React.memo(({ address }) => {
   const { account, balance } = useSelector(() => selectAuth()) || {}
   const { lastSpin, history = [] } = useSelector(() => selectRoulette(address)) || {}
   const { number: winningNumber, winningAmount } = lastSpin || {}
-  const won = lastSpin && Number(winningAmount) > 0
   const showResult = lastSpin && !revealing
-  const canSpin = totalBet > 0 && !revealing
+  const canSpin = totalBet > 0 && !revealing && !showBanner
   let bannerColor = "red"
   if (winningNumber === 0) bannerColor = "green"
   if (_.includes(BLACK_NUMBERS, winningNumber)) bannerColor = "black"
@@ -56,8 +55,10 @@ const RouletteGame = React.memo(({ address }) => {
       return
     }
     setShowBanner(true)
-    pushSpinHistory(address, winningNumber)
-    const timer = _.delay(() => setShowBanner(false), 2500)
+    const timer = _.delay(() => {
+      setShowBanner(false)
+      pushSpinHistory(address, winningNumber)
+    }, 2500)
     return () => clearTimeout(timer)
   }, [showResult, winningNumber])
 
@@ -144,11 +145,6 @@ const RouletteGame = React.memo(({ address }) => {
             <Text size="sm">
               Bet {totalBet} ETH
             </Text>
-            {showResult && won &&
-              <Text size="sm" c="teal">
-                Won {winningAmount} ETH
-              </Text>
-            }
           </div>
           {showBanner &&
             <div className="RouletteGame_bannerLayer">
@@ -163,11 +159,9 @@ const RouletteGame = React.memo(({ address }) => {
                 <Text className="RouletteGame_bannerNumber">
                   {winningNumber}
                 </Text>
-                {won &&
-                  <Text size="sm">
-                    Won {winningAmount} ETH
-                  </Text>
-                }
+                <Text size="sm">
+                  Won {winningAmount} ETH
+                </Text>
               </Card>
             </div>
           }

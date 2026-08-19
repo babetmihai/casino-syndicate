@@ -69,6 +69,10 @@
   background: var(--mantine-color-red-6);
 }
 
+.RouletteGame_historyItem[data-color="black"] {
+  background: var(--mantine-color-gray-7);
+}
+
 .RouletteGame_historyItem.is-latest {
   box-shadow: 0 0 0 0.125rem var(--mantine-color-blue-6);
 }

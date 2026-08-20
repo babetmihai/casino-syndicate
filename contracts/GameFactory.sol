@@ -30,6 +30,7 @@ contract GameFactory {
 
 	function createGame(string calldata name, GameType gameType) external payable returns (address game) {
 		require(msg.value >= 1 ether, "Min deposit 1");
+		require(bytes(name).length > 0, "Name required");
 		if (gameType == GameType.Roulette) {
 			game = address(new Roulette{value: msg.value}(name, msg.sender));
 		} else {
@@ -48,6 +49,16 @@ contract GameFactory {
 		gameIndexesByCreator[msg.sender].push(index);
 		gameIndexByAddress[game] = index + 1;
 		emit GameCreated(game, msg.sender, gameType, name);
+	}
+
+	function setGameName(address game, string calldata name) external {
+		uint256 stored = gameIndexByAddress[game];
+		require(stored > 0, "Unknown game");
+		GameInfo storage info = games[stored - 1];
+		require(info.createdBy == msg.sender, "Only owner");
+		require(bytes(name).length > 0, "Name required");
+		info.name = name;
+		Roulette(game).setName(name);
 	}
 
 	function getGame(address game) external view returns (GameInfo memory) {

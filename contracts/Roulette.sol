@@ -5,6 +5,7 @@ pragma solidity ^0.8.0;
 contract Roulette {
 	string public name;
 	address public createdBy;
+	address public factory;
 	uint256 public createdAt;
 
 	uint256 public totalShares = 0;
@@ -32,8 +33,10 @@ contract Roulette {
 
 	constructor(string memory _name, address _createdBy) payable {
 		require(msg.value >= MIN_DEPOSIT, "Min deposit 1");
+		require(bytes(_name).length > 0, "Name required");
 		name = _name;
 		createdBy = _createdBy;
+		factory = msg.sender;
 		createdAt = block.timestamp;
 		minBet = CHIP;
 		maxBet = msg.value / MAX_BET_DIVISOR;
@@ -57,6 +60,12 @@ contract Roulette {
 			maxBet: maxBet,
 			locked: isLocked(bankroll)
 		});
+	}
+
+	function setName(string calldata _name) external {
+		require(msg.sender == createdBy || msg.sender == factory, "Only owner");
+		require(bytes(_name).length > 0, "Name required");
+		name = _name;
 	}
 
 	function setLimits(uint256 _minBet, uint256 _maxBet) external {

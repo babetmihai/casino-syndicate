@@ -87,6 +87,13 @@ export const createTable = async (values) => {
   await fetchTables()
 }
 
+export const setTableName = async (address, name) => {
+  const factory = await getFactory()
+  const tx = await factory.setGameName(address, name)
+  await tx.wait()
+  await initTable(address)
+}
+
 
 const toTable = ({ game, name, createdBy, createdAt, gameType } = {}) => {
   const address = ethers.getAddress(game)

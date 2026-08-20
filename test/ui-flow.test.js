@@ -266,6 +266,14 @@ describe("UI flow: create, view, play roulette", () => {
     expect(afterSet.minBet).to.equal(ethers.parseEther("0.05"))
     expect(afterSet.maxBet).to.equal(ethers.parseEther("0.5"))
 
+    await (await factory.connect(creator).setGameName(created.args.game, "Night Table")).wait()
+    expect((await factory.getGame(created.args.game)).name).to.equal("Night Table")
+    expect(await roulette.name()).to.equal("Night Table")
+
+    await expect(
+      factory.connect(player).setGameName(created.args.game, "Stolen")
+    ).to.be.revertedWith("Only owner")
+
     await expect(
       roulette.connect(player).setLimits(ethers.parseEther("0.01"), ethers.parseEther("1"))
     ).to.be.revertedWith("Only owner")

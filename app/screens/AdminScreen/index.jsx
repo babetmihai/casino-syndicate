@@ -1,5 +1,5 @@
 import React from "react"
-import { initTable, selectTable, TABLE_TYPES } from "app/core/tables"
+import { initTable, selectTable, setTableName, TABLE_TYPES } from "app/core/tables"
 import { useSelector } from "react-redux"
 import { useParams } from "react-router-dom"
 import { useTranslation } from "react-i18next"
@@ -40,12 +40,21 @@ const AdminScreen = () => {
     let nextMax = tableMaxBet(maxBet, bankroll) || MIN_BET
     if (nextMax > maxCap) nextMax = maxCap || MIN_BET
     showModal(EditTableModal, {
+      name: name || "",
       minBet: clampEth(minBet) || MIN_BET,
       maxBet: nextMax,
       maxCap,
       bankroll,
       onSubmit: async (values) => {
-        await setRouletteLimits(address, values)
+        const { name: nextName, minBet: nextMin, maxBet: nextMaxBet } = values
+        if (nextName !== name) await setTableName(address, nextName)
+        const limitsChanged = nextMin !== (clampEth(minBet) || MIN_BET) || nextMaxBet !== nextMax
+        if (limitsChanged) {
+          await setRouletteLimits(address, {
+            minBet: nextMin,
+            maxBet: nextMaxBet
+          })
+        }
       }
     })
   }

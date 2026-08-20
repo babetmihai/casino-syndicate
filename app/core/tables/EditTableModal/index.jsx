@@ -1,4 +1,4 @@
-import { Button, Group, Modal, NumberInput, Text } from "@mantine/core"
+import { Button, Group, Modal, NumberInput, TextInput, Text } from "@mantine/core"
 import React from "react"
 import { hideModal } from "app/core/modals"
 import { useFormik } from "formik"
@@ -7,14 +7,16 @@ import { useTranslation } from "react-i18next"
 import { MIN_BET, clampEth } from "app/games/roulette/chips"
 
 
-const EditTableModal = ({ onSubmit, minBet, maxBet, maxCap, bankroll }) => {
+const EditTableModal = ({ onSubmit, name, minBet, maxBet, maxCap, bankroll }) => {
   const { t } = useTranslation()
   const formik = useFormik({
     initialValues: {
+      name,
       minBet,
       maxBet
     },
     validationSchema: Yup.object({
+      name: Yup.string().required(t("name_required")),
       minBet: Yup.number().min(MIN_BET, t("balance_required")).max(maxCap, t("balance_required")),
       maxBet: Yup.number().min(MIN_BET, t("balance_required")).max(maxCap, t("balance_required"))
     }),
@@ -22,6 +24,7 @@ const EditTableModal = ({ onSubmit, minBet, maxBet, maxCap, bankroll }) => {
       form.setSubmitting(true)
       try {
         await onSubmit({
+          name: values.name.trim(),
           minBet: clampEth(values.minBet),
           maxBet: clampEth(values.maxBet)
         })
@@ -32,9 +35,10 @@ const EditTableModal = ({ onSubmit, minBet, maxBet, maxCap, bankroll }) => {
     }
   })
 
+  const nextName = (formik.values.name || "").trim()
   const minValue = clampEth(formik.values.minBet)
   const maxValue = clampEth(formik.values.maxBet)
-  const canSave = minValue >= MIN_BET && maxValue >= minValue && maxValue <= maxCap
+  const canSave = nextName && minValue >= MIN_BET && maxValue >= minValue && maxValue <= maxCap
 
   return (
     <Modal
@@ -42,7 +46,16 @@ const EditTableModal = ({ onSubmit, minBet, maxBet, maxCap, bankroll }) => {
       onClose={hideModal}
       title={<Text fw={500}>{t("edit_table")}</Text>}
     >
-      <Text size="sm" c="dimmed" mb="md">
+      <TextInput
+        name="name"
+        label="Table name"
+        data-autofocus
+        value={formik.values.name}
+        onChange={(event) => {
+          formik.setFieldValue("name", event.target.value)
+        }}
+      />
+      <Text size="sm" c="dimmed" mt="md" mb="xs">
         Bankroll {clampEth(bankroll)} ETH. Max cannot exceed 1/100 of the deposit.
       </Text>
       <Group grow align="flex-start">
@@ -55,7 +68,6 @@ const EditTableModal = ({ onSubmit, minBet, maxBet, maxCap, bankroll }) => {
           allowDecimal
           allowNegative={false}
           clampBehavior="strict"
-          data-autofocus
           value={formik.values.minBet}
           onChange={(value) => {
             formik.setFieldValue("minBet", value)

@@ -52,7 +52,7 @@ const RouletteAdmin = ({ address }) => {
   return (
     <div className="flex min-h-0 flex-1 flex-col gap-3 overflow-hidden">
       <div className="flex min-h-0 items-center gap-3">
-        <div className="relative size-24 shrink-0">
+        <div className="relative size-32 shrink-0">
           <svg
             viewBox={`0 0 ${CHART_SIZE} ${CHART_SIZE}`}
             className="block size-full"
@@ -104,16 +104,17 @@ const RouletteAdmin = ({ address }) => {
           </Text>
         }
       </Card>
-      <Card className="flex shrink-0 flex-row items-center justify-between gap-2 py-2">
-        <div className="min-w-0">
+      <Card className="flex shrink-0 flex-row items-center justify-between gap-2 overflow-visible py-2">
+        <div className="min-w-0 flex-1 overflow-hidden">
           <Text size="xs" c="dimmed">Player link</Text>
-          <Text className="overflow-hidden text-ellipsis whitespace-nowrap text-[0.75rem] text-cs-body">
+          <Text className="block overflow-hidden text-ellipsis whitespace-nowrap text-[0.75rem] text-cs-body">
             {tableUrl}
           </Text>
         </div>
         <CopyButton value={tableUrl}>
           {({ copied, copy }) => (
             <Button
+              className="shrink-0"
               variant="subtle"
               color={copied ? "teal" : "gray"}
               onClick={copy}

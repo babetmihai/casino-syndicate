@@ -12,6 +12,7 @@ const HEIGHT = ZERO_H + CELL_H * 12
 const WHEEL = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26]
 const SPIN_MS = 45
 const SLOW_STEPS = 12
+const HOLD_MS = 800
 
 const COLORS = {
   red: "var(--mantine-color-red-6)",
@@ -34,7 +35,8 @@ const RouletteTable = React.memo(({ bets, winningNumber, landingNumber, spinning
 
   React.useEffect(() => {
     if (!spinning) return
-    return runNumberFlash({
+    let holdTimer
+    const stopFlash = runNumberFlash({
       from: litRef.current,
       getWinner: () => landingRef.current,
       onTick: setLitNumber,
@@ -49,9 +51,15 @@ const RouletteTable = React.memo(({ bets, winningNumber, landingNumber, spinning
           dy: Math.sin((i / 6) * Math.PI * 2) * 12
         })))
         _.delay(() => setSparks([]), 360)
-        if (onRevealRef.current) onRevealRef.current()
+        holdTimer = _.delay(() => {
+          if (onRevealRef.current) onRevealRef.current()
+        }, HOLD_MS)
       }
     })
+    return () => {
+      stopFlash()
+      clearTimeout(holdTimer)
+    }
   }, [spinning])
 
   React.useEffect(() => {

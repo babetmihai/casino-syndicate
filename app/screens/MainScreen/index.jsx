@@ -12,7 +12,7 @@ import history from "app/core/history"
 import _ from "lodash"
 import { selectAuth } from "app/core/auth"
 import { ethers } from "ethers"
-import { GearIcon, PlusIcon, WalletIcon } from "@phosphor-icons/react"
+import { GearIcon, PlusIcon, PokerChipIcon, WalletIcon } from "@phosphor-icons/react"
 import { AppFab } from "app/components/AppFabs"
 
 
@@ -63,14 +63,26 @@ const MainScreen = () => {
     >
       <div className="MainScreen_content">
         {!account &&
-          <Text c="dimmed" ta="center" py="xl">
-            Connect a wallet to create and manage tables.
-          </Text>
+          <div className="MainScreen_empty">
+            <div className="MainScreen_empty_icon">
+              <WalletIcon size={32} />
+            </div>
+            <Text fw={500} size="lg">Connect a wallet</Text>
+            <Text c="dimmed" size="sm">
+              Connect to create and manage tables.
+            </Text>
+          </div>
         }
         {account && isEmpty &&
-          <Text c="dimmed" ta="center" py="xl">
-            No tables yet.
-          </Text>
+          <div className="MainScreen_empty">
+            <div className="MainScreen_empty_icon">
+              <PokerChipIcon size={32} />
+            </div>
+            <Text fw={500} size="lg">No tables yet</Text>
+            <Text c="dimmed" size="sm">
+              Create a table to start hosting games.
+            </Text>
+          </div>
         }
         <div className="MainScreen_tables">
           {ownedTables.map((table) => (

@@ -24,7 +24,7 @@ const AuthMenu = () => {
     <Menu position="bottom-end" shadow="md">
       <Menu.Target>
         <UnstyledButton className="AuthMenu_target" aria-label="Account">
-          <Avatar size="lg" radius="xl" color="indigo">
+          <Avatar size="md" radius="xl" color="indigo">
             {initials}
           </Avatar>
         </UnstyledButton>

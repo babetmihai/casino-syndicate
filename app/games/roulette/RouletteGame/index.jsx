@@ -25,7 +25,6 @@ const RouletteGame = React.memo(({ address }) => {
   const [landingNumber, setLandingNumber] = React.useState(null)
   const [showBanner, setShowBanner] = React.useState(false)
   const historyRef = React.useRef(null)
-  const historyDrag = React.useRef({ active: false, x: 0, left: 0 })
   const totalBet = _.sum(bets)
   const { account, balance } = useSelector(() => selectAuth()) || {}
   const { lastSpin, history = [] } = useSelector(() => selectRoulette(address)) || {}
@@ -65,7 +64,7 @@ const RouletteGame = React.memo(({ address }) => {
   React.useEffect(() => {
     const node = historyRef.current
     if (!node) return
-    node.scrollLeft = node.scrollWidth
+    node.scrollTop = 0
   }, [history])
 
   const addBet = (number) => {
@@ -83,34 +82,16 @@ const RouletteGame = React.memo(({ address }) => {
         <div
           ref={historyRef}
           className="RouletteGame_history"
-          onPointerDown={(event) => {
-            const node = historyRef.current
-            if (!node) return
-            historyDrag.current = { active: true, x: event.clientX, left: node.scrollLeft }
-            node.setPointerCapture(event.pointerId)
-          }}
-          onPointerMove={(event) => {
-            if (!historyDrag.current.active) return
-            const node = historyRef.current
-            if (!node) return
-            node.scrollLeft = historyDrag.current.left - (event.clientX - historyDrag.current.x)
-          }}
-          onPointerUp={() => {
-            historyDrag.current.active = false
-          }}
-          onPointerCancel={() => {
-            historyDrag.current.active = false
-          }}
         >
-          {history.map((number, index) => {
+          {_.map(_.reverse([...history]), (number, index) => {
             let color = "red"
             if (number === 0) color = "green"
             if (_.includes(BLACK_NUMBERS, number)) color = "black"
             let className = "RouletteGame_historyItem"
-            if (index === history.length - 1) className = "RouletteGame_historyItem is-latest"
+            if (index === 0) className = "RouletteGame_historyItem is-latest"
             return (
               <div
-                key={`${index}-${number}`}
+                key={`${history.length - 1 - index}-${number}`}
                 className={className}
                 data-color={color}
               >

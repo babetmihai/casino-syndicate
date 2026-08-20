@@ -13,11 +13,26 @@
 }
 
 .MainScreen_empty {
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.75rem;
+  justify-content: center;
+  gap: 0.5rem;
   padding: 2.5rem 0.75rem;
+  text-align: center;
+}
+
+.MainScreen_empty_icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 4.5rem;
+  height: 4.5rem;
+  margin-bottom: 0.25rem;
+  border-radius: 50%;
+  background: var(--mantine-color-indigo-0);
+  color: var(--mantine-color-indigo-5);
 }
 
 .MainScreen_tables {

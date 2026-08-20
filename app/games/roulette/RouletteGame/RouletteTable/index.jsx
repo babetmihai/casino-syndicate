@@ -2,14 +2,17 @@ import React from "react"
 import "./index.scss"
 import _ from "lodash"
 import { CHIP_COLORS, toChips } from "../../chips"
+import { BLACK_NUMBERS, OUTSIDE, betWins } from "../../bets"
 
-export const BLACK_NUMBERS = [2, 4, 6, 8, 10, 11, 13, 15, 17, 20, 22, 24, 26, 28, 29, 31, 33, 35]
 const CELL_W = 84
 const CELL_H = 56
-const ZERO_H = 64
-const WIDTH = CELL_W * 3
-const HEIGHT = CELL_H * 12 + ZERO_H
-export const WHEEL = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26]
+const ZERO_H = CELL_H
+const DOZEN_W = 76
+const EVEN_W = 76
+const COL_H = 56
+const WIDTH = CELL_W * 3 + DOZEN_W + EVEN_W
+const HEIGHT = ZERO_H + CELL_H * 12 + COL_H
+const WHEEL = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26]
 const SPIN_MS = 45
 const SLOW_STEPS = 22
 const HOLD_MS = 700
@@ -18,12 +21,54 @@ const COLORS = {
   red: "var(--mantine-color-red-6)",
   black: "var(--mantine-color-gray-7)",
   green: "var(--mantine-color-teal-6)",
+  outside: "var(--mantine-color-white)",
+  outsideText: "var(--mantine-color-dark-6)",
   winner: "var(--mantine-color-indigo-6)",
   text: "var(--mantine-color-white)"
 }
 
+const numberLayout = (number) => {
+  if (number === 0) {
+    return { x: 0, y: 0, w: CELL_W * 3, h: ZERO_H, color: COLORS.green }
+  }
+  const col = 2 - ((number - 1) % 3)
+  const row = Math.floor((number - 1) / 3)
+  let color = COLORS.red
+  if (_.includes(BLACK_NUMBERS, number)) color = COLORS.black
+  return {
+    x: col * CELL_W,
+    y: ZERO_H + row * CELL_H,
+    w: CELL_W,
+    h: CELL_H,
+    color
+  }
+}
 
-const RouletteTable = React.memo(({ bets, winningNumber, landingNumber, spinning, onNumberClick, onReveal, onLitNumber }) => {
+const outsideSpot = { color: COLORS.outside, labelFill: COLORS.outsideText, fontSize: 14 }
+
+const SPOTS = [
+  ..._.range(37).map((number) => {
+    const layout = numberLayout(number)
+    let fontSize = 16
+    if (number === 0) fontSize = 22
+    return { index: number, ...layout, label: String(number), fontSize }
+  }),
+  { index: OUTSIDE.DOZEN_1, x: CELL_W * 3, y: ZERO_H, w: DOZEN_W, h: CELL_H * 4, label: "1-12", ...outsideSpot },
+  { index: OUTSIDE.DOZEN_2, x: CELL_W * 3, y: ZERO_H + CELL_H * 4, w: DOZEN_W, h: CELL_H * 4, label: "13-24", ...outsideSpot },
+  { index: OUTSIDE.DOZEN_3, x: CELL_W * 3, y: ZERO_H + CELL_H * 8, w: DOZEN_W, h: CELL_H * 4, label: "25-36", ...outsideSpot },
+  { index: OUTSIDE.LOW, x: CELL_W * 3 + DOZEN_W, y: ZERO_H, w: EVEN_W, h: CELL_H * 2, label: "1-18", ...outsideSpot },
+  { index: OUTSIDE.EVEN, x: CELL_W * 3 + DOZEN_W, y: ZERO_H + CELL_H * 2, w: EVEN_W, h: CELL_H * 2, label: "Even", ...outsideSpot },
+  { index: OUTSIDE.RED, x: CELL_W * 3 + DOZEN_W, y: ZERO_H + CELL_H * 4, w: EVEN_W, h: CELL_H * 2, label: "Red", color: COLORS.red, fontSize: 14 },
+  { index: OUTSIDE.BLACK, x: CELL_W * 3 + DOZEN_W, y: ZERO_H + CELL_H * 6, w: EVEN_W, h: CELL_H * 2, label: "Black", color: COLORS.black, fontSize: 14 },
+  { index: OUTSIDE.ODD, x: CELL_W * 3 + DOZEN_W, y: ZERO_H + CELL_H * 8, w: EVEN_W, h: CELL_H * 2, label: "Odd", ...outsideSpot },
+  { index: OUTSIDE.HIGH, x: CELL_W * 3 + DOZEN_W, y: ZERO_H + CELL_H * 10, w: EVEN_W, h: CELL_H * 2, label: "19-36", ...outsideSpot },
+  { index: OUTSIDE.COL_3, x: 0, y: ZERO_H + CELL_H * 12, w: CELL_W, h: COL_H, label: "2:1", ...outsideSpot, fontSize: 15 },
+  { index: OUTSIDE.COL_2, x: CELL_W, y: ZERO_H + CELL_H * 12, w: CELL_W, h: COL_H, label: "2:1", ...outsideSpot, fontSize: 15 },
+  { index: OUTSIDE.COL_1, x: CELL_W * 2, y: ZERO_H + CELL_H * 12, w: CELL_W, h: COL_H, label: "2:1", ...outsideSpot, fontSize: 15 }
+]
+
+
+const RouletteTable = React.memo(({ bets, winningNumber, landingNumber, spinning, onSpotClick, onReveal }) => {
   const landingRef = React.useRef(landingNumber)
   const onRevealRef = React.useRef(onReveal)
   const litRef = React.useRef(winningNumber)
@@ -38,10 +83,7 @@ const RouletteTable = React.memo(({ bets, winningNumber, landingNumber, spinning
     const stopFlash = runNumberFlash({
       from: litRef.current,
       getWinner: () => landingRef.current,
-      onTick: (number, delay) => {
-        setLitNumber(number)
-        onLitNumber(number, delay)
-      },
+      onTick: setLitNumber,
       onDone: (winner) => {
         setLitNumber(winner)
         holdTimer = _.delay(() => {
@@ -59,34 +101,33 @@ const RouletteTable = React.memo(({ bets, winningNumber, landingNumber, spinning
     if (spinning) return
     if (winningNumber == null) return
     setLitNumber(winningNumber)
-    onLitNumber(winningNumber)
   }, [spinning, winningNumber])
 
   return (
     <svg
       className="RouletteTable_svg"
       viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
-      preserveAspectRatio="xMidYMax meet"
+      preserveAspectRatio="xMidYMid meet"
       role="img"
       aria-label="Roulette table"
     >
-      {_.range(37).map((number) => {
-        const { x, y, w, h, color } = spotLayout(number)
-        const winner = !spinning && litNumber === number
-        const flash = spinning && litNumber === number
+      {SPOTS.map((spot) => {
+        const { index, x, y, w, h, color, label, fontSize, labelFill = COLORS.text } = spot
+        const winner = !spinning && betWins(index, litNumber)
+        const flash = spinning && index < 37 && litNumber === index
         let className = "RouletteTable_spot"
-        if (flash) className = "RouletteTable_spot is-flash"
-        if (winner) className = "RouletteTable_spot is-winner"
+        if (index >= 37) className = "RouletteTable_spot is-outside"
+        if (flash) className = `${className} is-flash`
+        if (winner) className = `${className} is-winner`
+        if (bets[index] > 0) className = `${className} is-bet`
         let fill = color
         if (flash) fill = COLORS.winner
-        const chips = toChips(bets[number] || 0).slice(-4)
-        let fontSize = 15
-        if (number === 0) fontSize = 18
+        const chips = toChips(bets[index] || 0).slice(-4)
         return (
           <g
-            key={number}
+            key={index}
             className={className}
-            onClick={() => onNumberClick(number)}
+            onClick={() => onSpotClick(index)}
           >
             <rect
               className="RouletteTable_spotBody"
@@ -102,26 +143,26 @@ const RouletteTable = React.memo(({ bets, winningNumber, landingNumber, spinning
               className="RouletteTable_spotLabel"
               x={x + w / 2}
               y={y + h / 2 + 1}
-              fill={COLORS.text}
+              fill={labelFill}
               fontSize={fontSize}
               textAnchor="middle"
               dominantBaseline="middle"
             >
-              {number}
+              {label}
             </text>
-            {chips.map((value, index) => (
+            {chips.map((value, chipIndex) => (
               <g
-                key={`${index}-${value}`}
+                key={`${chipIndex}-${value}`}
                 className="RouletteTable_chipWrap"
-                transform={`translate(${x + w / 2 + (index - 1.5) * 4}, ${y + h / 2 - index * 3})`}
+                transform={`translate(${x + w / 2 + (chipIndex - 1.5) * 4}, ${y + h / 2 - chipIndex * 3})`}
               >
                 <g className="RouletteTable_chip">
-                  <circle r={16} fill={CHIP_COLORS[value].fill} />
-                  <circle r={12.5} fill="none" stroke={CHIP_COLORS[value].stroke} strokeWidth={1.6} />
+                  <circle r={14} fill={CHIP_COLORS[value].fill} />
+                  <circle r={11} fill="none" stroke={CHIP_COLORS[value].stroke} strokeWidth={1.5} />
                   <text
                     className="RouletteTable_chipValue"
                     fill={CHIP_COLORS[value].text}
-                    fontSize={12}
+                    fontSize={11}
                     textAnchor="middle"
                     dy="0.35em"
                   >
@@ -139,23 +180,6 @@ const RouletteTable = React.memo(({ bets, winningNumber, landingNumber, spinning
 
 export default RouletteTable
 
-
-const spotLayout = (number) => {
-  if (number === 0) {
-    return { x: 0, y: CELL_H * 12, w: CELL_W * 3, h: ZERO_H, color: COLORS.green }
-  }
-  const col = 2 - ((number - 1) % 3)
-  const row = Math.floor((number - 1) / 3)
-  let color = COLORS.red
-  if (BLACK_NUMBERS.includes(number)) color = COLORS.black
-  return {
-    x: col * CELL_W,
-    y: (11 - row) * CELL_H,
-    w: CELL_W,
-    h: CELL_H,
-    color
-  }
-}
 
 const runNumberFlash = ({ from, getWinner, onTick, onDone }) => {
   let timer

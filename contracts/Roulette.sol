@@ -96,13 +96,13 @@ contract Roulette {
 		delete balances[msg.sender];
 	}
 
-	function postBet(uint256[37] memory _bets) external payable {
+	// 0-36 straight, 37 red, 38 black, 39 even, 40 odd, 41 1-18, 42 19-36, 43-45 dozens, 46-48 columns
+	function postBet(uint256[49] memory _bets) external payable {
 		uint256 randomNumber = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender))) % 37;
 		uint256 totalBetAmount = 0;
-		uint256 winningAmount = 0;
 		uint256 maxBetAmount = 100 ether;
 
-		for (uint256 i = 0; i < 37; i++) {
+		for (uint256 i = 0; i < 49; i++) {
 			totalBetAmount += _bets[i];
 			if (_bets[i] > maxBetAmount) {
 				revert("Bet amount must be less than maxBetAmount");
@@ -112,9 +112,42 @@ contract Roulette {
 		require(totalBetAmount > 0, "Must bet some Ether");
 		require(msg.value == totalBetAmount, "Total bet amount must equal sent Ether");
 
-		if (_bets[randomNumber] > 0) {
-			winningAmount = _bets[randomNumber] * 36;
-			require(address(this).balance >= winningAmount, "Table cannot cover this win");
+		uint256 winningAmount = _bets[randomNumber] * 36;
+		if (randomNumber != 0) {
+			if (((uint256(0x154aad52aa) >> randomNumber) & 1) == 1) {
+				winningAmount += _bets[37] * 2;
+			} else {
+				winningAmount += _bets[38] * 2;
+			}
+			if (randomNumber % 2 == 0) {
+				winningAmount += _bets[39] * 2;
+			} else {
+				winningAmount += _bets[40] * 2;
+			}
+			if (randomNumber <= 18) {
+				winningAmount += _bets[41] * 2;
+			} else {
+				winningAmount += _bets[42] * 2;
+			}
+			if (randomNumber <= 12) {
+				winningAmount += _bets[43] * 3;
+			} else if (randomNumber <= 24) {
+				winningAmount += _bets[44] * 3;
+			} else {
+				winningAmount += _bets[45] * 3;
+			}
+			uint256 col = randomNumber % 3;
+			if (col == 0) {
+				winningAmount += _bets[46] * 3;
+			} else if (col == 2) {
+				winningAmount += _bets[47] * 3;
+			} else {
+				winningAmount += _bets[48] * 3;
+			}
+		}
+
+		require(address(this).balance >= winningAmount, "Table cannot cover this win");
+		if (winningAmount > 0) {
 			payable(msg.sender).transfer(winningAmount);
 		}
 

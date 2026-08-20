@@ -4,6 +4,7 @@
   max-width: 100%;
   max-height: 100%;
   display: block;
+  overflow: visible;
   touch-action: manipulation;
   user-select: none;
   -webkit-tap-highlight-color: transparent;
@@ -13,19 +14,29 @@
   cursor: pointer;
 }
 
-.RouletteTable_spotBody {
-  stroke: var(--mantine-color-gray-2);
-  stroke-width: 1;
+.RouletteTable_spot.is-bet {
+  filter: drop-shadow(0 0.125rem 0.25rem color-mix(in srgb, var(--mantine-color-dark-9) 28%, transparent));
 }
 
-.RouletteTable_spot:hover .RouletteTable_spotBody {
-  stroke: var(--mantine-color-indigo-6);
+.RouletteTable_spotBody {
+  stroke: var(--mantine-color-gray-5);
+  stroke-width: 2px;
+  vector-effect: non-scaling-stroke;
+}
+
+.RouletteTable_spot.is-outside .RouletteTable_spotBody {
+  stroke: var(--mantine-color-gray-4);
+  stroke-width: 1px;
 }
 
 .RouletteTable_spot.is-flash .RouletteTable_spotBody,
 .RouletteTable_spot.is-winner .RouletteTable_spotBody {
   stroke: var(--mantine-color-indigo-6);
-  stroke-width: 2;
+  stroke-width: 3px;
+}
+
+.RouletteTable_spot.is-outside.is-winner .RouletteTable_spotBody {
+  stroke-width: 1.5px;
 }
 
 .RouletteTable_spot.is-flash .RouletteTable_spotBody {
@@ -46,10 +57,10 @@
 
 @keyframes numberFlash {
   from {
-    stroke-width: 1;
+    stroke-width: 2px;
   }
   to {
-    stroke-width: 2;
+    stroke-width: 3px;
   }
 }
 

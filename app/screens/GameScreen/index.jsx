@@ -21,11 +21,11 @@ const GameScreen = () => {
     initTable(address)
   }, [address])
 
-  const { name, type } = table || {}
+  const { type } = table || {}
 
   return (
     <AppScreen
-      name={name || type}
+      name={type}
       fabs={!account && (
         <AppFab
           label="Connect"

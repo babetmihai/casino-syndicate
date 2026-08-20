@@ -78,7 +78,7 @@ describe("UI flow: create, view, play roulette", () => {
     expect(afterTopUp.memberShares).to.equal(ethers.parseEther("102"))
     expect(afterTopUp.totalShares).to.equal(ethers.parseEther("102"))
 
-    const bets = Array(37).fill(0n)
+    const bets = Array(49).fill(0n)
     bets[0] = ethers.parseEther("1")
     const betTx = await roulette.connect(player).postBet(bets, { value: ethers.parseEther("1") })
     const betReceipt = await betTx.wait()
@@ -117,7 +117,8 @@ describe("UI flow: create, view, play roulette", () => {
       .find((parsed) => parsed && parsed.name === "GameCreated")
     const roulette = await ethers.getContractAt("Roulette", created.args.game)
 
-    const bets = Array(37).fill(ethers.parseEther("1"))
+    const bets = Array(49).fill(0n)
+    for (let i = 0; i < 37; i++) bets[i] = ethers.parseEther("1")
     await (await roulette.connect(player).postBet(bets, { value: ethers.parseEther("37") })).wait()
 
     const afterBet = await roulette.connect(creator).getTable()
@@ -129,5 +130,51 @@ describe("UI flow: create, view, play roulette", () => {
     expect(afterFund.totalBalance).to.equal(ethers.parseEther("111"))
     expect(afterFund.memberShares).to.equal(ethers.parseEther("111"))
     expect(afterFund.totalShares).to.equal(ethers.parseEther("111"))
+  })
+
+  it("pays even-money and dozen bets from the winning number", async () => {
+    const [creator, player] = await ethers.getSigners()
+    const Factory = await ethers.getContractFactory("GameFactory")
+    const factory = await Factory.deploy()
+    await factory.waitForDeployment()
+    const createTx = await factory.connect(creator).createGame("Outside Table", TABLE_TYPE_IDS.Roulette, {
+      value: ethers.parseEther("100")
+    })
+    const receipt = await createTx.wait()
+    const created = receipt.logs
+      .map((log) => {
+        try {
+          return factory.interface.parseLog(log)
+        } catch {
+          return null
+        }
+      })
+      .find((parsed) => parsed && parsed.name === "GameCreated")
+    const roulette = await ethers.getContractAt("Roulette", created.args.game)
+
+    const red = [1, 3, 5, 7, 9, 12, 14, 16, 18, 19, 21, 23, 25, 27, 30, 32, 34, 36]
+    const bets = Array(49).fill(0n)
+    bets[37] = ethers.parseEther("1")
+    bets[43] = ethers.parseEther("1")
+    const betTx = await roulette.connect(player).postBet(bets, { value: ethers.parseEther("2") })
+    const betReceipt = await betTx.wait()
+    const winEvent = betReceipt.logs
+      .map((log) => {
+        try {
+          return roulette.interface.parseLog(log)
+        } catch {
+          return null
+        }
+      })
+      .find((parsed) => parsed && parsed.name === "WinningNumber")
+
+    const n = Number(winEvent.args.number)
+    let expected = 0n
+    if (n !== 0) {
+      if (red.includes(n)) expected += ethers.parseEther("2")
+      if (n <= 12) expected += ethers.parseEther("3")
+    }
+    expect(winEvent.args.totalBetAmount).to.equal(ethers.parseEther("2"))
+    expect(winEvent.args.winningAmount).to.equal(expected)
   })
 })

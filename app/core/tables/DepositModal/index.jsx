@@ -7,6 +7,7 @@ import { useTranslation } from "react-i18next"
 import { MIN_BET, clampEth } from "app/games/roulette/chips"
 import { useSelector } from "react-redux"
 import { selectNativeSymbol } from "app/core/chain"
+import { cn } from "app/core"
 
 
 const DepositModal = ({ onSubmit }) => {
@@ -34,11 +35,14 @@ const DepositModal = ({ onSubmit }) => {
 
   return (
     <Modal
+      className={cn("deposit-modal")}
+      classNames={{ content: cn("deposit-modal-content"), body: cn("deposit-modal-body") }}
       opened
       onClose={hideModal}
-      title={<Text fw={500}>{t("fund_table")}</Text>}
+      title={<Text className={cn("deposit-modal-title")} fw={500}>{t("fund_table")}</Text>}
     >
       <NumberInput
+        className={cn("deposit-modal-amount")}
         label={`Amount (${symbol})`}
         min={MIN_BET}
         step={0.01}
@@ -51,8 +55,9 @@ const DepositModal = ({ onSubmit }) => {
           formik.setFieldValue("balance", value)
         }}
       />
-      <Group justify="flex-end" gap="sm" mt="md">
+      <Group className={cn("deposit-modal-actions")} justify="flex-end" gap="sm" mt="md">
         <Button
+          className={cn("deposit-modal-cancel")}
           variant="subtle"
           color="gray"
           onClick={hideModal}
@@ -60,6 +65,7 @@ const DepositModal = ({ onSubmit }) => {
           {t("cancel")}
         </Button>
         <Button
+          className={cn("deposit-modal-submit")}
           loading={formik.isSubmitting}
           onClick={formik.handleSubmit}
         >

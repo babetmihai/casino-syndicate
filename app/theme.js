@@ -47,6 +47,9 @@ export const theme = createTheme({
       defaultProps: {
         size: "sm"
       },
+      classNames: {
+        root: "button"
+      },
       styles: {
         root: {
           fontFamily: "JetBrains Mono, ui-monospace, monospace",
@@ -60,12 +63,25 @@ export const theme = createTheme({
       defaultProps: {
         variant: "subtle",
         color: "gray"
+      },
+      classNames: {
+        root: "action-icon"
       }
     },
     Modal: {
       defaultProps: {
         centered: true,
         radius: "md"
+      },
+      classNames: {
+        root: "modal",
+        inner: "modal-inner",
+        content: "modal-content",
+        header: "modal-header",
+        title: "modal-title",
+        body: "modal-body",
+        overlay: "modal-overlay",
+        close: "modal-close"
       },
       styles: {
         header: {
@@ -83,6 +99,36 @@ export const theme = createTheme({
         radius: "md",
         padding: "md",
         withBorder: true
+      },
+      classNames: {
+        root: "card"
+      }
+    },
+    Text: {
+      classNames: {
+        root: "text"
+      }
+    },
+    TextInput: {
+      classNames: {
+        root: "text-input",
+        label: "text-input-label",
+        input: "text-input-field"
+      }
+    },
+    NumberInput: {
+      classNames: {
+        root: "number-input",
+        label: "number-input-label",
+        input: "number-input-field",
+        controls: "number-input-controls"
+      }
+    },
+    Menu: {
+      classNames: {
+        dropdown: "menu-dropdown",
+        item: "menu-item",
+        label: "menu-label"
       }
     }
   }

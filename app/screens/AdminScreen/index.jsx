@@ -5,7 +5,7 @@ import { useParams } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import RouletteAdmin from "app/games/roulette/RouletteAdmin"
 import { buyTableShares, selectRoulette, setRouletteLimits, withdrawTableShares } from "app/games/roulette"
-import { clampEth, maxBetCap, MIN_BET, tableMaxBet } from "app/games/roulette/chips"
+import { clampEth, MIN_BET, tableMaxBet } from "app/games/roulette/chips"
 import AppScreen from "app/components/AppScreen"
 import history from "app/core/history"
 import { fetchBalance, selectAuth } from "app/core/auth"
@@ -24,7 +24,7 @@ const AdminScreen = () => {
   const { account } = useSelector(() => selectAuth()) || {}
   const table = useSelector(() => selectTable(address))
   const roulette = useSelector(() => selectRoulette(address)) || {}
-  const { memberShares, minBet, maxBet, totalBalance } = roulette
+  const { memberShares, minBet, maxBet, lastWithdrawAt } = roulette
   const { name, type, createdBy } = table || {}
   const hasShare = clampEth(memberShares) > 0
   const isOwner = createdBy && account && ethers.getAddress(createdBy) === ethers.getAddress(account)
@@ -35,16 +35,11 @@ const AdminScreen = () => {
   }, [address])
 
   const openEdit = () => {
-    const bankroll = clampEth(totalBalance)
-    const maxCap = maxBetCap(bankroll)
-    let nextMax = tableMaxBet(maxBet, bankroll) || MIN_BET
-    if (nextMax > maxCap) nextMax = maxCap || MIN_BET
+    const nextMax = tableMaxBet(maxBet)
     showModal(EditTableModal, {
       name: name || "",
       minBet: clampEth(minBet) || MIN_BET,
       maxBet: nextMax,
-      maxCap,
-      bankroll,
       onSubmit: async (values) => {
         const { name: nextName, minBet: nextMin, maxBet: nextMaxBet } = values
         if (nextName !== name) await setTableName(address, nextName)
@@ -68,8 +63,7 @@ const AdminScreen = () => {
 
   const openWithdraw = () => showModal(WithdrawModal, {
     max: clampEth(memberShares),
-    bankroll: clampEth(totalBalance),
-    maxBet,
+    lastWithdrawAt,
     onSubmit: async ({ balance }) => {
       await withdrawTableShares({ balance }, address)
       await fetchBalance(account)
@@ -78,17 +72,18 @@ const AdminScreen = () => {
 
   return (
     <AppScreen>
-      <div className="mx-auto flex min-h-0 w-full max-w-[42rem] flex-1 flex-col overflow-hidden px-3 py-3">
-        <div className={labelClass}>Table</div>
-        <h1 className={cn(titleClass, "mt-1 mb-3 truncate text-xl")}>
+      <div className={cn("admin-screen", "mx-auto flex min-h-0 w-full max-w-[42rem] flex-1 flex-col overflow-hidden px-3 py-3")}>
+        <div className={cn("admin-label", labelClass)}>Table</div>
+        <h1 className={cn("admin-title", titleClass, "mt-1 mb-3 truncate text-xl")}>
           {name || "Manage"}
         </h1>
-        <div className="mb-3 flex shrink-0 flex-wrap gap-2">
-          <Button onClick={() => history.push(`/tables/${address}`)}>
+        <div className={cn("admin-actions", "mb-3 flex shrink-0 flex-wrap gap-2")}>
+          <Button className={cn("admin-play")} onClick={() => history.push(`/tables/${address}`)}>
             Play
           </Button>
           {isOwner &&
             <Button
+              className={cn("admin-edit")}
               variant="outline"
               color="gray"
               onClick={openEdit}
@@ -98,6 +93,7 @@ const AdminScreen = () => {
           }
           {account &&
             <Button
+              className={cn("admin-deposit")}
               variant="outline"
               color="gray"
               onClick={openDeposit}
@@ -107,6 +103,7 @@ const AdminScreen = () => {
           }
           {hasShare &&
             <Button
+              className={cn("admin-withdraw")}
               variant="outline"
               color="gray"
               onClick={openWithdraw}

@@ -4,6 +4,7 @@ import { hideModal } from "../../modals"
 import { useTranslation } from "react-i18next"
 import { login } from ".."
 import { chainFromId, targetChainId } from "app/core/chain"
+import { cn } from "app/core"
 
 
 const AuthModal = () => {
@@ -11,15 +12,18 @@ const AuthModal = () => {
   const { name } = chainFromId(targetChainId())
   return (
     <Modal
+      className={cn("auth-modal")}
+      classNames={{ content: cn("auth-modal-content"), body: cn("auth-modal-body") }}
       opened
       onClose={hideModal}
-      title={<Text fw={500}>{t("connect_wallet")}</Text>}
+      title={<Text className={cn("auth-modal-title")} fw={500}>{t("connect_wallet")}</Text>}
     >
-      <Text size="sm" c="dimmed" mb="md">
+      <Text className={cn("auth-modal-copy")} size="sm" c="dimmed" mb="md">
         Use MetaMask on {name}.
       </Text>
-      <Group justify="flex-end" gap="sm">
+      <Group className={cn("auth-modal-actions")} justify="flex-end" gap="sm">
         <Button
+          className={cn("auth-modal-cancel")}
           variant="subtle"
           color="gray"
           onClick={hideModal}
@@ -27,6 +31,7 @@ const AuthModal = () => {
           {t("cancel")}
         </Button>
         <Button
+          className={cn("auth-modal-metamask")}
           onClick={async () => {
             await login()
             hideModal()

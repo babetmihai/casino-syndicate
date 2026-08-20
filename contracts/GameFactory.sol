@@ -28,11 +28,11 @@ contract GameFactory {
 		string name
 	);
 
-	function createGame(string calldata name, GameType gameType) external payable returns (address game) {
+	function createGame(string calldata name, GameType gameType, uint256 minBet, uint256 maxBet) external payable returns (address game) {
 		require(msg.value >= 1 ether, "Min deposit 1");
 		require(bytes(name).length > 0, "Name required");
 		if (gameType == GameType.Roulette) {
-			game = address(new Roulette{value: msg.value}(name, msg.sender));
+			game = address(new Roulette{value: msg.value}(name, msg.sender, minBet, maxBet));
 		} else {
 			revert("Unsupported game type");
 		}

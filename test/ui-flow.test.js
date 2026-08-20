@@ -24,9 +24,15 @@ describe("UI flow: create, view, play roulette", () => {
     const factory = await Factory.deploy()
     await factory.waitForDeployment()
 
-    const createTx = await factory.connect(creator).createGame("Test Table", TABLE_TYPE_IDS.Roulette, {
-      value: ethers.parseEther("100")
-    })
+    const createTx = await factory.connect(creator).createGame(
+      "Test Table",
+      TABLE_TYPE_IDS.Roulette,
+      ethers.parseEther("0.01"),
+      ethers.parseEther("1"),
+      {
+        value: ethers.parseEther("100")
+      }
+    )
     const receipt = await createTx.wait()
 
     let createdAddress
@@ -106,9 +112,15 @@ describe("UI flow: create, view, play roulette", () => {
     const factory = await Factory.deploy()
     await factory.waitForDeployment()
 
-    const createTx = await factory.connect(creator).createGame("Bankroll Table", TABLE_TYPE_IDS.Roulette, {
-      value: ethers.parseEther("100")
-    })
+    const createTx = await factory.connect(creator).createGame(
+      "Bankroll Table",
+      TABLE_TYPE_IDS.Roulette,
+      ethers.parseEther("0.01"),
+      ethers.parseEther("1"),
+      {
+        value: ethers.parseEther("100")
+      }
+    )
     const receipt = await createTx.wait()
     const created = receipt.logs
       .map((log) => {
@@ -141,9 +153,15 @@ describe("UI flow: create, view, play roulette", () => {
     const Factory = await ethers.getContractFactory("GameFactory")
     const factory = await Factory.deploy()
     await factory.waitForDeployment()
-    const createTx = await factory.connect(creator).createGame("Outside Table", TABLE_TYPE_IDS.Roulette, {
-      value: ethers.parseEther("100")
-    })
+    const createTx = await factory.connect(creator).createGame(
+      "Outside Table",
+      TABLE_TYPE_IDS.Roulette,
+      ethers.parseEther("0.01"),
+      ethers.parseEther("1"),
+      {
+        value: ethers.parseEther("100")
+      }
+    )
     const receipt = await createTx.wait()
     const created = receipt.logs
       .map((log) => {
@@ -187,9 +205,15 @@ describe("UI flow: create, view, play roulette", () => {
     const Factory = await ethers.getContractFactory("GameFactory")
     const factory = await Factory.deploy()
     await factory.waitForDeployment()
-    const createTx = await factory.connect(creator).createGame("Inside Table", TABLE_TYPE_IDS.Roulette, {
-      value: ethers.parseEther("100")
-    })
+    const createTx = await factory.connect(creator).createGame(
+      "Inside Table",
+      TABLE_TYPE_IDS.Roulette,
+      ethers.parseEther("0.01"),
+      ethers.parseEther("1"),
+      {
+        value: ethers.parseEther("100")
+      }
+    )
     const receipt = await createTx.wait()
     const created = receipt.logs
       .map((log) => {
@@ -234,14 +258,20 @@ describe("UI flow: create, view, play roulette", () => {
     expect(winEvent.args.winningAmount).to.equal(expected)
   })
 
-  it("lets the owner set min and max within the bankroll", async () => {
+  it("sets min and max when the table is created", async () => {
     const [creator, player] = await ethers.getSigners()
     const Factory = await ethers.getContractFactory("GameFactory")
     const factory = await Factory.deploy()
     await factory.waitForDeployment()
-    const createTx = await factory.connect(creator).createGame("Limits Table", TABLE_TYPE_IDS.Roulette, {
-      value: ethers.parseEther("100")
-    })
+    const createTx = await factory.connect(creator).createGame(
+      "Limits Table",
+      TABLE_TYPE_IDS.Roulette,
+      ethers.parseEther("0.05"),
+      ethers.parseEther("0.5"),
+      {
+        value: ethers.parseEther("100")
+      }
+    )
     const receipt = await createTx.wait()
     const created = receipt.logs
       .map((log) => {
@@ -255,16 +285,34 @@ describe("UI flow: create, view, play roulette", () => {
     const roulette = await ethers.getContractAt("Roulette", created.args.game)
 
     const afterCreate = await roulette.connect(creator).getTable()
-    expect(afterCreate.minBet).to.equal(ethers.parseEther("0.01"))
-    expect(afterCreate.maxBet).to.equal(ethers.parseEther("1"))
+    expect(afterCreate.minBet).to.equal(ethers.parseEther("0.05"))
+    expect(afterCreate.maxBet).to.equal(ethers.parseEther("0.5"))
 
     await (await roulette.connect(creator).setLimits(
-      ethers.parseEther("0.05"),
-      ethers.parseEther("0.5")
+      ethers.parseEther("0.01"),
+      ethers.parseEther("1")
     )).wait()
     const afterSet = await roulette.connect(creator).getTable()
-    expect(afterSet.minBet).to.equal(ethers.parseEther("0.05"))
-    expect(afterSet.maxBet).to.equal(ethers.parseEther("0.5"))
+    expect(afterSet.minBet).to.equal(ethers.parseEther("0.01"))
+    expect(afterSet.maxBet).to.equal(ethers.parseEther("1"))
+
+    await expect(
+      roulette.connect(player).setLimits(ethers.parseEther("0.01"), ethers.parseEther("1"))
+    ).to.be.revertedWith("Only owner")
+
+    await expect(
+      roulette.connect(creator).setLimits(ethers.parseEther("0.05"), ethers.parseEther("0.01"))
+    ).to.be.revertedWith("Max below min")
+
+    await expect(
+      factory.connect(creator).createGame(
+        "Bad Max",
+        TABLE_TYPE_IDS.Roulette,
+        ethers.parseEther("0.05"),
+        ethers.parseEther("0.01"),
+        { value: ethers.parseEther("1") }
+      )
+    ).to.be.revertedWith("Max below min")
 
     await (await factory.connect(creator).setGameName(created.args.game, "Night Table")).wait()
     expect((await factory.getGame(created.args.game)).name).to.equal("Night Table")
@@ -273,14 +321,6 @@ describe("UI flow: create, view, play roulette", () => {
     await expect(
       factory.connect(player).setGameName(created.args.game, "Stolen")
     ).to.be.revertedWith("Only owner")
-
-    await expect(
-      roulette.connect(player).setLimits(ethers.parseEther("0.01"), ethers.parseEther("1"))
-    ).to.be.revertedWith("Only owner")
-
-    await expect(
-      roulette.connect(creator).setLimits(ethers.parseEther("0.01"), ethers.parseEther("2"))
-    ).to.be.revertedWith("Max exceeds cap")
   })
 
   it("rejects bets outside table limits", async () => {
@@ -288,9 +328,15 @@ describe("UI flow: create, view, play roulette", () => {
     const Factory = await ethers.getContractFactory("GameFactory")
     const factory = await Factory.deploy()
     await factory.waitForDeployment()
-    const createTx = await factory.connect(creator).createGame("Cover Table", TABLE_TYPE_IDS.Roulette, {
-      value: ethers.parseEther("1")
-    })
+    const createTx = await factory.connect(creator).createGame(
+      "Cover Table",
+      TABLE_TYPE_IDS.Roulette,
+      ethers.parseEther("0.01"),
+      ethers.parseEther("0.01"),
+      {
+        value: ethers.parseEther("1")
+      }
+    )
     const receipt = await createTx.wait()
     const created = receipt.logs
       .map((log) => {
@@ -316,21 +362,33 @@ describe("UI flow: create, view, play roulette", () => {
     ).to.be.revertedWith("Bet amount must be less than maxBetAmount")
   })
 
-  it("requires a 1 ETH deposit and locks when withdraw drops below 100x max", async () => {
+  it("requires a 1 ETH deposit and allows withdraw once per day", async () => {
     const [creator, player] = await ethers.getSigners()
     const Factory = await ethers.getContractFactory("GameFactory")
     const factory = await Factory.deploy()
     await factory.waitForDeployment()
 
     await expect(
-      factory.connect(creator).createGame("Thin Table", TABLE_TYPE_IDS.Roulette, {
-        value: ethers.parseEther("0.99")
-      })
+      factory.connect(creator).createGame(
+        "Thin Table",
+        TABLE_TYPE_IDS.Roulette,
+        ethers.parseEther("0.01"),
+        ethers.parseEther("0.01"),
+        {
+          value: ethers.parseEther("0.99")
+        }
+      )
     ).to.be.revertedWith("Min deposit 1")
 
-    const createTx = await factory.connect(creator).createGame("Lock Table", TABLE_TYPE_IDS.Roulette, {
-      value: ethers.parseEther("1")
-    })
+    const createTx = await factory.connect(creator).createGame(
+      "Bank Table",
+      TABLE_TYPE_IDS.Roulette,
+      ethers.parseEther("0.01"),
+      ethers.parseEther("0.01"),
+      {
+        value: ethers.parseEther("1")
+      }
+    )
     const receipt = await createTx.wait()
     const created = receipt.logs
       .map((log) => {
@@ -344,23 +402,24 @@ describe("UI flow: create, view, play roulette", () => {
     const roulette = await ethers.getContractAt("Roulette", created.args.game)
 
     const open = await roulette.connect(creator).getTable()
-    expect(open.locked).to.equal(false)
+    expect(open.lastWithdrawAt).to.equal(0n)
     expect(open.maxBet).to.equal(ethers.parseEther("0.01"))
 
-    await (await roulette.connect(creator).withdrawShares(ethers.parseEther("0.01"))).wait()
-    const closed = await roulette.connect(creator).getTable()
-    expect(closed.locked).to.equal(true)
-    expect(closed.totalBalance).to.equal(ethers.parseEther("0.99"))
+    await (await roulette.connect(creator).withdrawShares(ethers.parseEther("0.5"))).wait()
+    const afterWithdraw = await roulette.connect(creator).getTable()
+    expect(afterWithdraw.totalBalance).to.equal(ethers.parseEther("0.5"))
+    expect(afterWithdraw.lastWithdrawAt).to.be.greaterThan(0n)
 
     const bets = Array(157).fill(0n)
     bets[0] = ethers.parseEther("0.01")
-    await expect(
-      roulette.connect(player).postBet(bets, { value: ethers.parseEther("0.01") })
-    ).to.be.revertedWith("Table locked")
-
-    await (await roulette.connect(creator).depositShares({ value: ethers.parseEther("0.01") })).wait()
-    const reopened = await roulette.connect(creator).getTable()
-    expect(reopened.locked).to.equal(false)
     await (await roulette.connect(player).postBet(bets, { value: ethers.parseEther("0.01") })).wait()
+
+    await expect(
+      roulette.connect(creator).withdrawShares(ethers.parseEther("0.01"))
+    ).to.be.revertedWith("Once per day")
+
+    await ethers.provider.send("evm_increaseTime", [24 * 60 * 60])
+    await ethers.provider.send("evm_mine")
+    await (await roulette.connect(creator).withdrawShares(ethers.parseEther("0.01"))).wait()
   })
 })

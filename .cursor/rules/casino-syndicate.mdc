@@ -26,6 +26,7 @@ Vite/React/Redux UI (`app`), Hardhat contracts (`contracts`). `GameFactory` crea
 - Domain modules: selectors → fetchers → mutators → mappers. Fetchers write store only (no side effects)
 - Loaders: `setLoader`/`clearLoader`. No nested components, no single-use hooks/JSX vars — Redux + core/games instead
 - Mantine + Tailwind + `cn()` from `app/core` (not SCSS). Persist via `PERSISTENT_PATHS` — never localforage from domain modules
+- Every UI element has a stable kebab-case class as the first `cn()` argument so the UI can be customized by selector
 - Dark editorial chrome (mihaibabet.ro): `#0a0e14`, Syne display, JetBrains Mono UI, teal `#2dd4bf`
 - Numbered section labels, bordered surface cards, in-page / header actions — not FABs
 - Mantine components over custom chrome; no extra frames, docks, or ornamental UI

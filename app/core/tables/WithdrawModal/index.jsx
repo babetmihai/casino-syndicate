@@ -4,21 +4,24 @@ import { hideModal } from "app/core/modals"
 import { useFormik } from "formik"
 import * as Yup from "yup"
 import { useTranslation } from "react-i18next"
-import { MIN_BET, clampEth, isTableLocked } from "app/games/roulette/chips"
+import { clampEth, WITHDRAW_INTERVAL } from "app/games/roulette/chips"
 import { useSelector } from "react-redux"
 import { selectNativeSymbol } from "app/core/chain"
+import { cn } from "app/core"
 
 
-const WithdrawModal = ({ onSubmit, max, bankroll, maxBet }) => {
+const WithdrawModal = ({ onSubmit, max, lastWithdrawAt }) => {
   const { t } = useTranslation()
   const symbol = useSelector(() => selectNativeSymbol())
   const maxAmount = clampEth(max)
+  const nextAt = (Number(lastWithdrawAt) || 0) + WITHDRAW_INTERVAL
+  const canWithdraw = Date.now() / 1000 >= nextAt
   const formik = useFormik({
     initialValues: {
       balance: maxAmount
     },
     validationSchema: Yup.object({
-      balance: Yup.number().min(MIN_BET, t("balance_required")).max(maxAmount, t("balance_required"))
+      balance: Yup.number().moreThan(0, t("balance_required")).max(maxAmount, t("balance_required"))
     }),
     onSubmit: async (values, form) => {
       form.setSubmitting(true)
@@ -33,28 +36,28 @@ const WithdrawModal = ({ onSubmit, max, bankroll, maxBet }) => {
     }
   })
 
-  const remaining = clampEth(clampEth(bankroll) - clampEth(formik.values.balance))
-  const willLock = isTableLocked(remaining, maxBet)
-
   return (
     <Modal
+      className={cn("withdraw-modal")}
+      classNames={{ content: cn("withdraw-modal-content"), body: cn("withdraw-modal-body") }}
       opened
       onClose={hideModal}
-      title={<Text fw={500}>{t("withdraw")}</Text>}
+      title={<Text className={cn("withdraw-modal-title")} fw={500}>{t("withdraw")}</Text>}
     >
-      {willLock &&
-        <Text size="sm" c="red" mb="md">
-          This withdraw will lock the table.
+      {canWithdraw &&
+        <Text className={cn("withdraw-modal-hint")} size="sm" c="dimmed" mb="md">
+          You can withdraw once per day.
         </Text>
       }
-      {!willLock &&
-        <Text size="sm" c="dimmed" mb="md">
-          Withdrawing below 100× max will lock the table.
+      {!canWithdraw &&
+        <Text className={cn("withdraw-modal-hint", "withdraw-modal-hint-blocked")} size="sm" c="red" mb="md">
+          You can withdraw once per day.
         </Text>
       }
       <NumberInput
+        className={cn("withdraw-modal-amount")}
         label={`Amount (${symbol})`}
-        min={MIN_BET}
+        min={0}
         max={maxAmount}
         step={0.01}
         decimalScale={2}
@@ -67,8 +70,9 @@ const WithdrawModal = ({ onSubmit, max, bankroll, maxBet }) => {
           formik.setFieldValue("balance", value)
         }}
       />
-      <Group justify="flex-end" gap="sm" mt="md">
+      <Group className={cn("withdraw-modal-actions")} justify="flex-end" gap="sm" mt="md">
         <Button
+          className={cn("withdraw-modal-cancel")}
           variant="subtle"
           color="gray"
           onClick={hideModal}
@@ -76,8 +80,9 @@ const WithdrawModal = ({ onSubmit, max, bankroll, maxBet }) => {
           {t("cancel")}
         </Button>
         <Button
+          className={cn("withdraw-modal-submit")}
           loading={formik.isSubmitting}
-          disabled={maxAmount < MIN_BET}
+          disabled={!canWithdraw || maxAmount <= 0}
           onClick={formik.handleSubmit}
         >
           {t("withdraw")}

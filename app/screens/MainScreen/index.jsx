@@ -11,7 +11,7 @@ import _ from "lodash"
 import { cn, labelClass, titleClass } from "app/core"
 import { selectAuth } from "app/core/auth"
 import { selectRoulette } from "app/games/roulette"
-import { clampEth, ethLabel, isTableLocked, MIN_BET, tableMaxBet } from "app/games/roulette/chips"
+import { bankrollClass, clampEth, ethLabel, MIN_BET, tableMaxBet } from "app/games/roulette/chips"
 import { ethers } from "ethers"
 import { selectNativeSymbol } from "app/core/chain"
 
@@ -39,30 +39,30 @@ const MainScreen = () => {
 
   return (
     <AppScreen>
-      <div className="mx-auto flex min-h-0 w-full max-w-[42rem] flex-1 flex-col overflow-hidden px-3 py-3">
+      <div className={cn("main-screen", "mx-auto flex min-h-0 w-full max-w-[42rem] flex-1 flex-col overflow-hidden px-3 py-3")}>
         {showHero &&
-          <div className="flex min-h-0 flex-1 flex-col items-start justify-center">
-            <div className={cn(labelClass, "mb-3 inline-flex items-center gap-2")}>
-              <span className="h-px w-8 bg-cs-accent" />
+          <div className={cn("main-hero", "flex min-h-0 flex-1 flex-col items-start justify-center")}>
+            <div className={cn("main-hero-label", labelClass, "mb-3 inline-flex items-center gap-2")}>
+              <span className={cn("main-hero-rule", "h-px w-8 bg-cs-accent")} />
               On-chain roulette
             </div>
-            <h1 className={cn(titleClass, "mb-3 text-[clamp(1.75rem,8vw,2.75rem)] font-extrabold leading-[1.15]")}>
+            <h1 className={cn("main-hero-title", titleClass, "mb-3 text-[clamp(1.75rem,8vw,2.75rem)] font-extrabold leading-[1.15]")}>
               Casino{" "}
-              <span className="inline-block bg-linear-to-br from-cs-accent to-cs-accent-2 bg-clip-text text-transparent">
+              <span className={cn("main-hero-brand", "inline-block bg-linear-to-br from-cs-accent to-cs-accent-2 bg-clip-text text-transparent")}>
                 Syndicate
               </span>
             </h1>
-            <p className="mb-4 max-w-[36rem] text-[0.875rem] leading-normal text-cs-body">
+            <p className={cn("main-hero-copy", "mb-4 max-w-[36rem] text-[0.875rem] leading-normal text-cs-body")}>
               Create and fund tables from a wallet.
             </p>
-            <div className="flex flex-wrap gap-2">
+            <div className={cn("main-hero-actions", "flex flex-wrap gap-2")}>
               {account &&
-                <Button onClick={openCreate}>
+                <Button className={cn("main-create-table")} onClick={openCreate}>
                   Create table
                 </Button>
               }
               {!account &&
-                <Button onClick={() => showModal(AuthModal)}>
+                <Button className={cn("main-connect")} onClick={() => showModal(AuthModal)}>
                   Connect
                 </Button>
               }
@@ -70,13 +70,14 @@ const MainScreen = () => {
           </div>
         }
         {account && !isEmpty &&
-          <div className="flex min-h-0 flex-1 flex-col overflow-hidden">
-            <div className="mb-3 flex shrink-0 items-end justify-between gap-3">
-              <div>
-                <div className={labelClass}>01 — Tables</div>
-                <h2 className={cn(titleClass, "mt-1 mb-0 text-xl")}>Your tables</h2>
+          <div className={cn("main-tables", "flex min-h-0 flex-1 flex-col overflow-hidden")}>
+            <div className={cn("main-tables-header", "mb-3 flex shrink-0 items-end justify-between gap-3")}>
+              <div className={cn("main-tables-heading")}>
+                <div className={cn("main-tables-label", labelClass)}>01 — Tables</div>
+                <h2 className={cn("main-tables-title", titleClass, "mt-1 mb-0 text-xl")}>Your tables</h2>
               </div>
               <Button
+                className={cn("main-tables-create")}
                 variant="outline"
                 color="gray"
                 onClick={openCreate}
@@ -84,7 +85,7 @@ const MainScreen = () => {
                 Create
               </Button>
             </div>
-            <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-hidden">
+            <div className={cn("main-tables-list", "flex min-h-0 flex-1 flex-col gap-2 overflow-hidden")}>
               {ownedTables.map((table, index) => (
                 <TableCard
                   key={table.address}
@@ -104,12 +105,11 @@ const TableCard = React.memo(({ table, index }) => {
   const { name, address } = table || {}
   const roulette = useSelector(() => selectRoulette(address)) || {}
   const symbol = useSelector(() => selectNativeSymbol())
-  const { memberShares, minBet, maxBet, totalBalance, locked } = roulette
+  const { minBet, maxBet, totalBalance } = roulette
   const shortAddress = `${address.slice(0, 6)}…${address.slice(-4)}`
   const bankroll = clampEth(totalBalance)
   const minBetAmount = clampEth(minBet) || MIN_BET
-  const maxBetAmount = tableMaxBet(maxBet, bankroll)
-  const tableLocked = locked || isTableLocked(bankroll, maxBet)
+  const maxBetAmount = tableMaxBet(maxBet)
   const hasStats = !_.isEmpty(roulette)
   const order = String(index + 1).padStart(2, "0")
 
@@ -117,6 +117,7 @@ const TableCard = React.memo(({ table, index }) => {
     <button
       type="button"
       className={cn(
+        "table-card",
         "group relative flex w-full shrink-0 appearance-none items-center gap-3 rounded-[0.75rem]",
         "border border-cs-border bg-cs-surface px-3 py-2.5 text-left font-sans text-inherit",
         "cursor-pointer transition-[border-color] duration-[250ms]",
@@ -124,17 +125,17 @@ const TableCard = React.memo(({ table, index }) => {
       )}
       onClick={() => history.push(`/tables/${address}/admin`)}
     >
-      <div className="text-[0.75rem] tracking-[0.1em] text-cs-accent">{order}</div>
-      <div className="flex min-w-0 flex-1 flex-col gap-0.5">
-        <h3 className={cn(titleClass, "m-0 truncate text-base")}>{name}</h3>
-        <Text size="xs" c="dimmed">{shortAddress}</Text>
+      <div className={cn("table-card-order", "text-[0.75rem] tracking-[0.1em] text-cs-accent")}>{order}</div>
+      <div className={cn("table-card-body", "flex min-w-0 flex-1 flex-col gap-0.5")}>
+        <h3 className={cn("table-card-name", titleClass, "m-0 truncate text-base")}>{name}</h3>
+        <Text className={cn("table-card-address")} size="xs" c="dimmed">{shortAddress}</Text>
       </div>
       {hasStats &&
-        <div className="flex shrink-0 flex-col items-end gap-0.5 text-right">
-          <span className={cn(titleClass, "text-base text-cs-accent", tableLocked && "text-red-600")}>
-            {ethLabel(memberShares, symbol)}
+        <div className={cn("table-card-stats", "flex shrink-0 flex-col items-end gap-0.5 text-right")}>
+          <span className={cn("table-card-bankroll", titleClass, "text-base", bankrollClass(bankroll, maxBet))}>
+            {ethLabel(bankroll, symbol)}
           </span>
-          <Text size="xs" c="dimmed">
+          <Text className={cn("table-card-limits")} size="xs" c="dimmed">
             {ethLabel(minBetAmount, symbol)}–{ethLabel(maxBetAmount, symbol)}
           </Text>
         </div>

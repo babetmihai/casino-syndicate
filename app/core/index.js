@@ -6,5 +6,5 @@ export const EMPTY_ARRAY = []
 
 export const cn = (...inputs) => twMerge(clsx(inputs))
 
-export const labelClass = "text-[0.75rem] tracking-[0.15em] uppercase text-cs-accent"
-export const titleClass = "font-headings font-bold tracking-[-0.02em] leading-tight"
+export const labelClass = cn("ui-label", "text-[0.75rem] tracking-[0.15em] uppercase text-cs-accent")
+export const titleClass = cn("ui-title", "font-headings font-bold tracking-[-0.02em] leading-tight")

@@ -13,10 +13,11 @@ contract Roulette {
 	uint256 public maxBet;
 	mapping(address => uint256) public shares;
 	mapping(address => uint256) public balances;
+	mapping(address => uint256) public lastWithdrawAt;
 
 	uint256 public constant CHIP = 0.01 ether;
-	uint256 public constant MAX_BET_DIVISOR = 100;
-	uint256 public constant MIN_DEPOSIT = CHIP * MAX_BET_DIVISOR;
+	uint256 public constant MIN_DEPOSIT = 1 ether;
+	uint256 public constant WITHDRAW_INTERVAL = 1 days;
 
 	struct TableDTO {
 		uint256 memberShares;
@@ -25,21 +26,23 @@ contract Roulette {
 		uint256 totalBalance;
 		uint256 minBet;
 		uint256 maxBet;
-		bool locked;
+		uint256 lastWithdrawAt;
 	}
 
 	event Deposited(address indexed user, uint256 amount);
 	event WinningNumber(uint256 number, uint256 totalBetAmount, uint256 winningAmount, uint256 playerBalance);
 
-	constructor(string memory _name, address _createdBy) payable {
+	constructor(string memory _name, address _createdBy, uint256 _minBet, uint256 _maxBet) payable {
 		require(msg.value >= MIN_DEPOSIT, "Min deposit 1");
 		require(bytes(_name).length > 0, "Name required");
+		require(_minBet >= CHIP, "Min too small");
+		require(_maxBet >= _minBet, "Max below min");
 		name = _name;
 		createdBy = _createdBy;
 		factory = msg.sender;
 		createdAt = block.timestamp;
-		minBet = CHIP;
-		maxBet = msg.value / MAX_BET_DIVISOR;
+		minBet = _minBet;
+		maxBet = _maxBet;
 		totalShares = msg.value;
 		shares[_createdBy] = msg.value;
 		emit Deposited(_createdBy, msg.value);
@@ -58,7 +61,7 @@ contract Roulette {
 			totalBalance: bankroll,
 			minBet: minBet,
 			maxBet: maxBet,
-			locked: isLocked(bankroll)
+			lastWithdrawAt: lastWithdrawAt[msg.sender]
 		});
 	}
 
@@ -72,7 +75,6 @@ contract Roulette {
 		require(msg.sender == createdBy, "Only owner");
 		require(_minBet >= CHIP, "Min too small");
 		require(_maxBet >= _minBet, "Max below min");
-		require(_maxBet <= maxBetLimit(address(this).balance), "Max exceeds cap");
 		minBet = _minBet;
 		maxBet = _maxBet;
 	}
@@ -94,6 +96,10 @@ contract Roulette {
 
 	function withdrawShares(uint256 amount) external {
 		require(amount > 0, "Must withdraw some Ether");
+		uint256 previous = lastWithdrawAt[msg.sender];
+		if (previous != 0) {
+			require(block.timestamp >= previous + WITHDRAW_INTERVAL, "Once per day");
+		}
 		uint256 memberShares = shares[msg.sender];
 		require(memberShares > 0, "Must have shares to withdraw");
 		uint256 bankroll = address(this).balance;
@@ -112,6 +118,7 @@ contract Roulette {
 		if (shares[msg.sender] == 0) {
 			delete shares[msg.sender];
 		}
+		lastWithdrawAt[msg.sender] = block.timestamp;
 		payable(msg.sender).transfer(amount);
 	}
 
@@ -131,8 +138,6 @@ contract Roulette {
 	function postBet(uint256[157] memory _bets) external payable {
 		uint256 randomNumber = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender))) % 37;
 		uint256 totalBetAmount = 0;
-		uint256 bankroll = address(this).balance - msg.value;
-		require(!isLocked(bankroll), "Table locked");
 
 		for (uint256 i = 0; i < 157; i++) {
 			totalBetAmount += _bets[i];
@@ -165,14 +170,6 @@ contract Roulette {
 		}
 
 		emit WinningNumber(randomNumber, totalBetAmount, winningAmount, balances[msg.sender]);
-	}
-
-	function maxBetLimit(uint256 bankroll) private pure returns (uint256) {
-		return bankroll / MAX_BET_DIVISOR;
-	}
-
-	function isLocked(uint256 bankroll) private view returns (bool) {
-		return bankroll < maxBet * MAX_BET_DIVISOR;
 	}
 
 	function payoutForNumber(uint256[157] memory _bets, uint256 randomNumber) private pure returns (uint256 winningAmount) {

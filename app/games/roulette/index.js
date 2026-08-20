@@ -3,7 +3,7 @@ import { actions } from "app/core/store"
 import { EMPTY_OBJECT } from "app/core"
 import { generateContract, getContract, sendTx } from "app/core/contracts"
 import { selectAuth } from "app/core/auth"
-import { formatEth, MAX_BET_DIVISOR, MIN_BET, parseEth } from "./chips"
+import { formatEth, parseEth } from "./chips"
 
 
 const roulettePath = (address) => `games.roulette.${ethers.getAddress(address)}`
@@ -25,10 +25,8 @@ export const fetchRoulette = async (address) => {
   const playerBalance = row[1]
   const totalShares = row[2]
   const totalBalance = row[3]
-  let minBet = row[4]
-  let maxBet = row[5]
-  if (!minBet) minBet = parseEth(MIN_BET)
-  if (!maxBet) maxBet = totalBalance / BigInt(MAX_BET_DIVISOR)
+  const minBet = row[4]
+  const maxBet = row[5]
   actions.update(roulettePath(address), {
     memberShares: formatEth(memberShares),
     playerBalance: formatEth(playerBalance),
@@ -36,7 +34,7 @@ export const fetchRoulette = async (address) => {
     totalBalance: formatEth(totalBalance),
     minBet: formatEth(minBet),
     maxBet: formatEth(maxBet),
-    locked: row[6]
+    lastWithdrawAt: Number(row[6])
   })
 }
 
@@ -70,7 +68,6 @@ export const postRouletteBet = async (address, bets) => {
   const value = values.reduce((sum, amount) => sum + amount, 0n)
   const receipt = await sendTx(contract.postBet, [values], { value })
   const lastSpin = readWinningNumber(contract, receipt)
-  await fetchRoulette(address)
   if (lastSpin) actions.update(roulettePath(address), { lastSpin })
   return lastSpin
 }

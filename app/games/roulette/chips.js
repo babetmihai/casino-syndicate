@@ -2,9 +2,10 @@ import { ethers } from "ethers"
 import _ from "lodash"
 
 export const CHIP_VALUES = [0.01, 0.05, 0.25, 1]
-export const MAX_BET_DIVISOR = 100
+export const LOW_BANKROLL_MULTIPLIER = 200
 export const MIN_TABLE_DEPOSIT = 1
 export const MIN_BET = 0.01
+export const WITHDRAW_INTERVAL = 86400
 
 export const clampEth = (amount) => {
   const value = Number(amount) || 0
@@ -29,17 +30,15 @@ export const chipLabel = (value) => {
   return String(value).replace(/^0/, "")
 }
 
-export const maxBetCap = (bankroll) => clampEth((Number(bankroll) || 0) / MAX_BET_DIVISOR)
+export const tableMaxBet = (maxBet) => clampEth(maxBet) || MIN_BET
 
-export const tableMaxBet = (maxBet, bankroll) => {
-  const amount = clampEth(maxBet)
-  if (amount) return amount
-  return maxBetCap(bankroll)
+export const isBankrollLow = (bankroll, maxBet) => {
+  return clampEth(bankroll) < clampEth(tableMaxBet(maxBet) * LOW_BANKROLL_MULTIPLIER)
 }
 
-export const isTableLocked = (bankroll, maxBet) => {
-  const max = tableMaxBet(maxBet, bankroll)
-  return clampEth(bankroll) < clampEth(max * MAX_BET_DIVISOR)
+export const bankrollClass = (bankroll, maxBet) => {
+  if (isBankrollLow(bankroll, maxBet)) return "bankroll bankroll-low text-red-600"
+  return "bankroll text-cs-accent"
 }
 
 export const CHIP_COLORS = {

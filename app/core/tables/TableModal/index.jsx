@@ -5,9 +5,10 @@ import { useFormik } from "formik"
 import * as Yup from "yup"
 import { useTranslation } from "react-i18next"
 import { TABLE_TYPES } from ".."
-import { MIN_TABLE_DEPOSIT, clampEth } from "app/games/roulette/chips"
+import { LOW_BANKROLL_MULTIPLIER, MIN_BET, MIN_TABLE_DEPOSIT, clampEth } from "app/games/roulette/chips"
 import { useSelector } from "react-redux"
 import { selectNativeSymbol } from "app/core/chain"
+import { cn } from "app/core"
 
 
 const TableModal = ({ onSubmit }) => {
@@ -17,18 +18,24 @@ const TableModal = ({ onSubmit }) => {
     initialValues: {
       name: "",
       type: TABLE_TYPES.Roulette,
-      balance: 10
+      balance: 10,
+      minBet: MIN_BET,
+      maxBet: 0.05
     },
     validationSchema: Yup.object({
       name: Yup.string().required(t("name_required")),
-      balance: Yup.number().min(MIN_TABLE_DEPOSIT, t("balance_required"))
+      balance: Yup.number().min(MIN_TABLE_DEPOSIT, t("balance_required")),
+      minBet: Yup.number().min(MIN_BET, t("balance_required")),
+      maxBet: Yup.number().min(Yup.ref("minBet"), t("balance_required"))
     }),
     onSubmit: async (values, form) => {
       form.setSubmitting(true)
       try {
         await onSubmit({
           ...values,
-          balance: clampEth(values.balance)
+          balance: clampEth(values.balance),
+          minBet: clampEth(values.minBet),
+          maxBet: clampEth(values.maxBet)
         })
         hideModal()
       } finally {
@@ -39,11 +46,14 @@ const TableModal = ({ onSubmit }) => {
 
   return (
     <Modal
+      className={cn("table-modal")}
+      classNames={{ content: cn("table-modal-content"), body: cn("table-modal-body") }}
       opened
       onClose={hideModal}
-      title={<Text fw={500}>{t("create_table")}</Text>}
+      title={<Text className={cn("table-modal-title")} fw={500}>{t("create_table")}</Text>}
     >
       <TextInput
+        className={cn("table-modal-name")}
         name="name"
         label="Table name"
         placeholder="Saturday night"
@@ -53,6 +63,7 @@ const TableModal = ({ onSubmit }) => {
         }}
       />
       <NumberInput
+        className={cn("table-modal-amount")}
         label={`Amount (${symbol})`}
         min={MIN_TABLE_DEPOSIT}
         step={0.01}
@@ -66,11 +77,42 @@ const TableModal = ({ onSubmit }) => {
           formik.setFieldValue("balance", value)
         }}
       />
-      <Text size="sm" c="dimmed" mt="xs">
-        Minimum {MIN_TABLE_DEPOSIT} {symbol}.
+      <Group className={cn("table-modal-limits")} grow align="flex-start" mt="md">
+        <NumberInput
+          className={cn("table-modal-min")}
+          label="Minimum"
+          min={MIN_BET}
+          step={0.01}
+          decimalScale={2}
+          allowDecimal
+          allowNegative={false}
+          clampBehavior="strict"
+          value={formik.values.minBet}
+          onChange={(value) => {
+            formik.setFieldValue("minBet", value)
+          }}
+        />
+        <NumberInput
+          className={cn("table-modal-max")}
+          label="Maximum"
+          min={MIN_BET}
+          step={0.01}
+          decimalScale={2}
+          allowDecimal
+          allowNegative={false}
+          clampBehavior="strict"
+          value={formik.values.maxBet}
+          onChange={(value) => {
+            formik.setFieldValue("maxBet", value)
+          }}
+        />
+      </Group>
+      <Text className={cn("table-modal-hint")} size="sm" c="dimmed" mt="xs">
+        Minimum {MIN_TABLE_DEPOSIT} {symbol}. Bankroll under {LOW_BANKROLL_MULTIPLIER}× max is shown as low.
       </Text>
-      <Group justify="flex-end" gap="sm" mt="md">
+      <Group className={cn("table-modal-actions")} justify="flex-end" gap="sm" mt="md">
         <Button
+          className={cn("table-modal-cancel")}
           variant="subtle"
           color="gray"
           onClick={hideModal}
@@ -78,6 +120,7 @@ const TableModal = ({ onSubmit }) => {
           {t("cancel")}
         </Button>
         <Button
+          className={cn("table-modal-create")}
           loading={formik.isSubmitting}
           onClick={formik.handleSubmit}
         >

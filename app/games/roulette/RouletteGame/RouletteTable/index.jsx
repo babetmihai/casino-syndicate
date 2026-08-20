@@ -191,16 +191,17 @@ const chipHit = (point, bets) => {
 const ChipMark = ({ value, className }) => {
   const color = CHIP_COLORS[value]
   return (
-    <g className={cn("animate-chip-drop cursor-grab", className)}>
-      <circle r={CHIP_R} fill={color.fill} />
+    <g className={cn("roulette-chip-mark", "animate-chip-drop cursor-grab", className)}>
+      <circle className={cn("roulette-chip-mark-fill")} r={CHIP_R} fill={color.fill} />
       <circle
+        className={cn("roulette-chip-mark-ring")}
         r={CHIP_R - 3}
         fill="none"
         stroke={color.stroke}
         strokeWidth={1.5}
       />
       <text
-        className="pointer-events-none font-sans font-medium"
+        className={cn("roulette-chip-mark-label", "pointer-events-none font-sans font-medium")}
         fill={color.text}
         fontSize={11}
         textAnchor="middle"
@@ -342,14 +343,15 @@ const RouletteTable = React.memo(({ bets, winningNumber, landingNumber, spinning
   if (drag && drag.moved && drag.value) dragging = true
   let removing = false
   if (dragging && !spotAt(drag.x, drag.y)) removing = true
-  const ghostClass = cn("pointer-events-none animate-none", removing && "opacity-45")
+  const ghostClass = cn("roulette-chip-ghost", "pointer-events-none animate-none", removing && "roulette-chip-removing opacity-45")
 
   return (
     <svg
       ref={svgRef}
       className={cn(
+        "roulette-table",
         "block min-h-0 h-full w-full flex-1 touch-none select-none",
-        dragging && "cursor-grabbing [&_g]:cursor-grabbing"
+        dragging && "roulette-table-dragging cursor-grabbing [&_g]:cursor-grabbing"
       )}
       viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
       preserveAspectRatio="xMidYMid meet"
@@ -382,10 +384,17 @@ const RouletteTable = React.memo(({ bets, winningNumber, landingNumber, spinning
         return (
           <g
             key={index}
-            className="cursor-pointer"
+            className={cn(
+              "roulette-spot",
+              inside && "roulette-spot-inside",
+              outside && "roulette-spot-outside",
+              flash && "roulette-spot-flash",
+              winner && "roulette-spot-winner",
+              "cursor-pointer"
+            )}
           >
             <rect
-              className={cn(flash && "animate-number-flash")}
+              className={cn("roulette-spot-rect", flash && "animate-number-flash")}
               x={x + inset}
               y={y + inset}
               width={w - inset * 2}
@@ -399,7 +408,7 @@ const RouletteTable = React.memo(({ bets, winningNumber, landingNumber, spinning
             />
             {label &&
               <text
-                className="pointer-events-none font-sans font-medium"
+                className={cn("roulette-spot-label", "pointer-events-none font-sans font-medium")}
                 x={x + w / 2}
                 y={y + h / 2 + 1}
                 fill={labelFill}
@@ -421,6 +430,7 @@ const RouletteTable = React.memo(({ bets, winningNumber, landingNumber, spinning
         return (
           <g
             key={`${spot.index}-${chipIndex}-${value}`}
+            className={cn("roulette-table-chip")}
             transform={`translate(${pos.x}, ${pos.y})`}
             visibility={visibility}
           >
@@ -429,7 +439,7 @@ const RouletteTable = React.memo(({ bets, winningNumber, landingNumber, spinning
         )
       })}
       {dragging &&
-        <g transform={`translate(${drag.x}, ${drag.y})`}>
+        <g className={cn("roulette-chip-drag")} transform={`translate(${drag.x}, ${drag.y})`}>
           <ChipMark
             value={drag.value}
             className={ghostClass}

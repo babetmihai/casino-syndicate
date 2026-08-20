@@ -4,14 +4,12 @@ import { hideModal } from "app/core/modals"
 import { useFormik } from "formik"
 import * as Yup from "yup"
 import { useTranslation } from "react-i18next"
-import { MIN_BET, clampEth } from "app/games/roulette/chips"
-import { useSelector } from "react-redux"
-import { selectNativeSymbol } from "app/core/chain"
+import { LOW_BANKROLL_MULTIPLIER, MIN_BET, clampEth } from "app/games/roulette/chips"
+import { cn } from "app/core"
 
 
-const EditTableModal = ({ onSubmit, name, minBet, maxBet, maxCap, bankroll }) => {
+const EditTableModal = ({ onSubmit, name, minBet, maxBet }) => {
   const { t } = useTranslation()
-  const symbol = useSelector(() => selectNativeSymbol())
   const formik = useFormik({
     initialValues: {
       name,
@@ -20,8 +18,8 @@ const EditTableModal = ({ onSubmit, name, minBet, maxBet, maxCap, bankroll }) =>
     },
     validationSchema: Yup.object({
       name: Yup.string().required(t("name_required")),
-      minBet: Yup.number().min(MIN_BET, t("balance_required")).max(maxCap, t("balance_required")),
-      maxBet: Yup.number().min(MIN_BET, t("balance_required")).max(maxCap, t("balance_required"))
+      minBet: Yup.number().min(MIN_BET, t("balance_required")),
+      maxBet: Yup.number().min(Yup.ref("minBet"), t("balance_required"))
     }),
     onSubmit: async (values, form) => {
       form.setSubmitting(true)
@@ -41,15 +39,18 @@ const EditTableModal = ({ onSubmit, name, minBet, maxBet, maxCap, bankroll }) =>
   const nextName = (formik.values.name || "").trim()
   const minValue = clampEth(formik.values.minBet)
   const maxValue = clampEth(formik.values.maxBet)
-  const canSave = nextName && minValue >= MIN_BET && maxValue >= minValue && maxValue <= maxCap
+  const canSave = nextName && minValue >= MIN_BET && maxValue >= minValue
 
   return (
     <Modal
+      className={cn("edit-table-modal")}
+      classNames={{ content: cn("edit-table-modal-content"), body: cn("edit-table-modal-body") }}
       opened
       onClose={hideModal}
-      title={<Text fw={500}>{t("edit_table")}</Text>}
+      title={<Text className={cn("edit-table-modal-title")} fw={500}>{t("edit_table")}</Text>}
     >
       <TextInput
+        className={cn("edit-table-modal-name")}
         name="name"
         label="Table name"
         data-autofocus
@@ -58,14 +59,11 @@ const EditTableModal = ({ onSubmit, name, minBet, maxBet, maxCap, bankroll }) =>
           formik.setFieldValue("name", event.target.value)
         }}
       />
-      <Text size="sm" c="dimmed" mt="md" mb="xs">
-        Bankroll {clampEth(bankroll)} {symbol}. Max cannot exceed 1/100 of the deposit.
-      </Text>
-      <Group grow align="flex-start">
+      <Group className={cn("edit-table-modal-limits")} grow align="flex-start" mt="md">
         <NumberInput
+          className={cn("edit-table-modal-min")}
           label="Minimum"
           min={MIN_BET}
-          max={maxCap}
           step={0.01}
           decimalScale={2}
           allowDecimal
@@ -77,9 +75,9 @@ const EditTableModal = ({ onSubmit, name, minBet, maxBet, maxCap, bankroll }) =>
           }}
         />
         <NumberInput
+          className={cn("edit-table-modal-max")}
           label="Maximum"
           min={MIN_BET}
-          max={maxCap}
           step={0.01}
           decimalScale={2}
           allowDecimal
@@ -91,8 +89,12 @@ const EditTableModal = ({ onSubmit, name, minBet, maxBet, maxCap, bankroll }) =>
           }}
         />
       </Group>
-      <Group justify="flex-end" gap="sm" mt="md">
+      <Text className={cn("edit-table-modal-hint")} size="sm" c="dimmed" mt="xs">
+        Bankroll under {LOW_BANKROLL_MULTIPLIER}× max is shown as low.
+      </Text>
+      <Group className={cn("edit-table-modal-actions")} justify="flex-end" gap="sm" mt="md">
         <Button
+          className={cn("edit-table-modal-cancel")}
           variant="subtle"
           color="gray"
           onClick={hideModal}
@@ -100,6 +102,7 @@ const EditTableModal = ({ onSubmit, name, minBet, maxBet, maxCap, bankroll }) =>
           {t("cancel")}
         </Button>
         <Button
+          className={cn("edit-table-modal-save")}
           loading={formik.isSubmitting}
           disabled={!canSave}
           onClick={formik.handleSubmit}

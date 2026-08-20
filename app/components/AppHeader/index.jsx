@@ -1,38 +1,43 @@
 import React from "react"
-import "./index.scss"
-import { ActionIcon, Paper, Title } from "@mantine/core"
-import { ArrowLeftIcon } from "@phosphor-icons/react"
+import { Button, UnstyledButton } from "@mantine/core"
 import { useSelector } from "react-redux"
-import { selectAuth } from "../../core/auth"
-import AuthMenu from "../../core/auth/AuthMenu"
+import { selectAuth } from "app/core/auth"
+import AuthMenu from "app/core/auth/AuthMenu"
+import { showModal } from "app/core/modals"
+import AuthModal from "app/core/auth/AuthModal"
+import history from "app/core/history"
+import { cn } from "app/core"
 
 
-const AppHeader = ({ name, onBack }) => {
+const AppHeader = () => {
   const { account } = useSelector(() => selectAuth()) || {}
 
   return (
-    <Paper className="AppHeader_root" bg="gray.2" shadow="none" radius={0}>
-      <div className="AppHeader_left">
-        {onBack && (
-          <ActionIcon
+    <header
+      className={cn(
+        "flex shrink-0 items-center justify-between gap-3 border-b border-cs-border bg-cs-bg/88 px-3 py-2",
+        "pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-[1rem]"
+      )}
+    >
+      <UnstyledButton
+        className="font-sans text-[0.875rem] font-semibold leading-normal tracking-[0.02em] text-cs-accent"
+        onClick={() => history.push("/")}
+      >
+        casino<span className="text-cs-muted">·syndicate</span>
+      </UnstyledButton>
+      <div className="flex shrink-0 items-center gap-3">
+        {account && <AuthMenu />}
+        {!account &&
+          <Button
+            variant="subtle"
             color="gray"
-            size="lg"
-            onClick={onBack}
-            aria-label="Back"
+            onClick={() => showModal(AuthModal)}
           >
-            <ArrowLeftIcon size={24} />
-          </ActionIcon>
-        )}
-        {name &&
-          <Title order={4} fw={500} lineClamp={1}>
-            {name}
-          </Title>
+            Connect
+          </Button>
         }
       </div>
-      <div className="AppHeader_right">
-        {account && <AuthMenu />}
-      </div>
-    </Paper>
+    </header>
   )
 }
 

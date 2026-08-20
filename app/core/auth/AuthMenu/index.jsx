@@ -1,15 +1,14 @@
 import React from "react"
-import "./index.scss"
-import { Menu, Avatar, Text, UnstyledButton } from "@mantine/core"
+import { Menu, Text, UnstyledButton } from "@mantine/core"
 import { SignOutIcon, WalletIcon } from "@phosphor-icons/react"
 import { selectAuth, logout, fetchBalance, requestTestEth } from "app/core/auth"
 import { ethLabel } from "app/games/roulette/chips"
+import { cn } from "app/core"
 import { useSelector } from "react-redux"
 
 
 const AuthMenu = () => {
   const { account, balance } = useSelector(() => selectAuth()) || {}
-  const initials = account.replace(/\d/g, "").toUpperCase().slice(0, 2)
   const shortAccount = `${account.slice(0, 6)}…${account.slice(-4)}`
   const balanceLabel = ethLabel(balance)
 
@@ -21,18 +20,19 @@ const AuthMenu = () => {
   return (
     <Menu position="bottom-end" shadow="md">
       <Menu.Target>
-        <UnstyledButton className="AuthMenu_target" aria-label="Account">
-          <div className="AuthMenu_meta">
-            <Text size="xs" c="dimmed" className="AuthMenu_account">
-              {shortAccount}
-            </Text>
-            <Text size="sm" className="AuthMenu_balance">
-              {balanceLabel}
-            </Text>
-          </div>
-          <Avatar size="md" radius="xl" color="indigo">
-            {initials}
-          </Avatar>
+        <UnstyledButton
+          className={cn(
+            "flex min-h-8 flex-col items-end gap-0 rounded-[0.75rem] border border-cs-border bg-cs-surface px-2 py-1",
+            "transition-[border-color] hover:border-cs-border-hover"
+          )}
+          aria-label="Account"
+        >
+          <Text size="xs" c="dimmed" className="whitespace-nowrap leading-tight">
+            {shortAccount}
+          </Text>
+          <Text size="xs" className="whitespace-nowrap text-[0.75rem] leading-tight text-cs-accent">
+            {balanceLabel}
+          </Text>
         </UnstyledButton>
       </Menu.Target>
       <Menu.Dropdown>

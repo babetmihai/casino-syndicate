@@ -1,6 +1,6 @@
 import React from "react"
-import "./index.scss"
 import _ from "lodash"
+import { cn } from "app/core"
 import { CHIP_COLORS, chipLabel, toChips } from "../../chips"
 import { BLACK_NUMBERS, INSIDE, OUTSIDE, betWins } from "../../bets"
 
@@ -20,12 +20,12 @@ const HOLD_MS = 700
 
 const COLORS = {
   red: "var(--mantine-color-red-6)",
-  black: "var(--mantine-color-gray-7)",
-  green: "var(--mantine-color-teal-6)",
-  outside: "var(--mantine-color-white)",
-  outsideText: "var(--mantine-color-dark-6)",
-  winner: "var(--mantine-color-indigo-6)",
-  text: "var(--mantine-color-white)"
+  black: "var(--cs-bg)",
+  green: "var(--cs-accent-dim)",
+  outside: "var(--cs-elevated)",
+  outsideText: "var(--cs-text)",
+  winner: "var(--cs-accent)",
+  text: "var(--cs-text)"
 }
 
 const numberLayout = (number) => {
@@ -190,14 +190,17 @@ const chipHit = (point, bets) => {
 
 const ChipMark = ({ value, className }) => {
   const color = CHIP_COLORS[value]
-  let chipClass = "RouletteTable_chip"
-  if (className) chipClass = `${chipClass} ${className}`
   return (
-    <g className={chipClass}>
+    <g className={cn("animate-chip-drop cursor-grab", className)}>
       <circle r={CHIP_R} fill={color.fill} />
-      <circle r={CHIP_R - 3} fill="none" stroke={color.stroke} strokeWidth={1.5} />
+      <circle
+        r={CHIP_R - 3}
+        fill="none"
+        stroke={color.stroke}
+        strokeWidth={1.5}
+      />
       <text
-        className="RouletteTable_chipValue"
+        className="pointer-events-none font-sans font-medium"
         fill={color.text}
         fontSize={11}
         textAnchor="middle"
@@ -338,17 +341,16 @@ const RouletteTable = React.memo(({ bets, winningNumber, landingNumber, spinning
   let dragging = false
   if (drag && drag.moved && drag.value) dragging = true
   let removing = false
-  let ghostClass = "is-ghost"
   if (dragging && !spotAt(drag.x, drag.y)) removing = true
-  if (removing) ghostClass = "is-ghost is-removing"
-  let svgClass = "RouletteTable_svg"
-  if (dragging) svgClass = "RouletteTable_svg is-dragging"
-  if (removing) svgClass = `${svgClass} is-removing`
+  const ghostClass = cn("pointer-events-none animate-none", removing && "opacity-45")
 
   return (
     <svg
       ref={svgRef}
-      className={svgClass}
+      className={cn(
+        "block min-h-0 h-full w-full flex-1 touch-none select-none",
+        dragging && "cursor-grabbing [&_g]:cursor-grabbing"
+      )}
       viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
       preserveAspectRatio="xMidYMid meet"
       role="img"
@@ -364,22 +366,26 @@ const RouletteTable = React.memo(({ bets, winningNumber, landingNumber, spinning
         let winner = false
         if (!spinning && !inside) winner = betWins(index, litNumber)
         const flash = spinning && index < 37 && litNumber === index
-        let className = "RouletteTable_spot"
-        if (inside) className = "RouletteTable_spot is-inside"
-        else if (index >= 37) className = "RouletteTable_spot is-outside"
-        if (flash) className = `${className} is-flash`
-        if (winner) className = `${className} is-winner`
+        const outside = !inside && index >= 37
         let fill = color
         if (flash) fill = COLORS.winner
         let inset = 2
         if (inside) inset = 0
+        let strokeWidth = 2
+        if (outside) strokeWidth = 1
+        if (inside) strokeWidth = 0
+        if (flash || winner) strokeWidth = 3
+        if (outside && winner) strokeWidth = 1.5
+        let stroke = "var(--color-cs-border)"
+        if (inside) stroke = "none"
+        if (flash || winner) stroke = "var(--color-cs-accent)"
         return (
           <g
             key={index}
-            className={className}
+            className="cursor-pointer"
           >
             <rect
-              className="RouletteTable_spotBody"
+              className={cn(flash && "animate-number-flash")}
               x={x + inset}
               y={y + inset}
               width={w - inset * 2}
@@ -387,10 +393,13 @@ const RouletteTable = React.memo(({ bets, winningNumber, landingNumber, spinning
               rx={rx}
               ry={rx}
               fill={fill}
+              stroke={stroke}
+              strokeWidth={strokeWidth}
+              style={{ vectorEffect: "non-scaling-stroke", pointerEvents: inside ? "all" : undefined }}
             />
             {label &&
               <text
-                className="RouletteTable_spotLabel"
+                className="pointer-events-none font-sans font-medium"
                 x={x + w / 2}
                 y={y + h / 2 + 1}
                 fill={labelFill}
@@ -412,7 +421,6 @@ const RouletteTable = React.memo(({ bets, winningNumber, landingNumber, spinning
         return (
           <g
             key={`${spot.index}-${chipIndex}-${value}`}
-            className="RouletteTable_chipWrap"
             transform={`translate(${pos.x}, ${pos.y})`}
             visibility={visibility}
           >
@@ -421,10 +429,7 @@ const RouletteTable = React.memo(({ bets, winningNumber, landingNumber, spinning
         )
       })}
       {dragging &&
-        <g
-          className="RouletteTable_chipWrap is-ghost"
-          transform={`translate(${drag.x}, ${drag.y})`}
-        >
+        <g transform={`translate(${drag.x}, ${drag.y})`}>
           <ChipMark
             value={drag.value}
             className={ghostClass}

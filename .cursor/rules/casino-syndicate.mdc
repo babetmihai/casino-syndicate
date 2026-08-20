@@ -25,10 +25,10 @@ Vite/React/Redux UI (`app`), Hardhat contracts (`contracts`). `GameFactory` crea
 - Redux only: `actions.get/set/update/unset`; `useSelector(() => selectX())`; fetch then select
 - Domain modules: selectors → fetchers → mutators → mappers. Fetchers write store only (no side effects)
 - Loaders: `setLoader`/`clearLoader`. No nested components, no single-use hooks/JSX vars — Redux + core/games instead
-- Mantine + SCSS (not Tailwind). Persist via `PERSISTENT_PATHS` — never localforage from domain modules
-- Material Design, minimal: quiet gray surfaces, clear hierarchy, one primary action per screen
-- Chrome (header, page, modal header) uses `gray.1` / `gray.2` — not white-on-white, not casino felt/brass/gold
-- Mantine components over custom chrome; FABs for screen actions; no extra frames, docks, or ornamental UI
+- Mantine + Tailwind + `cn()` from `app/core` (not SCSS). Persist via `PERSISTENT_PATHS` — never localforage from domain modules
+- Dark editorial chrome (mihaibabet.ro): `#0a0e14`, Syne display, JetBrains Mono UI, teal `#2dd4bf`
+- Numbered section labels, bordered surface cards, in-page / header actions — not FABs
+- Mantine components over custom chrome; no extra frames, docks, or ornamental UI
 - Mantine `NumberInput` for numeric values (amounts, min, max) — not `TextInput`. Keep stepper controls; do not `hideControls`. Clamp on submit, not on each keystroke
 
 ## Contracts

@@ -18,7 +18,7 @@ const GameScreen = () => {
   const { type } = table || {}
 
   return (
-    <AppScreen name={type}>
+    <AppScreen>
       {type === TABLE_TYPES.Roulette &&
         <RouletteGame address={address} />
       }

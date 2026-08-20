@@ -1,0 +1,112 @@
+@import "tailwind-preset-mantine";
+
+@theme {
+  --color-cs-bg: #0a0e14;
+  --color-cs-elevated: #111820;
+  --color-cs-surface: rgb(16 22 32 / 92%);
+  --color-cs-border: rgb(255 255 255 / 9%);
+  --color-cs-border-hover: rgb(45 212 191 / 45%);
+  --color-cs-text: #eef2f6;
+  --color-cs-body: #c5ced8;
+  --color-cs-muted: #93a0b0;
+  --color-cs-accent: #2dd4bf;
+  --color-cs-accent-dim: #14b8a6;
+  --color-cs-accent-glow: rgb(45 212 191 / 16%);
+  --color-cs-accent-2: #818cf8;
+  --animate-banner: banner-in-out 2.5s ease forwards;
+  --animate-chip-drop: chip-drop 0.16s ease-out;
+  --animate-number-flash: number-flash 0.12s ease-out;
+}
+
+@keyframes banner-in-out {
+  0% { opacity: 0; }
+  12% { opacity: 1; }
+  80% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes chip-drop {
+  from {
+    opacity: 0;
+    transform: translateY(-0.5rem);
+  }
+}
+
+@keyframes number-flash {
+  from { stroke-width: 2px; }
+  to { stroke-width: 3px; }
+}
+
+@layer base {
+  :root {
+    --cs-bg: var(--color-cs-bg);
+    --cs-elevated: var(--color-cs-elevated);
+    --cs-surface: var(--color-cs-surface);
+    --cs-border: var(--color-cs-border);
+    --cs-border-hover: var(--color-cs-border-hover);
+    --cs-text: var(--color-cs-text);
+    --cs-text-body: var(--color-cs-body);
+    --cs-text-muted: var(--color-cs-muted);
+    --cs-accent: var(--color-cs-accent);
+    --cs-accent-dim: var(--color-cs-accent-dim);
+    --cs-accent-glow: var(--color-cs-accent-glow);
+    --cs-accent-2: var(--color-cs-accent-2);
+  }
+
+  html {
+    height: 100%;
+    overflow: hidden;
+    color-scheme: dark;
+  }
+
+  body,
+  #root {
+    height: 100%;
+    overflow: hidden;
+  }
+
+  body {
+    margin: 0;
+    padding: 0;
+    background: var(--color-cs-bg);
+    color: var(--color-cs-text);
+  }
+
+  [data-mantine-color-scheme="dark"] {
+    --mantine-color-body: var(--color-cs-bg);
+    --mantine-color-text: var(--color-cs-text);
+  }
+}
+
+@layer components {
+  .mantine-Button-root[data-variant="filled"] {
+    background: var(--color-cs-accent);
+    color: var(--color-cs-bg);
+  }
+
+  .mantine-Button-root[data-variant="filled"]:hover {
+    background: var(--color-cs-accent-dim);
+  }
+
+  .mantine-Button-root[data-variant="outline"] {
+    border-color: var(--color-cs-border);
+    color: var(--color-cs-text);
+    background: transparent;
+  }
+
+  .mantine-Button-root[data-variant="outline"]:hover {
+    border-color: var(--color-cs-border-hover);
+    color: var(--color-cs-accent);
+    background: transparent;
+  }
+
+  .mantine-Card-root {
+    background: var(--color-cs-surface);
+    border-color: var(--color-cs-border);
+  }
+
+  .mantine-Menu-dropdown {
+    background: var(--color-cs-elevated);
+    border-color: var(--color-cs-border);
+  }
+}

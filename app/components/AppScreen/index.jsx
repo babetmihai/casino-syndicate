@@ -1,25 +1,15 @@
 import React from "react"
-import "./index.scss"
 import AppHeader from "../AppHeader"
-import { AppFabs } from "../AppFabs"
 
-const AppScreen = ({ name, children, onBack, header = true, fabs }) => {
+const AppScreen = ({ children, header = true }) => {
   return (
     <>
       {header &&
-        <AppHeader
-          name={name}
-          onBack={onBack}
-        />
+        <AppHeader />
       }
-      <div className="AppScreen_root">
+      <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden">
         {children}
       </div>
-      {fabs &&
-        <AppFabs>
-          {fabs}
-        </AppFabs>
-      }
     </>
   )
 }

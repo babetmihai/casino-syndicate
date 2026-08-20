@@ -1,6 +1,5 @@
 import React from "react"
 import { arc } from "d3-shape"
-import "./index.scss"
 
 const SIZE = 10
 
@@ -36,7 +35,7 @@ const BettingChip = React.memo(({
   return (
     <g
       transform={`translate(${size / 2 + x * SIZE}, ${size / 2 + y * SIZE})`}
-      className="BettingChip_root"
+      className="cursor-pointer"
     >
       <path
         d={outerArc()}
@@ -52,7 +51,7 @@ const BettingChip = React.memo(({
         fill={textColor}
         fontSize={size / 3}
         fontFamily="Arial, sans-serif"
-        className="BettingChip_text"
+        className="cursor-pointer select-none"
         fontWeight="bold"
         onClick={onClick}
       >

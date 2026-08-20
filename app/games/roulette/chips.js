@@ -59,9 +59,9 @@ export const CHIP_COLORS = {
     text: "var(--mantine-color-white)"
   },
   1: {
-    fill: "var(--mantine-color-dark-6)",
-    stroke: "var(--mantine-color-dark-9)",
-    text: "var(--mantine-color-white)"
+    fill: "var(--cs-bg)",
+    stroke: "var(--cs-border)",
+    text: "var(--cs-text)"
   }
 }
 

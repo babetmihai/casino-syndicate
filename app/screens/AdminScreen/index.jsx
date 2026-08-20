@@ -9,15 +9,13 @@ import { clampEth, maxBetCap, MIN_BET, tableMaxBet } from "app/games/roulette/ch
 import AppScreen from "app/components/AppScreen"
 import history from "app/core/history"
 import { fetchBalance, selectAuth } from "app/core/auth"
-import { HandDepositIcon, HandWithdrawIcon, PencilSimpleIcon, PlayIcon, WalletIcon } from "@phosphor-icons/react"
-import { AppFab } from "app/components/AppFabs"
+import { cn, labelClass, titleClass } from "app/core"
+import { Button } from "@mantine/core"
 import { showModal } from "app/core/modals"
 import DepositModal from "app/core/tables/DepositModal"
 import EditTableModal from "app/core/tables/EditTableModal"
 import WithdrawModal from "app/core/tables/WithdrawModal"
-import AuthModal from "app/core/auth/AuthModal"
 import { ethers } from "ethers"
-import "./index.scss"
 
 
 const AdminScreen = () => {
@@ -36,89 +34,82 @@ const AdminScreen = () => {
     initTable(address)
   }, [address])
 
+  const openEdit = () => {
+    const bankroll = clampEth(totalBalance)
+    const maxCap = maxBetCap(bankroll)
+    let nextMax = tableMaxBet(maxBet, bankroll) || MIN_BET
+    if (nextMax > maxCap) nextMax = maxCap || MIN_BET
+    showModal(EditTableModal, {
+      minBet: clampEth(minBet) || MIN_BET,
+      maxBet: nextMax,
+      maxCap,
+      bankroll,
+      onSubmit: async (values) => {
+        await setRouletteLimits(address, values)
+      }
+    })
+  }
+
+  const openDeposit = () => showModal(DepositModal, {
+    onSubmit: async ({ balance }) => {
+      await buyTableShares({ balance }, address)
+      await fetchBalance(account)
+    }
+  })
+
+  const openWithdraw = () => showModal(WithdrawModal, {
+    max: clampEth(memberShares),
+    bankroll: clampEth(totalBalance),
+    maxBet,
+    onSubmit: async ({ balance }) => {
+      await withdrawTableShares({ balance }, address)
+      await fetchBalance(account)
+    }
+  })
+
   return (
-    <AppScreen
-      name={name || "Manage"}
-      onBack={() => history.replace("/")}
-      fabs={
-        <>
-          <AppFab
-            label="Play"
-            onClick={() => history.push(`/tables/${address}`)}
-          >
-            <PlayIcon size={24} />
-          </AppFab>
+    <AppScreen>
+      <div className="mx-auto flex min-h-0 w-full max-w-[42rem] flex-1 flex-col overflow-hidden px-3 py-3">
+        <div className={labelClass}>Table</div>
+        <h1 className={cn(titleClass, "mt-1 mb-3 truncate text-xl")}>
+          {name || "Manage"}
+        </h1>
+        <div className="mb-3 flex shrink-0 flex-wrap gap-2">
+          <Button onClick={() => history.push(`/tables/${address}`)}>
+            Play
+          </Button>
           {isOwner &&
-            <AppFab
-              secondary
-              label={t("edit_table")}
-              onClick={() => {
-                const bankroll = clampEth(totalBalance)
-                const maxCap = maxBetCap(bankroll)
-                let nextMax = tableMaxBet(maxBet, bankroll) || MIN_BET
-                if (nextMax > maxCap) nextMax = maxCap || MIN_BET
-                showModal(EditTableModal, {
-                  minBet: clampEth(minBet) || MIN_BET,
-                  maxBet: nextMax,
-                  maxCap,
-                  bankroll,
-                  onSubmit: async (values) => {
-                    await setRouletteLimits(address, values)
-                  }
-                })
-              }}
+            <Button
+              variant="outline"
+              color="gray"
+              onClick={openEdit}
             >
-              <PencilSimpleIcon size={24} />
-            </AppFab>
+              {t("edit_table")}
+            </Button>
           }
           {account &&
-            <AppFab
-              secondary
-              className="AdminScreen_deposit"
-              label={t("fund_table")}
-              onClick={() => showModal(DepositModal, {
-                onSubmit: async ({ balance }) => {
-                  await buyTableShares({ balance }, address)
-                  await fetchBalance(account)
-                }
-              })}
+            <Button
+              variant="outline"
+              color="gray"
+              onClick={openDeposit}
             >
-              <HandDepositIcon size={24} />
-            </AppFab>
-          }
-          {!account &&
-            <AppFab
-              secondary
-              label="Connect"
-              onClick={() => showModal(AuthModal)}
-            >
-              <WalletIcon size={24} />
-            </AppFab>
+              {t("fund_table")}
+            </Button>
           }
           {hasShare &&
-            <AppFab
-              secondary
-              className="AdminScreen_withdraw"
-              label="Withdraw"
-              onClick={() => showModal(WithdrawModal, {
-                max: clampEth(memberShares),
-                bankroll: clampEth(totalBalance),
-                maxBet,
-                onSubmit: async ({ balance }) => {
-                  await withdrawTableShares({ balance }, address)
-                  await fetchBalance(account)
-                }
-              })}
+            <Button
+              variant="outline"
+              color="gray"
+              onClick={openWithdraw}
             >
-              <HandWithdrawIcon size={24} />
-            </AppFab>
+              Withdraw
+            </Button>
           }
-        </>
-      }
-    >
-      {address && type === TABLE_TYPES.Roulette &&
-        <RouletteAdmin address={address} />
-      }
+        </div>
+        {address && type === TABLE_TYPES.Roulette &&
+          <RouletteAdmin address={address} />
+        }
+      </div>
     </AppScreen>
   )
 }

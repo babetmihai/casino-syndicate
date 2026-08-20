@@ -11,7 +11,11 @@ import { theme } from "./theme"
 
 function App() {
   return (
-    <MantineProvider theme={theme} withCssVariables>
+    <MantineProvider
+      theme={theme}
+      forceColorScheme="dark"
+      withCssVariables
+    >
       <AppLayout>
         <Switch>
           <Route path="/" exact component={MainScreen} />

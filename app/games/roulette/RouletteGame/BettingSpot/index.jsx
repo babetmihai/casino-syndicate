@@ -1,5 +1,4 @@
 import React from "react"
-import "./index.scss"
 import RoundedRect from "../RoundedRect"
 
 const SIZE = 10
@@ -17,7 +16,7 @@ const BettingSpot = React.memo(({
   ...props
 }) => {
   return (
-    <g className="BettingSpot_root">
+    <g className="cursor-pointer select-none">
       <RoundedRect
         {...props}
         x={x * size}

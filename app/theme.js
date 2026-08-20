@@ -23,6 +23,11 @@ export const theme = createTheme({
       defaultProps: {
         centered: true,
         radius: "md"
+      },
+      styles: {
+        header: {
+          background: "var(--mantine-color-gray-2)"
+        }
       }
     },
     Card: {

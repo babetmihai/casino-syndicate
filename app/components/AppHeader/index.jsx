@@ -11,7 +11,7 @@ const AppHeader = ({ name, onBack }) => {
   const { account } = useSelector(() => selectAuth()) || {}
 
   return (
-    <Paper className="AppHeader_root" shadow="xs" radius={0}>
+    <Paper className="AppHeader_root" bg="gray.2" shadow="none" radius={0}>
       <div className="AppHeader_left">
         {onBack && (
           <ActionIcon
@@ -24,7 +24,7 @@ const AppHeader = ({ name, onBack }) => {
           </ActionIcon>
         )}
         {name &&
-          <Title order={3} fw={500} lineClamp={1}>
+          <Title order={4} fw={500} lineClamp={1}>
             {name}
           </Title>
         }

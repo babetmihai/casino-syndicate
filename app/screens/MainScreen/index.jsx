@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next"
 import "./index.scss"
 import { useSelector } from "react-redux"
 import { createTable, fetchTables, selectTables } from "app/core/tables"
-import { ActionIcon, Card, Text, Tooltip } from "@mantine/core"
+import { Card, Text } from "@mantine/core"
 import { showModal } from "app/core/modals"
 import TableModal from "app/core/tables/TableModal"
 import AuthModal from "app/core/auth/AuthModal"
@@ -12,7 +12,7 @@ import history from "app/core/history"
 import _ from "lodash"
 import { selectAuth } from "app/core/auth"
 import { ethers } from "ethers"
-import { GearIcon, PlusIcon, PokerChipIcon, WalletIcon } from "@phosphor-icons/react"
+import { PlusIcon, PokerChipIcon, WalletIcon } from "@phosphor-icons/react"
 import { AppFab } from "app/components/AppFabs"
 
 
@@ -104,30 +104,12 @@ const TableCard = React.memo(({ table }) => {
   return (
     <Card
       className="MainScreen_table"
-      onClick={() => history.push(`/tables/${address}`)}
+      onClick={() => history.push(`/tables/${address}/admin`)}
     >
       <div className="MainScreen_table_info">
         <Text fw={500}>{name}</Text>
         <Text size="sm" c="dimmed">{shortAddress}</Text>
       </div>
-      <Tooltip
-        label="Manage"
-        position="left"
-        withArrow
-      >
-        <ActionIcon
-          variant="subtle"
-          color="gray"
-          size="lg"
-          aria-label="Manage"
-          onClick={(event) => {
-            event.stopPropagation()
-            history.push(`/tables/${address}/admin`)
-          }}
-        >
-          <GearIcon size={22} />
-        </ActionIcon>
-      </Tooltip>
     </Card>
   )
 })

@@ -7,13 +7,11 @@ import { useTranslation } from "react-i18next"
 import { fetchRoulette, postRouletteBet, pushSpinHistory, selectRoulette } from ".."
 import { useSelector } from "react-redux"
 import { fetchBalance, selectAuth } from "app/core/auth"
-import RouletteTable from "./RouletteTable"
+import RouletteTable, { BLACK_NUMBERS } from "./RouletteTable"
+import RouletteWheel from "./RouletteWheel"
 import { CHIP_VALUES, MAX_NUMBER_BET } from "../chips"
 import { EraserIcon, PlayIcon } from "@phosphor-icons/react"
 import { AppFab, AppFabs } from "app/components/AppFabs"
-
-
-const BLACK_NUMBERS = [2, 4, 6, 8, 10, 11, 13, 15, 17, 19, 20, 22, 24, 26, 28, 29, 31, 33, 35]
 
 
 const RouletteGame = React.memo(({ address }) => {
@@ -24,6 +22,8 @@ const RouletteGame = React.memo(({ address }) => {
   const [revealing, setRevealing] = React.useState(false)
   const [landingNumber, setLandingNumber] = React.useState(null)
   const [showBanner, setShowBanner] = React.useState(false)
+  const [litNumber, setLitNumber] = React.useState(null)
+  const [litDelay, setLitDelay] = React.useState(45)
   const historyRef = React.useRef(null)
   const totalBet = _.sum(bets)
   const { account, balance } = useSelector(() => selectAuth()) || {}
@@ -49,17 +49,13 @@ const RouletteGame = React.memo(({ address }) => {
   }, [account])
 
   React.useEffect(() => {
-    if (!showResult) {
-      setShowBanner(false)
-      return
-    }
-    setShowBanner(true)
+    if (!showBanner) return
     const timer = _.delay(() => {
       setShowBanner(false)
       pushSpinHistory(address, winningNumber)
     }, 2500)
     return () => clearTimeout(timer)
-  }, [showResult, winningNumber])
+  }, [showBanner, winningNumber])
 
   React.useEffect(() => {
     const node = historyRef.current
@@ -77,44 +73,53 @@ const RouletteGame = React.memo(({ address }) => {
   }
 
   return (
-    <div className="RouletteGame_root">
-      <Card className="RouletteGame_sheet" padding={0}>
-        <div
-          ref={historyRef}
-          className="RouletteGame_history"
-        >
-          {_.map(_.reverse([...history]), (number, index) => {
-            let color = "red"
-            if (number === 0) color = "green"
-            if (_.includes(BLACK_NUMBERS, number)) color = "black"
-            let className = "RouletteGame_historyItem"
-            if (index === 0) className = "RouletteGame_historyItem is-latest"
-            return (
-              <div
-                key={`${history.length - 1 - index}-${number}`}
-                className={className}
-                data-color={color}
-              >
-                {number}
-              </div>
-            )
-          })}
-        </div>
+    <>
+      <div
+        ref={historyRef}
+        className="RouletteGame_history"
+      >
+        {_.map(_.reverse([...history]), (number, index) => {
+          let color = "red"
+          if (number === 0) color = "green"
+          if (_.includes(BLACK_NUMBERS, number)) color = "black"
+          let className = "RouletteGame_historyItem"
+          if (index === 0) className = "RouletteGame_historyItem is-latest"
+          return (
+            <div
+              key={`${history.length - 1 - index}-${number}`}
+              className={className}
+              data-color={color}
+            >
+              {number}
+            </div>
+          )
+        })}
+      </div>
+      <div className="RouletteGame_root">
+        <Card className="RouletteGame_sheet" padding={0}>
         <div className="RouletteGame_board">
           <RouletteTable
             bets={bets}
             winningNumber={showResult ? winningNumber : undefined}
             landingNumber={landingNumber}
             spinning={revealing}
+            onLitNumber={(number, delay) => {
+              setLitNumber(number)
+              if (delay != null) setLitDelay(delay)
+            }}
             onNumberClick={addBet}
             onReveal={() => {
               setRevealing(false)
               setLandingNumber(null)
+              setShowBanner(true)
               const nextBets = _.range(37).fill(0)
               if (Number(winningAmount) > 0) nextBets[winningNumber] = bets[winningNumber]
               setBets(nextBets)
             }}
           />
+        </div>
+        <div className="RouletteGame_wheel">
+          <RouletteWheel number={litNumber} delay={litDelay} spinning={revealing} />
         </div>
       </Card>
       {createPortal(
@@ -156,16 +161,21 @@ const RouletteGame = React.memo(({ address }) => {
             disabled={!canSpin}
             loading={revealing}
             onClick={async () => {
-              let spin
               setRevealing(true)
               setLandingNumber(null)
               try {
-                spin = await postRouletteBet(address, bets)
-                if (spin) setLandingNumber(spin.number)
-                if (account) await fetchBalance(account)
-              } finally {
-                if (!spin) setRevealing(false)
+                const spin = await postRouletteBet(address, bets)
+                if (!spin) {
+                  setRevealing(false)
+                  return
+                }
+                setLandingNumber(spin.number)
+              } catch {
+                setRevealing(false)
+                setLandingNumber(null)
+                return
               }
+              if (account) await fetchBalance(account)
             }}
           >
             <PlayIcon size={24} />
@@ -205,6 +215,7 @@ const RouletteGame = React.memo(({ address }) => {
         </AppFabs>
       }
     </div>
+    </>
   )
 })
 

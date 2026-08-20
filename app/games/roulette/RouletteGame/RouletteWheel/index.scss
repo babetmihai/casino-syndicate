@@ -1,0 +1,42 @@
+.RouletteWheel_svg {
+  width: 100%;
+  height: 100%;
+  max-width: 14rem;
+  max-height: 14rem;
+  display: block;
+}
+
+.RouletteWheel_label {
+  font-family: Roboto, Helvetica, Arial, sans-serif;
+  font-weight: 500;
+  letter-spacing: -0.06em;
+  pointer-events: none;
+}
+
+.RouletteWheel_rotor {
+  transform-origin: 0 0;
+}
+
+.RouletteWheel_pocketBody {
+  stroke: var(--mantine-color-gray-2);
+  stroke-width: 1;
+}
+
+.RouletteWheel_pocket.is-flash .RouletteWheel_pocketBody,
+.RouletteWheel_pocket.is-winner .RouletteWheel_pocketBody {
+  stroke: var(--mantine-color-indigo-6);
+  stroke-width: 2;
+}
+
+.RouletteWheel_pocket.is-flash .RouletteWheel_pocketBody {
+  animation: numberFlash 0.12s ease-out;
+}
+
+@keyframes numberFlash {
+  from {
+    stroke-width: 1;
+  }
+  to {
+    stroke-width: 2;
+  }
+}

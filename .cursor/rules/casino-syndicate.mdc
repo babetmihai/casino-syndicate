@@ -26,6 +26,9 @@ Vite/React/Redux UI (`app`), Hardhat contracts (`contracts`). `GameFactory` crea
 - Domain modules: selectors → fetchers → mutators → mappers. Fetchers write store only (no side effects)
 - Loaders: `setLoader`/`clearLoader`. No nested components, no single-use hooks/JSX vars — Redux + core/games instead
 - Mantine + SCSS (not Tailwind). Persist via `PERSISTENT_PATHS` — never localforage from domain modules
+- Material Design, minimal: quiet gray surfaces, clear hierarchy, one primary action per screen
+- Chrome (header, page, modal header) uses `gray.1` / `gray.2` — not white-on-white, not casino felt/brass/gold
+- Mantine components over custom chrome; FABs for screen actions; no extra frames, docks, or ornamental UI
 
 ## Contracts
 

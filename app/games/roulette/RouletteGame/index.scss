@@ -5,10 +5,10 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  max-width: 40rem;
+  max-width: 52rem;
   margin: 0 auto;
-  padding: 0.75rem;
-  padding-bottom: 6rem;
+  padding: 0.75rem 6rem;
+  padding-bottom: calc(0.75rem + env(safe-area-inset-bottom));
   overflow: hidden;
 }
 
@@ -24,17 +24,16 @@
 
 .RouletteGame_history {
   position: absolute;
-  z-index: 1;
-  top: 0;
-  left: 0;
-  bottom: 0;
+  z-index: 200;
+  top: 1rem;
+  left: 1rem;
+  bottom: 5.5rem;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 0.5rem;
   box-sizing: border-box;
-  padding: 0.5rem 0.75rem;
-  overflow-x: hidden;
+  padding: 0.125rem;
   overflow-y: auto;
   scrollbar-width: none;
   user-select: none;
@@ -70,7 +69,7 @@
 }
 
 .RouletteGame_historyItem.is-latest {
-  box-shadow: 0 0 0 0.125rem var(--mantine-color-blue-6);
+  box-shadow: 0 0 0 0.125rem var(--mantine-color-indigo-6);
 }
 
 .RouletteGame_bannerLayer {
@@ -80,7 +79,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: color-mix(in srgb, var(--mantine-color-gray-0) 72%, transparent);
+  background: color-mix(in srgb, var(--mantine-color-dark-9) 32%, transparent);
   pointer-events: none;
   animation: bannerLayerInOut 2.5s ease forwards;
 }
@@ -136,18 +135,15 @@
 @keyframes bannerInOut {
   0% {
     opacity: 0;
-    transform: scale(0.92);
   }
   12% {
     opacity: 1;
-    transform: scale(1);
   }
   80% {
     opacity: 1;
   }
   100% {
     opacity: 0;
-    transform: scale(1);
   }
 }
 
@@ -172,7 +168,6 @@
 
 .RouletteGame_chip[data-selected="true"] {
   border-color: var(--mantine-color-indigo-6);
-  box-shadow: 0 0 0 0.125rem var(--mantine-color-indigo-1);
 }
 
 .RouletteGame_chip[data-value="1"] {
@@ -204,15 +199,22 @@
   display: flex;
   align-items: stretch;
   justify-content: center;
-  padding: 0.5rem 0.75rem;
+  padding: 0.5rem 0.75rem 0;
   touch-action: manipulation;
+}
+
+.RouletteGame_wheel {
+  flex: 0 1 15rem;
+  min-height: 10rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0.25rem 0.75rem 0.75rem;
 }
 
 @media (max-width: 40rem) {
   .RouletteGame_root {
     max-width: none;
-    padding: 0;
-    padding-bottom: 6rem;
   }
 
   .RouletteGame_sheet {

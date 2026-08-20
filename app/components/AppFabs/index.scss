@@ -16,9 +16,11 @@
 }
 
 .AppFab_root {
-  --ai-size: 3rem;
-  width: 3rem;
-  height: 3rem;
-  min-width: 3rem;
-  min-height: 3rem;
+  --ai-size: 3.5rem;
+  width: 3.5rem;
+  height: 3.5rem;
+  min-width: 3.5rem;
+  min-height: 3.5rem;
+  overflow: visible;
+  box-shadow: 0 0.1875rem 0.3125rem color-mix(in srgb, var(--mantine-color-dark-9) 20%, transparent);
 }

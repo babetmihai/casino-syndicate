@@ -12,6 +12,12 @@ export const clampEth = (amount) => {
   return _.floor(value, 2)
 }
 
+export const addEth = (amount, delta) => {
+  const cents = _.round((Number(amount) || 0) * 100) + _.round((Number(delta) || 0) * 100)
+  if (cents <= 0) return 0
+  return cents / 100
+}
+
 export const formatEth = (wei) => clampEth(ethers.formatEther(wei || 0n))
 
 export const parseEth = (eth) => ethers.parseEther(clampEth(eth).toFixed(2))

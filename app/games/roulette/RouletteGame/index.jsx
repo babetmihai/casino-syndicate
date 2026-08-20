@@ -8,7 +8,7 @@ import { fetchRoulette, postRouletteBet, pushSpinHistory, selectRoulette } from 
 import { useSelector } from "react-redux"
 import { fetchBalance, selectAuth } from "app/core/auth"
 import RouletteTable from "./RouletteTable"
-import { CHIP_VALUES, chipLabel, clampEth, ethLabel, isTableLocked, MIN_BET, tableMaxBet } from "../chips"
+import { CHIP_VALUES, addEth, chipLabel, clampEth, ethLabel, isTableLocked, MIN_BET, tableMaxBet } from "../chips"
 import { BET_COUNT, BLACK_NUMBERS, betWins, maxPotentialPayout } from "../bets"
 import { PlayIcon, WalletIcon } from "@phosphor-icons/react"
 import { AppFab, AppFabs } from "app/components/AppFabs"
@@ -76,12 +76,8 @@ const RouletteGame = React.memo(({ address }) => {
     if (revealing) return
     if (tableLocked) return
     const nextBets = [...bets]
-    let nextValue = clampEth(nextBets[index] + amount)
-    if (nextValue < 0) nextValue = 0
-    if (nextValue > 0 && nextValue < minBetAmount) {
-      if (amount < 0) nextValue = 0
-      else nextValue = minBetAmount
-    }
+    let nextValue = addEth(nextBets[index], amount)
+    if (amount > 0 && nextValue > 0 && nextValue < minBetAmount) nextValue = minBetAmount
     if (nextValue > maxBetAmount) nextValue = maxBetAmount
     nextBets[index] = nextValue
     commitBets(nextBets)
@@ -92,12 +88,9 @@ const RouletteGame = React.memo(({ address }) => {
     if (tableLocked) return
     if (fromIndex === toIndex) return
     const nextBets = [...bets]
-    let fromValue = clampEth(nextBets[fromIndex] - value)
-    if (fromValue < 0) fromValue = 0
-    if (fromValue > 0 && fromValue < minBetAmount) fromValue = 0
-    let toValue = clampEth(nextBets[toIndex] + value)
+    const fromValue = addEth(nextBets[fromIndex], -value)
+    const toValue = addEth(nextBets[toIndex], value)
     if (toValue > maxBetAmount) return
-    if (toValue > 0 && toValue < minBetAmount) return
     nextBets[fromIndex] = fromValue
     nextBets[toIndex] = toValue
     commitBets(nextBets)

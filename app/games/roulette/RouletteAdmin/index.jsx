@@ -26,9 +26,11 @@ const RouletteAdmin = ({ address }) => {
   const minBetAmount = clampEth(minBet) || MIN_BET
   const maxBetAmount = tableMaxBet(maxBet, bankroll)
   const tableLocked = locked || isTableLocked(bankroll, maxBet)
+  let shareColor = "var(--mantine-color-indigo-6)"
+  if (tableLocked) shareColor = "var(--mantine-color-red-6)"
 
   const pieData = []
-  if (share > 0) pieData.push({ key: "yours", value: share, color: "var(--mantine-color-indigo-6)" })
+  if (share > 0) pieData.push({ key: "yours", value: share, color: shareColor })
   if (rest > 0) pieData.push({ key: "rest", value: rest, color: "var(--mantine-color-gray-3)" })
   if (pieData.length === 0) pieData.push({ key: "rest", value: 1, color: "var(--mantine-color-gray-3)" })
 
@@ -44,7 +46,7 @@ const RouletteAdmin = ({ address }) => {
 
   return (
     <div className="RouletteAdmin_content">
-      <div className="RouletteAdmin_share">
+      <div className="RouletteAdmin_share" data-locked={tableLocked}>
         <div className="RouletteAdmin_chart">
           <svg
             viewBox={`0 0 ${CHART_SIZE} ${CHART_SIZE}`}
@@ -81,9 +83,8 @@ const RouletteAdmin = ({ address }) => {
         </div>
       </div>
       <Card className="RouletteAdmin_limits">
-        <Text fw={500}>Table limits</Text>
-        <Text size="sm" c="dimmed">
-          Min {ethLabel(minBetAmount)} · Max {ethLabel(maxBetAmount)}
+        <Text size="sm">
+          <Text span c="dimmed">Min</Text> {ethLabel(minBetAmount)} · <Text span c="dimmed">Max</Text> {ethLabel(maxBetAmount)}
         </Text>
         {tableLocked &&
           <Text size="sm" c="red">

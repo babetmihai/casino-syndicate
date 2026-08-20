@@ -4,7 +4,7 @@ import { useTranslation } from "react-i18next"
 import "./index.scss"
 import { useSelector } from "react-redux"
 import { createTable, fetchTables, selectTables } from "app/core/tables"
-import { Card, Text } from "@mantine/core"
+import { Card, Text, Title } from "@mantine/core"
 import { showModal } from "app/core/modals"
 import TableModal from "app/core/tables/TableModal"
 import AuthModal from "app/core/auth/AuthModal"
@@ -67,7 +67,7 @@ const MainScreen = () => {
             <div className="MainScreen_empty_icon">
               <WalletIcon size={32} />
             </div>
-            <Text fw={500} size="lg">Connect a wallet</Text>
+            <Title order={4} fw={500} mb={0}>Connect a wallet</Title>
             <Text c="dimmed" size="sm">
               Connect to create and manage tables.
             </Text>
@@ -78,13 +78,16 @@ const MainScreen = () => {
             <div className="MainScreen_empty_icon">
               <PokerChipIcon size={32} />
             </div>
-            <Text fw={500} size="lg">No tables yet</Text>
+            <Title order={4} fw={500} mb={0}>No tables yet</Title>
             <Text c="dimmed" size="sm">
               Create a table to start hosting games.
             </Text>
           </div>
         }
         <div className="MainScreen_tables">
+          {account && !isEmpty &&
+            <Title order={4} fw={500} mb={0}>Your tables</Title>
+          }
           {ownedTables.map((table) => (
             <TableCard
               key={table.address}

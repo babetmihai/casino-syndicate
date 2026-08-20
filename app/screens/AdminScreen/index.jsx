@@ -17,6 +17,7 @@ import EditTableModal from "app/core/tables/EditTableModal"
 import WithdrawModal from "app/core/tables/WithdrawModal"
 import AuthModal from "app/core/auth/AuthModal"
 import { ethers } from "ethers"
+import "./index.scss"
 
 
 const AdminScreen = () => {
@@ -73,6 +74,7 @@ const AdminScreen = () => {
           {account &&
             <AppFab
               secondary
+              className="AdminScreen_deposit"
               label={t("fund_table")}
               onClick={() => showModal(DepositModal, {
                 onSubmit: async ({ balance }) => {
@@ -96,6 +98,7 @@ const AdminScreen = () => {
           {hasShare &&
             <AppFab
               secondary
+              className="AdminScreen_withdraw"
               label="Withdraw"
               onClick={() => showModal(WithdrawModal, {
                 max: clampEth(memberShares),

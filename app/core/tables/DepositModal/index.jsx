@@ -5,10 +5,13 @@ import { useFormik } from "formik"
 import * as Yup from "yup"
 import { useTranslation } from "react-i18next"
 import { MIN_BET, clampEth } from "app/games/roulette/chips"
+import { useSelector } from "react-redux"
+import { selectNativeSymbol } from "app/core/chain"
 
 
 const DepositModal = ({ onSubmit }) => {
   const { t } = useTranslation()
+  const symbol = useSelector(() => selectNativeSymbol())
   const formik = useFormik({
     initialValues: {
       balance: 10
@@ -36,7 +39,7 @@ const DepositModal = ({ onSubmit }) => {
       title={<Text fw={500}>{t("fund_table")}</Text>}
     >
       <NumberInput
-        label="Amount (ETH)"
+        label={`Amount (${symbol})`}
         min={MIN_BET}
         step={0.01}
         decimalScale={2}

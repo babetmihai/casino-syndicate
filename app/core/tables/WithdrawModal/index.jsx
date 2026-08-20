@@ -5,10 +5,13 @@ import { useFormik } from "formik"
 import * as Yup from "yup"
 import { useTranslation } from "react-i18next"
 import { MIN_BET, clampEth, isTableLocked } from "app/games/roulette/chips"
+import { useSelector } from "react-redux"
+import { selectNativeSymbol } from "app/core/chain"
 
 
 const WithdrawModal = ({ onSubmit, max, bankroll, maxBet }) => {
   const { t } = useTranslation()
+  const symbol = useSelector(() => selectNativeSymbol())
   const maxAmount = clampEth(max)
   const formik = useFormik({
     initialValues: {
@@ -50,7 +53,7 @@ const WithdrawModal = ({ onSubmit, max, bankroll, maxBet }) => {
         </Text>
       }
       <NumberInput
-        label="Amount (ETH)"
+        label={`Amount (${symbol})`}
         min={MIN_BET}
         max={maxAmount}
         step={0.01}

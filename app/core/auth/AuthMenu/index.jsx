@@ -5,17 +5,20 @@ import { selectAuth, logout, fetchBalance, requestTestEth } from "app/core/auth"
 import { ethLabel } from "app/games/roulette/chips"
 import { cn } from "app/core"
 import { useSelector } from "react-redux"
+import { isLocalChain, selectChain } from "app/core/chain"
 
 
 const AuthMenu = () => {
   const { account, balance } = useSelector(() => selectAuth()) || {}
+  const { chainId, symbol } = useSelector(() => selectChain()) || {}
   const shortAccount = `${account.slice(0, 6)}…${account.slice(-4)}`
-  const balanceLabel = ethLabel(balance)
+  const balanceLabel = ethLabel(balance, symbol)
+  const showTestFunds = isLocalChain(chainId)
 
   React.useEffect(() => {
     if (!account) return
     fetchBalance(account)
-  }, [account])
+  }, [account, chainId])
 
   return (
     <Menu position="bottom-end" shadow="md">
@@ -37,12 +40,14 @@ const AuthMenu = () => {
       </Menu.Target>
       <Menu.Dropdown>
         <Menu.Label>{shortAccount}</Menu.Label>
-        <Menu.Item
-          onClick={() => requestTestEth()}
-          leftSection={<WalletIcon size={16} />}
-        >
-          Get test ETH
-        </Menu.Item>
+        {showTestFunds &&
+          <Menu.Item
+            onClick={() => requestTestEth()}
+            leftSection={<WalletIcon size={16} />}
+          >
+            Get test {symbol}
+          </Menu.Item>
+        }
         <Menu.Item
           onClick={() => logout()}
           leftSection={<SignOutIcon size={16} />}

@@ -5,10 +5,13 @@ import { useFormik } from "formik"
 import * as Yup from "yup"
 import { useTranslation } from "react-i18next"
 import { MIN_BET, clampEth } from "app/games/roulette/chips"
+import { useSelector } from "react-redux"
+import { selectNativeSymbol } from "app/core/chain"
 
 
 const EditTableModal = ({ onSubmit, name, minBet, maxBet, maxCap, bankroll }) => {
   const { t } = useTranslation()
+  const symbol = useSelector(() => selectNativeSymbol())
   const formik = useFormik({
     initialValues: {
       name,
@@ -56,7 +59,7 @@ const EditTableModal = ({ onSubmit, name, minBet, maxBet, maxCap, bankroll }) =>
         }}
       />
       <Text size="sm" c="dimmed" mt="md" mb="xs">
-        Bankroll {clampEth(bankroll)} ETH. Max cannot exceed 1/100 of the deposit.
+        Bankroll {clampEth(bankroll)} {symbol}. Max cannot exceed 1/100 of the deposit.
       </Text>
       <Group grow align="flex-start">
         <NumberInput

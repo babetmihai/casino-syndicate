@@ -8,11 +8,13 @@ import store from "./core/store"
 import { loadStorage } from "./core/storage"
 import { Router } from "react-router-dom"
 import history from "./core/history"
+import { initChain } from "./core/chain"
 
 import { loadLanguage } from "./core/i18n"
 
 const init = async () => {
   await loadStorage()
+  initChain()
   await loadLanguage()
 
   ReactDOM.createRoot(document.getElementById("root")).render(

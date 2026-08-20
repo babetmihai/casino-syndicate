@@ -2,7 +2,7 @@ import { actions } from "../store"
 import { EMPTY_OBJECT } from ".."
 import { ethers } from "ethers"
 import { clearLoader, setLoader } from "../loaders"
-import { generateContract, getFactory } from "../contracts"
+import { generateContract, getFactory, sendTx } from "../contracts"
 import { selectAuth } from "../auth"
 import { fetchRoulette } from "app/games/roulette"
 import { parseEth } from "app/games/roulette/chips"
@@ -62,10 +62,9 @@ export const createTable = async (values) => {
   if (gameType === undefined) throw new Error("Unsupported game type")
 
   const factory = await getFactory()
-  const tx = await factory.createGame(name, gameType, {
+  const receipt = await sendTx(factory.createGame, [name, gameType], {
     value: parseEth(balance)
   })
-  const receipt = await tx.wait()
 
   let address
   for (const log of receipt.logs) {
@@ -89,8 +88,7 @@ export const createTable = async (values) => {
 
 export const setTableName = async (address, name) => {
   const factory = await getFactory()
-  const tx = await factory.setGameName(address, name)
-  await tx.wait()
+  await sendTx(factory.setGameName, [address, name])
   await initTable(address)
 }
 

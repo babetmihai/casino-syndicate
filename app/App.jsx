@@ -7,9 +7,13 @@ import { MantineProvider } from "@mantine/core"
 import AdminScreen from "./screens/AdminScreen"
 import GameScreen from "./screens/GameScreen"
 import { theme } from "./theme"
+import { watchWallet } from "./core/auth"
 
 
 function App() {
+  React.useEffect(() => {
+    watchWallet()
+  }, [])
   return (
     <MantineProvider
       theme={theme}

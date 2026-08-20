@@ -12,6 +12,7 @@ import AuthModal from "app/core/auth/AuthModal"
 import RouletteTable from "./RouletteTable"
 import { CHIP_VALUES, addEth, chipLabel, clampEth, ethLabel, isTableLocked, MIN_BET, tableMaxBet } from "../chips"
 import { BET_COUNT, BLACK_NUMBERS, betWins, maxPotentialPayout } from "../bets"
+import { selectNativeSymbol } from "app/core/chain"
 
 
 const RouletteGame = React.memo(({ address }) => {
@@ -27,6 +28,7 @@ const RouletteGame = React.memo(({ address }) => {
   const totalBet = clampEth(_.sum(bets))
   const { account } = useSelector(() => selectAuth()) || {}
   const { lastSpin, history = [], minBet, maxBet, totalBalance, locked } = useSelector(() => selectRoulette(address)) || {}
+  const symbol = useSelector(() => selectNativeSymbol())
   const { number: winningNumber, winningAmount } = lastSpin || {}
   const showResult = lastSpin && !revealing
   const minBetAmount = clampEth(minBet) || MIN_BET
@@ -170,7 +172,7 @@ const RouletteGame = React.memo(({ address }) => {
           })}
         </div>
         <Text size="xs" c="dimmed" className="shrink-0 whitespace-nowrap">
-          {ethLabel(totalBet)}
+          {ethLabel(totalBet, symbol)}
         </Text>
         {tableLocked &&
           <Text size="xs" c="red" className="shrink-0">
@@ -228,7 +230,7 @@ const RouletteGame = React.memo(({ address }) => {
                       value === 1 && "bg-cs-elevated text-cs-text outline outline-cs-border",
                       "cursor-pointer disabled:cursor-default disabled:opacity-40"
                     )}
-                    aria-label={`${value} ETH`}
+                    aria-label={ethLabel(value, symbol)}
                     aria-pressed={isCurrent}
                     disabled={tableLocked}
                     onClick={() => setChip(value)}
@@ -289,7 +291,7 @@ const RouletteGame = React.memo(({ address }) => {
                 {winningNumber}
               </Text>
               <Text size="sm">
-                Won {ethLabel(winningAmount)}
+                Won {ethLabel(winningAmount, symbol)}
               </Text>
             </Card>
           </div>,

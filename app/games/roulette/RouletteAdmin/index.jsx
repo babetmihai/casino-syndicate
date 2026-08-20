@@ -7,6 +7,7 @@ import { cn } from "app/core"
 import { arc, pie } from "d3-shape"
 import _ from "lodash"
 import { clampEth, ethLabel, isTableLocked, MIN_BET, tableMaxBet } from "../chips"
+import { selectNativeSymbol } from "app/core/chain"
 
 
 const CHART_SIZE = 192
@@ -17,6 +18,7 @@ const CHART_INNER = 62
 const RouletteAdmin = ({ address }) => {
   const { account } = useSelector(() => selectAuth()) || {}
   const roulette = useSelector(() => selectRoulette(address)) || {}
+  const symbol = useSelector(() => selectNativeSymbol())
   const { memberShares, totalBalance, minBet, maxBet, locked } = roulette
   const share = clampEth(memberShares)
   const bankroll = clampEth(totalBalance)
@@ -69,22 +71,22 @@ const RouletteAdmin = ({ address }) => {
           </svg>
           <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center px-2 text-center">
             <Text className={cn("font-headings text-[0.875rem] leading-tight font-bold", tableLocked && "text-red-600")}>
-              {ethLabel(memberShares)}
+              {ethLabel(memberShares, symbol)}
             </Text>
             <Text size="xs" c="dimmed">{pct}%</Text>
           </div>
         </div>
         <div className="grid min-w-0 flex-1 grid-cols-2 gap-2">
           <div className="rounded-[0.75rem] border border-cs-border bg-cs-surface px-3 py-2">
-            <span className={numberClass}>{ethLabel(memberShares)}</span>
+            <span className={numberClass}>{ethLabel(memberShares, symbol)}</span>
             <span className="mt-0.5 block text-[0.75rem] text-cs-muted">You</span>
           </div>
           <div className="rounded-[0.75rem] border border-cs-border bg-cs-surface px-3 py-2">
-            <span className={numberClass}>{ethLabel(rest)}</span>
+            <span className={numberClass}>{ethLabel(rest, symbol)}</span>
             <span className="mt-0.5 block text-[0.75rem] text-cs-muted">Others</span>
           </div>
           <div className="rounded-[0.75rem] border border-cs-border bg-cs-surface px-3 py-2">
-            <span className={numberClass}>{ethLabel(bankroll)}</span>
+            <span className={numberClass}>{ethLabel(bankroll, symbol)}</span>
             <span className="mt-0.5 block text-[0.75rem] text-cs-muted">Bankroll</span>
           </div>
           <div className="rounded-[0.75rem] border border-cs-border bg-cs-surface px-3 py-2">
@@ -96,7 +98,7 @@ const RouletteAdmin = ({ address }) => {
       <Card className="flex shrink-0 flex-col gap-1 py-2">
         <Text size="xs" c="dimmed">Limits</Text>
         <Text size="sm">
-          {ethLabel(minBetAmount)} – {ethLabel(maxBetAmount)}
+          {ethLabel(minBetAmount, symbol)} – {ethLabel(maxBetAmount, symbol)}
         </Text>
         {tableLocked &&
           <Text size="xs" c="red">

@@ -13,6 +13,7 @@ import { selectAuth } from "app/core/auth"
 import { selectRoulette } from "app/games/roulette"
 import { clampEth, ethLabel, isTableLocked, MIN_BET, tableMaxBet } from "app/games/roulette/chips"
 import { ethers } from "ethers"
+import { selectNativeSymbol } from "app/core/chain"
 
 
 const MainScreen = () => {
@@ -102,6 +103,7 @@ const MainScreen = () => {
 const TableCard = React.memo(({ table, index }) => {
   const { name, address } = table || {}
   const roulette = useSelector(() => selectRoulette(address)) || {}
+  const symbol = useSelector(() => selectNativeSymbol())
   const { memberShares, minBet, maxBet, totalBalance, locked } = roulette
   const shortAddress = `${address.slice(0, 6)}…${address.slice(-4)}`
   const bankroll = clampEth(totalBalance)
@@ -130,10 +132,10 @@ const TableCard = React.memo(({ table, index }) => {
       {hasStats &&
         <div className="flex shrink-0 flex-col items-end gap-0.5 text-right">
           <span className={cn(titleClass, "text-base text-cs-accent", tableLocked && "text-red-600")}>
-            {ethLabel(memberShares)}
+            {ethLabel(memberShares, symbol)}
           </span>
           <Text size="xs" c="dimmed">
-            {ethLabel(minBetAmount)}–{ethLabel(maxBetAmount)}
+            {ethLabel(minBetAmount, symbol)}–{ethLabel(maxBetAmount, symbol)}
           </Text>
         </div>
       }

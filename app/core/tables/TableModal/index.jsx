@@ -6,10 +6,13 @@ import * as Yup from "yup"
 import { useTranslation } from "react-i18next"
 import { TABLE_TYPES } from ".."
 import { MIN_TABLE_DEPOSIT, clampEth } from "app/games/roulette/chips"
+import { useSelector } from "react-redux"
+import { selectNativeSymbol } from "app/core/chain"
 
 
 const TableModal = ({ onSubmit }) => {
   const { t } = useTranslation()
+  const symbol = useSelector(() => selectNativeSymbol())
   const formik = useFormik({
     initialValues: {
       name: "",
@@ -50,7 +53,7 @@ const TableModal = ({ onSubmit }) => {
         }}
       />
       <NumberInput
-        label="Amount (ETH)"
+        label={`Amount (${symbol})`}
         min={MIN_TABLE_DEPOSIT}
         step={0.01}
         decimalScale={2}
@@ -64,7 +67,7 @@ const TableModal = ({ onSubmit }) => {
         }}
       />
       <Text size="sm" c="dimmed" mt="xs">
-        Minimum {MIN_TABLE_DEPOSIT} ETH.
+        Minimum {MIN_TABLE_DEPOSIT} {symbol}.
       </Text>
       <Group justify="flex-end" gap="sm" mt="md">
         <Button

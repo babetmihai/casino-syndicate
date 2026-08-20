@@ -1,7 +1,7 @@
 import { ethers } from "ethers"
 import { actions } from "app/core/store"
 import { EMPTY_OBJECT } from "app/core"
-import { generateContract, getContract } from "app/core/contracts"
+import { generateContract, getContract, sendTx } from "app/core/contracts"
 import { selectAuth } from "app/core/auth"
 import { formatEth, MAX_BET_DIVISOR, MIN_BET, parseEth } from "./chips"
 
@@ -43,26 +43,23 @@ export const fetchRoulette = async (address) => {
 export const buyTableShares = async ({ balance }, address) => {
   let contract = getContract(address)
   if (!contract) contract = await generateContract(address)
-  const tx = await contract.depositShares({
+  await sendTx(contract.depositShares, [], {
     value: parseEth(balance)
   })
-  await tx.wait()
   await fetchRoulette(address)
 }
 
 export const withdrawTableShares = async ({ balance }, address) => {
   let contract = getContract(address)
   if (!contract) contract = await generateContract(address)
-  const tx = await contract.withdrawShares(parseEth(balance))
-  await tx.wait()
+  await sendTx(contract.withdrawShares, [parseEth(balance)])
   await fetchRoulette(address)
 }
 
 export const setRouletteLimits = async (address, { minBet, maxBet }) => {
   let contract = getContract(address)
   if (!contract) contract = await generateContract(address)
-  const tx = await contract.setLimits(parseEth(minBet), parseEth(maxBet))
-  await tx.wait()
+  await sendTx(contract.setLimits, [parseEth(minBet), parseEth(maxBet)])
   await fetchRoulette(address)
 }
 
@@ -71,8 +68,7 @@ export const postRouletteBet = async (address, bets) => {
   if (!contract) contract = await generateContract(address)
   const values = bets.map((bet) => parseEth(bet || 0))
   const value = values.reduce((sum, amount) => sum + amount, 0n)
-  const tx = await contract.postBet(values, { value })
-  const receipt = await tx.wait()
+  const receipt = await sendTx(contract.postBet, [values], { value })
   const lastSpin = readWinningNumber(contract, receipt)
   await fetchRoulette(address)
   if (lastSpin) actions.update(roulettePath(address), { lastSpin })

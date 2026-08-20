@@ -22,7 +22,7 @@ export const formatEth = (wei) => clampEth(ethers.formatEther(wei || 0n))
 
 export const parseEth = (eth) => ethers.parseEther(clampEth(eth).toFixed(2))
 
-export const ethLabel = (amount) => `${clampEth(amount)} ETH`
+export const ethLabel = (amount, symbol) => `${clampEth(amount)} ${symbol || "ETH"}`
 
 export const chipLabel = (value) => {
   if (value >= 1) return String(value)

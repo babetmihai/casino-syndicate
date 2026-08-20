@@ -1,9 +1,9 @@
 import { ethers } from "ethers"
 import { actions } from "app/core/store"
 import { EMPTY_OBJECT } from "app/core"
-import { generateContract, getContract, sendTx } from "app/core/contracts"
+import { generateContract, sendTx } from "app/core/contracts"
 import { selectAuth } from "app/core/auth"
-import { formatEth, parseEth } from "app/games/roulette/chips"
+import { formatEth } from "app/games/roulette/chips"
 import LotteryArtifact from "artifacts/contracts/Lottery.sol/Lottery.json"
 import _ from "lodash"
 
@@ -34,8 +34,7 @@ export const selectLottery = (address) => {
 }
 
 export const fetchLottery = async (address) => {
-  let contract = getContract(address)
-  if (!contract) contract = await generateContract(address, LotteryArtifact.abi)
+  const contract = await generateContract(address, LotteryArtifact.abi)
   const { account } = selectAuth() || {}
   let overrides = {}
   if (account) overrides = { from: account }
@@ -51,7 +50,7 @@ export const fetchLottery = async (address) => {
   actions.update(lotteryPath(address), {
     polygonCount: Number(row.polygonCount),
     winPercent: formatChance(row.winPercent),
-    ticketPrice: formatEth(row.ticketPrice),
+    ticketPrice: formatEth(await contract.ticketPrice()),
     claimedCount: Number(row.claimedCount),
     prize: formatEth(row.prize),
     myPrize: formatEth(row.myPrize),
@@ -64,12 +63,11 @@ export const fetchLottery = async (address) => {
 }
 
 export const buyLotteryTicket = async (address, count = 1) => {
-  let contract = getContract(address)
-  if (!contract) contract = await generateContract(address, LotteryArtifact.abi)
-  const { ticketPrice } = selectLottery(address)
+  const contract = await generateContract(address, LotteryArtifact.abi)
   const tickets = Number(count) || 1
+  const price = await contract.ticketPrice()
   const receipt = await sendTx(contract.buyTickets, [tickets], {
-    value: parseEth(ticketPrice) * BigInt(tickets),
+    value: price * BigInt(tickets),
     gasLimit: ticketGas(tickets)
   })
   const lastTicket = readTicket(contract, receipt)
@@ -80,8 +78,7 @@ export const buyLotteryTicket = async (address, count = 1) => {
 
 
 export const withdrawLotteryPrize = async (address) => {
-  let contract = getContract(address)
-  if (!contract) contract = await generateContract(address, LotteryArtifact.abi)
+  const contract = await generateContract(address, LotteryArtifact.abi)
   await sendTx(contract.withdrawPrize, [])
   await fetchLottery(address)
 }

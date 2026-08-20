@@ -2,6 +2,7 @@ import { ethers } from "ethers"
 import { actions } from "app/core/store"
 import { EMPTY_OBJECT } from "app/core"
 import { generateContract, getContract } from "app/core/contracts"
+import { selectAuth } from "app/core/auth"
 import { formatEth, MAX_BET_DIVISOR, MIN_BET, parseEth } from "./chips"
 
 
@@ -16,13 +17,16 @@ export const selectRoulette = (address) => {
 export const fetchRoulette = async (address) => {
   let contract = getContract(address)
   if (!contract) contract = await generateContract(address)
-  const row = await contract.getTable()
-  const memberShares = row.memberShares
-  const playerBalance = row.playerBalance
-  const totalShares = row.totalShares
-  const totalBalance = row.totalBalance
-  let minBet = row.minBet
-  let maxBet = row.maxBet
+  const { account } = selectAuth() || {}
+  let overrides = {}
+  if (account) overrides = { from: account }
+  const row = await contract.getTable.staticCall(overrides)
+  const memberShares = row[0]
+  const playerBalance = row[1]
+  const totalShares = row[2]
+  const totalBalance = row[3]
+  let minBet = row[4]
+  let maxBet = row[5]
   if (!minBet) minBet = parseEth(MIN_BET)
   if (!maxBet) maxBet = totalBalance / BigInt(MAX_BET_DIVISOR)
   actions.update(roulettePath(address), {
@@ -32,7 +36,7 @@ export const fetchRoulette = async (address) => {
     totalBalance: formatEth(totalBalance),
     minBet: formatEth(minBet),
     maxBet: formatEth(maxBet),
-    locked: row.locked
+    locked: row[6]
   })
 }
 

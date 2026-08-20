@@ -48,7 +48,7 @@ const RouletteGame = React.memo(({ address }) => {
 
   React.useEffect(() => {
     fetchRoulette(address)
-  }, [address])
+  }, [address, account])
 
   React.useEffect(() => {
     if (!account) return

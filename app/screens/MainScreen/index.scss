@@ -51,8 +51,19 @@
 }
 
 .MainScreen_table_info {
+  flex: 1;
   min-width: 0;
   display: flex;
   flex-direction: column;
   gap: 0.25rem;
+}
+
+.MainScreen_table_stats {
+  flex: none;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.25rem;
+  text-align: right;
 }

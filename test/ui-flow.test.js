@@ -72,6 +72,10 @@ describe("UI flow: create, view, play roulette", () => {
     expect(afterCreate[2]).to.equal(afterCreate.totalShares)
     expect(afterCreate[3]).to.equal(afterCreate.totalBalance)
 
+    const asPlayer = await roulette.connect(player).getTable()
+    expect(asPlayer[0]).to.equal(0n)
+    expect(asPlayer[3]).to.equal(ethers.parseEther("100"))
+
     await (await roulette.connect(creator).depositShares({ value: ethers.parseEther("2") })).wait()
     const afterTopUp = await roulette.connect(creator).getTable()
     expect(afterTopUp.totalBalance).to.equal(ethers.parseEther("102"))

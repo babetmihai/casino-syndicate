@@ -3,6 +3,7 @@ import { ActionIcon, Card, CopyButton, Text } from "@mantine/core"
 import "./index.scss"
 import { useSelector } from "react-redux"
 import { fetchRoulette, selectRoulette } from ".."
+import { selectAuth } from "app/core/auth"
 import { CheckIcon, CopyIcon } from "@phosphor-icons/react"
 import { arc, pie } from "d3-shape"
 import _ from "lodash"
@@ -15,6 +16,7 @@ const CHART_INNER = 62
 
 
 const RouletteAdmin = ({ address }) => {
+  const { account } = useSelector(() => selectAuth()) || {}
   const roulette = useSelector(() => selectRoulette(address)) || {}
   const { memberShares, totalBalance, minBet, maxBet, locked } = roulette
   const share = clampEth(memberShares)
@@ -42,7 +44,7 @@ const RouletteAdmin = ({ address }) => {
 
   React.useEffect(() => {
     fetchRoulette(address)
-  }, [address])
+  }, [address, account])
 
   return (
     <div className="RouletteAdmin_content">

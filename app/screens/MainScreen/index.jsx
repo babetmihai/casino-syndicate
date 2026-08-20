@@ -11,6 +11,8 @@ import AuthModal from "app/core/auth/AuthModal"
 import history from "app/core/history"
 import _ from "lodash"
 import { selectAuth } from "app/core/auth"
+import { selectRoulette } from "app/games/roulette"
+import { clampEth, ethLabel, isTableLocked, MIN_BET, tableMaxBet } from "app/games/roulette/chips"
 import { ethers } from "ethers"
 import { PlusIcon, PokerChipIcon, WalletIcon } from "@phosphor-icons/react"
 import { AppFab } from "app/components/AppFabs"
@@ -102,7 +104,16 @@ const MainScreen = () => {
 
 const TableCard = React.memo(({ table }) => {
   const { name, address } = table || {}
+  const roulette = useSelector(() => selectRoulette(address)) || {}
+  const { memberShares, minBet, maxBet, totalBalance, locked } = roulette
   const shortAddress = `${address.slice(0, 6)}…${address.slice(-4)}`
+  const bankroll = clampEth(totalBalance)
+  const minBetAmount = clampEth(minBet) || MIN_BET
+  const maxBetAmount = tableMaxBet(maxBet, bankroll)
+  const tableLocked = locked || isTableLocked(bankroll, maxBet)
+  const hasStats = !_.isEmpty(roulette)
+  let shareColor
+  if (tableLocked) shareColor = "red"
 
   return (
     <Card
@@ -113,6 +124,14 @@ const TableCard = React.memo(({ table }) => {
         <Text fw={500}>{name}</Text>
         <Text size="sm" c="dimmed">{shortAddress}</Text>
       </div>
+      {hasStats &&
+        <div className="MainScreen_table_stats">
+          <Text fw={500} c={shareColor}>{ethLabel(memberShares)}</Text>
+          <Text size="sm" c="dimmed">
+            Min {ethLabel(minBetAmount)} · Max {ethLabel(maxBetAmount)}
+          </Text>
+        </div>
+      }
     </Card>
   )
 })

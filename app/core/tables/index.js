@@ -4,6 +4,7 @@ import { ethers } from "ethers"
 import { clearLoader, setLoader } from "../loaders"
 import { generateContract, getFactory } from "../contracts"
 import { selectAuth } from "../auth"
+import { fetchRoulette } from "app/games/roulette"
 import { parseEth } from "app/games/roulette/chips"
 import _ from "lodash"
 
@@ -52,6 +53,7 @@ export const fetchTables = async () => {
   const rows = await factory.getGamesByCreator(account)
   const tables = _.keyBy(rows.map(toTable), "address")
   actions.set("tables", tables)
+  await Promise.all(_.map(tables, (table) => fetchRoulette(table.address)))
 }
 
 export const createTable = async (values) => {

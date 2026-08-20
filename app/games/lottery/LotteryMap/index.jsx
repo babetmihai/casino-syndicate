@@ -5,7 +5,7 @@ import { buildPolygons, ownerFill, ownerStroke, seedFromAddress } from "../polyg
 import { ethers } from "ethers"
 
 
-const LotteryMap = ({ address, owners = [], polygonCount, account, focusId }) => {
+const LotteryMap = ({ address, owners = [], polygonCount, account, focusId, flashIds = [], celebrate }) => {
   const count = polygonCount || owners.length
   const polygons = React.useMemo(() => {
     if (!address || !count) return []
@@ -22,8 +22,11 @@ const LotteryMap = ({ address, owners = [], polygonCount, account, focusId }) =>
         const owner = owners[polygon.id]
         const isMine = owner && account && ethers.getAddress(owner) === ethers.getAddress(account)
         const isFocus = focusId === polygon.id
+        const isFlash = _.includes(flashIds, polygon.id)
         let strokeWidth = 1.25
         if (isFocus) strokeWidth = 2.5
+        if (isFlash) strokeWidth = 2.5
+        if (celebrate && owner) strokeWidth = 2.5
         const points = _.map(polygon.points, (point) => point.join(",")).join(" ")
         return (
           <polygon
@@ -32,7 +35,9 @@ const LotteryMap = ({ address, owners = [], polygonCount, account, focusId }) =>
               "lottery-map-cell",
               isMine && "lottery-map-cell-mine",
               owner && "lottery-map-cell-claimed",
-              isFocus && "lottery-map-cell-focus"
+              isFocus && "lottery-map-cell-focus",
+              isFlash && "lottery-map-cell-taken animate-map-taken",
+              celebrate && owner && "lottery-map-cell-win animate-map-win"
             )}
             points={points}
             fill={ownerFill(owner, isMine)}

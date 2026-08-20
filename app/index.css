@@ -14,8 +14,11 @@
   --color-cs-accent-glow: rgb(45 212 191 / 16%);
   --color-cs-accent-2: #818cf8;
   --animate-banner: banner-in-out 2.5s ease forwards;
+  --animate-banner-long: banner-in-out-long 4.5s ease forwards;
   --animate-chip-drop: chip-drop 0.16s ease-out;
   --animate-number-flash: number-flash 0.12s ease-out;
+  --animate-map-win: map-win 0.9s ease-in-out infinite;
+  --animate-map-taken: map-taken 0.5s ease-in-out;
 }
 
 @keyframes banner-in-out {
@@ -23,6 +26,23 @@
   12% { opacity: 1; }
   80% { opacity: 1; }
   100% { opacity: 0; }
+}
+
+@keyframes banner-in-out-long {
+  0% { opacity: 0; }
+  8% { opacity: 1; }
+  86% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+@keyframes map-win {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(1.45); }
+}
+
+@keyframes map-taken {
+  0%, 100% { filter: brightness(1); }
+  50% { filter: brightness(2.2) saturate(1.5); }
 }
 
 @keyframes chip-drop {

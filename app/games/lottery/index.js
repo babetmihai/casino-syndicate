@@ -21,7 +21,8 @@ export const parseChance = (percent) => {
 export const formatChance = (bps) => _.round(Number(bps || 0) / CHANCE_SCALE, 2)
 
 export const chanceLabel = (percent) => `${_.round(Number(percent) || 0, 2)}%`
-export const TICKET_GAS = 2000000n
+export const TICKET_MULTIPLIERS = [1, 5, 10, 25]
+export const ticketGas = (count) => 400000n + BigInt(count) * 200000n
 
 
 const lotteryPath = (address) => `games.lottery.${ethers.getAddress(address)}`
@@ -62,13 +63,14 @@ export const fetchLottery = async (address) => {
   }
 }
 
-export const buyLotteryTicket = async (address) => {
+export const buyLotteryTicket = async (address, count = 1) => {
   let contract = getContract(address)
   if (!contract) contract = await generateContract(address, LotteryArtifact.abi)
   const { ticketPrice } = selectLottery(address)
-  const receipt = await sendTx(contract.buyTicket, [], {
-    value: parseEth(ticketPrice),
-    gasLimit: TICKET_GAS
+  const tickets = Number(count) || 1
+  const receipt = await sendTx(contract.buyTickets, [tickets], {
+    value: parseEth(ticketPrice) * BigInt(tickets),
+    gasLimit: ticketGas(tickets)
   })
   const lastTicket = readTicket(contract, receipt)
   if (lastTicket) actions.update(lotteryPath(address), { lastTicket })
@@ -87,23 +89,52 @@ export const withdrawLotteryPrize = async (address) => {
 
 const readTicket = (contract, receipt) => {
   const { logs = [] } = receipt || {}
-  let lastTicket
+  const draws = []
   let settled = false
+  let roundPrize
+  let roundOwners
+  let refundAmount
+  let refundCount
   for (const log of logs) {
     try {
       const parsed = contract.interface.parseLog(log)
       const { name, args = {} } = parsed || {}
-      if (name === "Settled") settled = true
+      if (name === "Settled") {
+        settled = true
+        roundPrize = formatEth(args.prize)
+        roundOwners = _.map(args.owners || [], (item) => {
+          if (!item || item === ethers.ZeroAddress) return null
+          return ethers.getAddress(item)
+        })
+      }
+      if (name === "TicketsRefunded") {
+        refundCount = Number(args.count)
+        refundAmount = formatEth(args.amount)
+      }
       if (name !== "TicketBought") continue
-      lastTicket = {
+      draws.push({
         won: args.won,
         polygonId: Number(args.polygonId),
         assigned: args.assigned
-      }
+      })
     } catch {
       // ignore logs from other contracts
     }
   }
-  if (!lastTicket) return
-  return { ...lastTicket, settled }
+  if (draws.length === 0) return
+  const claimed = _.filter(draws, "assigned")
+  const last = _.last(claimed) || _.last(draws)
+  const takenIds = _.uniq(_.map(_.filter(draws, (draw) => draw.won && !draw.assigned), "polygonId"))
+  return {
+    ...last,
+    assignedCount: claimed.length,
+    wonCount: _.filter(draws, "won").length,
+    drawCount: draws.length,
+    takenIds,
+    settled,
+    roundPrize,
+    roundOwners,
+    refundCount,
+    refundAmount
+  }
 }

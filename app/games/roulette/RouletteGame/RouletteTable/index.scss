@@ -1,6 +1,7 @@
 .RouletteTable_svg {
   width: 100%;
   height: auto;
+  max-width: 100%;
   aspect-ratio: 404 / 784;
   display: block;
   overflow: visible;
@@ -26,6 +27,17 @@
 .RouletteTable_spot.is-outside .RouletteTable_spotBody {
   stroke: var(--mantine-color-gray-4);
   stroke-width: 1px;
+}
+
+.RouletteTable_spot.is-inside .RouletteTable_spotBody {
+  fill: transparent;
+  stroke: none;
+  pointer-events: all;
+}
+
+.RouletteTable_spot.is-inside:hover .RouletteTable_spotBody,
+.RouletteTable_spot.is-inside.is-bet .RouletteTable_spotBody {
+  fill: color-mix(in srgb, var(--mantine-color-indigo-6) 16%, transparent);
 }
 
 .RouletteTable_spot.is-flash .RouletteTable_spotBody,

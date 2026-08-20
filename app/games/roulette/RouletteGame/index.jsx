@@ -29,7 +29,7 @@ const RouletteGame = React.memo(({ address }) => {
   const historyRef = React.useRef(null)
   const holdTimer = React.useRef(null)
   const totalBet = clampEth(_.sum(bets))
-  const { account, balance } = useSelector(() => selectAuth()) || {}
+  const { account } = useSelector(() => selectAuth()) || {}
   const { lastSpin, history = [], minBet, maxBet, totalBalance, locked } = useSelector(() => selectRoulette(address)) || {}
   const { number: winningNumber, winningAmount } = lastSpin || {}
   const showResult = lastSpin && !revealing
@@ -42,7 +42,6 @@ const RouletteGame = React.memo(({ address }) => {
   let bannerColor = "red"
   if (winningNumber === 0) bannerColor = "green"
   if (_.includes(BLACK_NUMBERS, winningNumber)) bannerColor = "black"
-  const balanceLabel = ethLabel(balance)
   let modeColor = "teal"
   if (pickingUp) modeColor = "red"
 
@@ -127,6 +126,9 @@ const RouletteGame = React.memo(({ address }) => {
         ref={historyRef}
         className="RouletteGame_history"
       >
+        {history.length === 0 &&
+          <div className="RouletteGame_historyItem is-placeholder" />
+        }
         {_.map(_.reverse([...history]), (number, index) => {
           let color = "red"
           if (number === 0) color = "green"
@@ -171,9 +173,6 @@ const RouletteGame = React.memo(({ address }) => {
         </div>
       </Card>
       <div className="RouletteGame_status">
-        <Text size="sm" c="dimmed">
-          Balance {balanceLabel}
-        </Text>
         <Text size="sm">
           Bet {ethLabel(totalBet)}
         </Text>

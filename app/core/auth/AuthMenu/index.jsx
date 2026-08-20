@@ -1,6 +1,6 @@
 import React from "react"
 import "./index.scss"
-import { Menu, Avatar, UnstyledButton } from "@mantine/core"
+import { Menu, Avatar, Text, UnstyledButton } from "@mantine/core"
 import { SignOutIcon, WalletIcon } from "@phosphor-icons/react"
 import { selectAuth, logout, fetchBalance, requestTestEth } from "app/core/auth"
 import { ethLabel } from "app/games/roulette/chips"
@@ -22,6 +22,14 @@ const AuthMenu = () => {
     <Menu position="bottom-end" shadow="md">
       <Menu.Target>
         <UnstyledButton className="AuthMenu_target" aria-label="Account">
+          <div className="AuthMenu_meta">
+            <Text size="xs" c="dimmed" className="AuthMenu_account">
+              {shortAccount}
+            </Text>
+            <Text size="sm" className="AuthMenu_balance">
+              {balanceLabel}
+            </Text>
+          </div>
           <Avatar size="md" radius="xl" color="indigo">
             {initials}
           </Avatar>
@@ -29,7 +37,6 @@ const AuthMenu = () => {
       </Menu.Target>
       <Menu.Dropdown>
         <Menu.Label>{shortAccount}</Menu.Label>
-        <Menu.Label>{balanceLabel}</Menu.Label>
         <Menu.Item
           onClick={() => requestTestEth()}
           leftSection={<WalletIcon size={16} />}

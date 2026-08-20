@@ -118,14 +118,14 @@ contract Roulette {
 		delete balances[msg.sender];
 	}
 
-	// 0-36 straight, 37 red, 38 black, 39 even, 40 odd, 41 1-18, 42 19-36, 43-45 dozens, 46-48 columns
-	function postBet(uint256[49] memory _bets) external payable {
+	// 0-36 straight, 37-48 outside, 49-108 splits, 109-120 streets, 121-122 trios, 123-144 corners, 145 basket, 146-156 lines
+	function postBet(uint256[157] memory _bets) external payable {
 		uint256 randomNumber = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender))) % 37;
 		uint256 totalBetAmount = 0;
 		uint256 bankroll = address(this).balance - msg.value;
 		require(!isLocked(bankroll), "Table locked");
 
-		for (uint256 i = 0; i < 49; i++) {
+		for (uint256 i = 0; i < 157; i++) {
 			totalBetAmount += _bets[i];
 			if (_bets[i] == 0) {
 				continue;
@@ -166,9 +166,15 @@ contract Roulette {
 		return bankroll < maxBet * MAX_BET_DIVISOR;
 	}
 
-	function payoutForNumber(uint256[49] memory _bets, uint256 randomNumber) private pure returns (uint256 winningAmount) {
+	function payoutForNumber(uint256[157] memory _bets, uint256 randomNumber) private pure returns (uint256 winningAmount) {
 		winningAmount = _bets[randomNumber] * 36;
 		if (randomNumber == 0) {
+			winningAmount += _bets[106] * 18;
+			winningAmount += _bets[107] * 18;
+			winningAmount += _bets[108] * 18;
+			winningAmount += _bets[121] * 12;
+			winningAmount += _bets[122] * 12;
+			winningAmount += _bets[145] * 9;
 			return winningAmount;
 		}
 		if (((uint256(0x154aad52aa) >> randomNumber) & 1) == 1) {
@@ -200,6 +206,51 @@ contract Roulette {
 			winningAmount += _bets[47] * 3;
 		} else {
 			winningAmount += _bets[48] * 3;
+		}
+		uint256 row = (randomNumber - 1) / 3;
+		uint256 gridCol = 2 - ((randomNumber - 1) % 3);
+		if (gridCol < 2) {
+			winningAmount += _bets[49 + row * 2 + gridCol] * 18;
+		}
+		if (gridCol > 0) {
+			winningAmount += _bets[49 + row * 2 + (gridCol - 1)] * 18;
+		}
+		if (row < 11) {
+			winningAmount += _bets[73 + row * 3 + gridCol] * 18;
+		}
+		if (row > 0) {
+			winningAmount += _bets[73 + (row - 1) * 3 + gridCol] * 18;
+		}
+		if (randomNumber <= 3) {
+			winningAmount += _bets[106 + gridCol] * 18;
+		}
+		winningAmount += _bets[109 + row] * 12;
+		if (randomNumber <= 2) {
+			winningAmount += _bets[121] * 12;
+		}
+		if (randomNumber >= 2 && randomNumber <= 3) {
+			winningAmount += _bets[122] * 12;
+		}
+		if (row < 11 && gridCol < 2) {
+			winningAmount += _bets[123 + row * 2 + gridCol] * 9;
+		}
+		if (row < 11 && gridCol > 0) {
+			winningAmount += _bets[123 + row * 2 + (gridCol - 1)] * 9;
+		}
+		if (row > 0 && gridCol < 2) {
+			winningAmount += _bets[123 + (row - 1) * 2 + gridCol] * 9;
+		}
+		if (row > 0 && gridCol > 0) {
+			winningAmount += _bets[123 + (row - 1) * 2 + (gridCol - 1)] * 9;
+		}
+		if (randomNumber <= 3) {
+			winningAmount += _bets[145] * 9;
+		}
+		if (row < 11) {
+			winningAmount += _bets[146 + row] * 6;
+		}
+		if (row > 0) {
+			winningAmount += _bets[146 + (row - 1)] * 6;
 		}
 	}
 }

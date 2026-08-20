@@ -2,7 +2,7 @@ import React from "react"
 import "./index.scss"
 import _ from "lodash"
 import { CHIP_COLORS, chipLabel, toChips } from "../../chips"
-import { BLACK_NUMBERS, OUTSIDE, betWins } from "../../bets"
+import { BLACK_NUMBERS, INSIDE, OUTSIDE, betWins } from "../../bets"
 
 const CELL_W = 84
 const CELL_H = 56
@@ -10,6 +10,7 @@ const ZERO_H = CELL_H
 const DOZEN_W = 76
 const EVEN_W = 76
 const COL_H = 56
+const HIT = 36
 const WIDTH = CELL_W * 3 + DOZEN_W + EVEN_W
 const HEIGHT = ZERO_H + CELL_H * 12 + COL_H
 const WHEEL = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26]
@@ -46,6 +47,17 @@ const numberLayout = (number) => {
 
 const outsideSpot = { color: COLORS.outside, labelFill: COLORS.outsideText, fontSize: 14 }
 
+const insideSpot = (index, cx, cy, w = HIT, h = HIT) => ({
+  index,
+  x: cx - w / 2,
+  y: cy - h / 2,
+  w,
+  h,
+  rx: Math.min(w, h) / 2,
+  color: "transparent",
+  inside: true
+})
+
 const SPOTS = [
   ..._.range(37).map((number) => {
     const layout = numberLayout(number)
@@ -58,13 +70,79 @@ const SPOTS = [
   { index: OUTSIDE.DOZEN_3, x: CELL_W * 3, y: ZERO_H + CELL_H * 8, w: DOZEN_W, h: CELL_H * 4, label: "25-36", ...outsideSpot },
   { index: OUTSIDE.LOW, x: CELL_W * 3 + DOZEN_W, y: ZERO_H, w: EVEN_W, h: CELL_H * 2, label: "1-18", ...outsideSpot },
   { index: OUTSIDE.EVEN, x: CELL_W * 3 + DOZEN_W, y: ZERO_H + CELL_H * 2, w: EVEN_W, h: CELL_H * 2, label: "Even", ...outsideSpot },
-  { index: OUTSIDE.RED, x: CELL_W * 3 + DOZEN_W, y: ZERO_H + CELL_H * 4, w: EVEN_W, h: CELL_H * 2, label: "Red", color: COLORS.red, fontSize: 14 },
-  { index: OUTSIDE.BLACK, x: CELL_W * 3 + DOZEN_W, y: ZERO_H + CELL_H * 6, w: EVEN_W, h: CELL_H * 2, label: "Black", color: COLORS.black, fontSize: 14 },
+  {
+    index: OUTSIDE.RED,
+    x: CELL_W * 3 + DOZEN_W,
+    y: ZERO_H + CELL_H * 4,
+    w: EVEN_W,
+    h: CELL_H * 2,
+    label: "Red",
+    color: COLORS.red,
+    fontSize: 14
+  },
+  {
+    index: OUTSIDE.BLACK,
+    x: CELL_W * 3 + DOZEN_W,
+    y: ZERO_H + CELL_H * 6,
+    w: EVEN_W,
+    h: CELL_H * 2,
+    label: "Black",
+    color: COLORS.black,
+    fontSize: 14
+  },
   { index: OUTSIDE.ODD, x: CELL_W * 3 + DOZEN_W, y: ZERO_H + CELL_H * 8, w: EVEN_W, h: CELL_H * 2, label: "Odd", ...outsideSpot },
   { index: OUTSIDE.HIGH, x: CELL_W * 3 + DOZEN_W, y: ZERO_H + CELL_H * 10, w: EVEN_W, h: CELL_H * 2, label: "19-36", ...outsideSpot },
   { index: OUTSIDE.COL_3, x: 0, y: ZERO_H + CELL_H * 12, w: CELL_W, h: COL_H, label: "2:1", ...outsideSpot, fontSize: 15 },
   { index: OUTSIDE.COL_2, x: CELL_W, y: ZERO_H + CELL_H * 12, w: CELL_W, h: COL_H, label: "2:1", ...outsideSpot, fontSize: 15 },
-  { index: OUTSIDE.COL_1, x: CELL_W * 2, y: ZERO_H + CELL_H * 12, w: CELL_W, h: COL_H, label: "2:1", ...outsideSpot, fontSize: 15 }
+  { index: OUTSIDE.COL_1, x: CELL_W * 2, y: ZERO_H + CELL_H * 12, w: CELL_W, h: COL_H, label: "2:1", ...outsideSpot, fontSize: 15 },
+  ..._.flatMap(_.range(12), (row) => _.map(_.range(2), (splitCol) => {
+    return insideSpot(
+      INSIDE.H_SPLIT + row * 2 + splitCol,
+      (splitCol + 1) * CELL_W,
+      ZERO_H + row * CELL_H + CELL_H / 2,
+      HIT,
+      CELL_H * 0.5
+    )
+  })),
+  ..._.flatMap(_.range(11), (row) => _.map(_.range(3), (col) => {
+    return insideSpot(
+      INSIDE.V_SPLIT + row * 3 + col,
+      col * CELL_W + CELL_W / 2,
+      ZERO_H + (row + 1) * CELL_H,
+      CELL_W * 0.5,
+      HIT
+    )
+  })),
+  ..._.map([3, 2, 1], (number, i) => {
+    const col = 2 - ((number - 1) % 3)
+    return insideSpot(
+      INSIDE.ZERO_SPLIT + i,
+      col * CELL_W + CELL_W / 2,
+      ZERO_H,
+      CELL_W * 0.5,
+      HIT
+    )
+  }),
+  ..._.map(_.range(12), (row) => insideSpot(
+    INSIDE.STREET + row,
+    CELL_W * 3,
+    ZERO_H + row * CELL_H + CELL_H / 2
+  )),
+  insideSpot(INSIDE.TRIO, CELL_W * 2, ZERO_H),
+  insideSpot(INSIDE.TRIO + 1, CELL_W, ZERO_H),
+  ..._.flatMap(_.range(11), (row) => _.map(_.range(2), (col) => {
+    return insideSpot(
+      INSIDE.CORNER + row * 2 + col,
+      (col + 1) * CELL_W,
+      ZERO_H + (row + 1) * CELL_H
+    )
+  })),
+  insideSpot(INSIDE.BASKET, 0, ZERO_H),
+  ..._.map(_.range(11), (row) => insideSpot(
+    INSIDE.LINE + row,
+    CELL_W * 3,
+    ZERO_H + (row + 1) * CELL_H
+  ))
 ]
 
 
@@ -112,16 +190,20 @@ const RouletteTable = React.memo(({ bets, winningNumber, landingNumber, spinning
       aria-label="Roulette table"
     >
       {SPOTS.map((spot) => {
-        const { index, x, y, w, h, color, label, fontSize, labelFill = COLORS.text } = spot
-        const winner = !spinning && betWins(index, litNumber)
+        const { index, x, y, w, h, color, label, fontSize, labelFill = COLORS.text, rx = 8, inside } = spot
+        let winner = false
+        if (!spinning && !inside) winner = betWins(index, litNumber)
         const flash = spinning && index < 37 && litNumber === index
         let className = "RouletteTable_spot"
-        if (index >= 37) className = "RouletteTable_spot is-outside"
+        if (inside) className = "RouletteTable_spot is-inside"
+        else if (index >= 37) className = "RouletteTable_spot is-outside"
         if (flash) className = `${className} is-flash`
         if (winner) className = `${className} is-winner`
         if (bets[index] > 0) className = `${className} is-bet`
         let fill = color
         if (flash) fill = COLORS.winner
+        let inset = 2
+        if (inside) inset = 0
         const chips = toChips(bets[index] || 0).slice(-4)
         return (
           <g
@@ -131,25 +213,27 @@ const RouletteTable = React.memo(({ bets, winningNumber, landingNumber, spinning
           >
             <rect
               className="RouletteTable_spotBody"
-              x={x + 2}
-              y={y + 2}
-              width={w - 4}
-              height={h - 4}
-              rx={8}
-              ry={8}
+              x={x + inset}
+              y={y + inset}
+              width={w - inset * 2}
+              height={h - inset * 2}
+              rx={rx}
+              ry={rx}
               fill={fill}
             />
-            <text
-              className="RouletteTable_spotLabel"
-              x={x + w / 2}
-              y={y + h / 2 + 1}
-              fill={labelFill}
-              fontSize={fontSize}
-              textAnchor="middle"
-              dominantBaseline="middle"
-            >
-              {label}
-            </text>
+            {label &&
+              <text
+                className="RouletteTable_spotLabel"
+                x={x + w / 2}
+                y={y + h / 2 + 1}
+                fill={labelFill}
+                fontSize={fontSize}
+                textAnchor="middle"
+                dominantBaseline="middle"
+              >
+                {label}
+              </text>
+            }
             {chips.map((value, chipIndex) => (
               <g
                 key={`${chipIndex}-${value}`}

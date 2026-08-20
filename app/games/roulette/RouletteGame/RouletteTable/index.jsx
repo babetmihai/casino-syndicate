@@ -146,14 +146,82 @@ const SPOTS = [
 ]
 
 
-const RouletteTable = React.memo(({ bets, winningNumber, landingNumber, spinning, onSpotClick, onReveal }) => {
+const CHIP_R = 14
+const DRAG_THRESHOLD = 8
+
+const toSvgPoint = (svg, clientX, clientY) => {
+  const ctm = svg.getScreenCTM()
+  if (!ctm) return { x: 0, y: 0 }
+  const inverse = ctm.inverse()
+  return {
+    x: inverse.a * clientX + inverse.c * clientY + inverse.e,
+    y: inverse.b * clientX + inverse.d * clientY + inverse.f
+  }
+}
+
+const spotAt = (px, py) => _.findLast(SPOTS, ({ x, y, w, h }) => {
+  if (px < x) return false
+  if (py < y) return false
+  if (px > x + w) return false
+  if (py > y + h) return false
+  return true
+})
+
+const chipPosition = (spot, chipIndex) => ({
+  x: spot.x + spot.w / 2 + chipIndex * 4,
+  y: spot.y + spot.h / 2 - chipIndex * 3
+})
+
+const chipHit = (point, bets) => {
+  return _.findLast(_.flatMap(SPOTS, (spot) => {
+    const chips = toChips(bets[spot.index] || 0).slice(-4)
+    return _.map(chips, (value, chipIndex) => ({ spot, value, chipIndex }))
+  }), ({ spot, chipIndex }) => {
+    const { x, y } = chipPosition(spot, chipIndex)
+    const dx = point.x - x
+    const dy = point.y - y
+    return dx * dx + dy * dy <= CHIP_R * CHIP_R
+  })
+}
+
+const ChipMark = ({ value, className }) => {
+  const color = CHIP_COLORS[value]
+  let chipClass = "RouletteTable_chip"
+  if (className) chipClass = `${chipClass} ${className}`
+  return (
+    <g className={chipClass}>
+      <circle r={CHIP_R} fill={color.fill} />
+      <circle r={CHIP_R - 3} fill="none" stroke={color.stroke} strokeWidth={1.5} />
+      <text
+        className="RouletteTable_chipValue"
+        fill={color.text}
+        fontSize={11}
+        textAnchor="middle"
+        dy="0.35em"
+      >
+        {chipLabel(value)}
+      </text>
+    </g>
+  )
+}
+
+
+const RouletteTable = React.memo(({ bets, winningNumber, landingNumber, spinning, disabled, onSpotClick, onChipMove, onChipRemove, onReveal }) => {
+  const svgRef = React.useRef(null)
+  const dragRef = React.useRef(null)
   const landingRef = React.useRef(landingNumber)
   const onRevealRef = React.useRef(onReveal)
   const litRef = React.useRef(winningNumber)
   const [litNumber, setLitNumber] = React.useState(winningNumber)
+  const [drag, setDrag] = React.useState(null)
   landingRef.current = landingNumber
   onRevealRef.current = onReveal
   litRef.current = litNumber
+
+  const updateDrag = (next) => {
+    dragRef.current = next
+    setDrag(next)
+  }
 
   React.useEffect(() => {
     if (!spinning) return
@@ -181,13 +249,111 @@ const RouletteTable = React.memo(({ bets, winningNumber, landingNumber, spinning
     setLitNumber(winningNumber)
   }, [spinning, winningNumber])
 
+  React.useEffect(() => {
+    if (!spinning && !disabled) return
+    updateDrag(null)
+  }, [spinning, disabled])
+
+  const onPointerDown = (event) => {
+    if (disabled) return
+    if (event.button > 0) return
+    const svg = svgRef.current
+    if (!svg) return
+    const point = toSvgPoint(svg, event.clientX, event.clientY)
+    const chip = chipHit(point, bets) || {}
+    const spot = spotAt(point.x, point.y)
+    if (!spot && !chip.spot) return
+    let fromIndex
+    if (spot) fromIndex = spot.index
+    if (chip.spot) fromIndex = chip.spot.index
+    event.preventDefault()
+    svg.setPointerCapture(event.pointerId)
+    updateDrag({
+      pointerId: event.pointerId,
+      fromIndex,
+      value: chip.value,
+      chipIndex: chip.chipIndex,
+      x: point.x,
+      y: point.y,
+      startX: point.x,
+      startY: point.y,
+      moved: false
+    })
+  }
+
+  const onPointerMove = (event) => {
+    const current = dragRef.current
+    if (!current) return
+    if (current.pointerId !== event.pointerId) return
+    const svg = svgRef.current
+    if (!svg) return
+    const point = toSvgPoint(svg, event.clientX, event.clientY)
+    const dx = point.x - current.startX
+    const dy = point.y - current.startY
+    const moved = current.moved || dx * dx + dy * dy >= DRAG_THRESHOLD * DRAG_THRESHOLD
+    if (!moved) return
+    if (!current.value) {
+      if (!current.moved) updateDrag({ ...current, moved: true })
+      return
+    }
+    updateDrag({ ...current, x: point.x, y: point.y, moved: true })
+  }
+
+  const onPointerUp = (event) => {
+    const current = dragRef.current
+    if (!current) return
+    if (current.pointerId !== event.pointerId) return
+    const svg = svgRef.current
+    updateDrag(null)
+    if (svg && svg.hasPointerCapture(event.pointerId)) svg.releasePointerCapture(event.pointerId)
+    if (!current.moved) {
+      onSpotClick(current.fromIndex)
+      return
+    }
+    if (!current.value) return
+    let point = { x: current.x, y: current.y }
+    if (svg) point = toSvgPoint(svg, event.clientX, event.clientY)
+    const dropSpot = spotAt(point.x, point.y)
+    if (!dropSpot) {
+      onChipRemove(current.fromIndex, current.value)
+      return
+    }
+    if (dropSpot.index === current.fromIndex) return
+    onChipMove(current.fromIndex, dropSpot.index, current.value)
+  }
+
+  const onPointerCancel = (event) => {
+    const current = dragRef.current
+    if (!current) return
+    if (current.pointerId !== event.pointerId) return
+    const svg = svgRef.current
+    updateDrag(null)
+    if (svg && svg.hasPointerCapture(event.pointerId)) svg.releasePointerCapture(event.pointerId)
+  }
+
+  let dragging = false
+  if (drag && drag.moved && drag.value) dragging = true
+  let removing = false
+  let ghostClass = "is-ghost"
+  if (dragging && !spotAt(drag.x, drag.y)) removing = true
+  if (removing) ghostClass = "is-ghost is-removing"
+  let svgClass = "RouletteTable_svg"
+  if (dragging) svgClass = "RouletteTable_svg is-dragging"
+  if (removing) svgClass = `${svgClass} is-removing`
+
   return (
     <svg
-      className="RouletteTable_svg"
+      ref={svgRef}
+      className={svgClass}
       viewBox={`0 0 ${WIDTH} ${HEIGHT}`}
       preserveAspectRatio="xMidYMid meet"
       role="img"
       aria-label="Roulette table"
+      onPointerDown={onPointerDown}
+      onPointerMove={onPointerMove}
+      onPointerUp={onPointerUp}
+      onPointerCancel={onPointerCancel}
+      onContextMenu={(event) => event.preventDefault()}
     >
       {SPOTS.map((spot) => {
         const { index, x, y, w, h, color, label, fontSize, labelFill = COLORS.text, rx = 8, inside } = spot
@@ -199,17 +365,14 @@ const RouletteTable = React.memo(({ bets, winningNumber, landingNumber, spinning
         else if (index >= 37) className = "RouletteTable_spot is-outside"
         if (flash) className = `${className} is-flash`
         if (winner) className = `${className} is-winner`
-        if (bets[index] > 0) className = `${className} is-bet`
         let fill = color
         if (flash) fill = COLORS.winner
         let inset = 2
         if (inside) inset = 0
-        const chips = toChips(bets[index] || 0).slice(-4)
         return (
           <g
             key={index}
             className={className}
-            onClick={() => onSpotClick(index)}
           >
             <rect
               className="RouletteTable_spotBody"
@@ -234,30 +397,39 @@ const RouletteTable = React.memo(({ bets, winningNumber, landingNumber, spinning
                 {label}
               </text>
             }
-            {chips.map((value, chipIndex) => (
-              <g
-                key={`${chipIndex}-${value}`}
-                className="RouletteTable_chipWrap"
-                transform={`translate(${x + w / 2 + (chipIndex - 1.5) * 4}, ${y + h / 2 - chipIndex * 3})`}
-              >
-                <g className="RouletteTable_chip">
-                  <circle r={14} fill={CHIP_COLORS[value].fill} />
-                  <circle r={11} fill="none" stroke={CHIP_COLORS[value].stroke} strokeWidth={1.5} />
-                  <text
-                    className="RouletteTable_chipValue"
-                    fill={CHIP_COLORS[value].text}
-                    fontSize={11}
-                    textAnchor="middle"
-                    dy="0.35em"
-                  >
-                    {chipLabel(value)}
-                  </text>
-                </g>
-              </g>
-            ))}
           </g>
         )
       })}
+      {SPOTS.map((spot) => {
+        const chips = toChips(bets[spot.index] || 0).slice(-4)
+        return _.map(chips, (value, chipIndex) => {
+          const hiding = dragging && drag.fromIndex === spot.index && chipIndex === drag.chipIndex
+          const pos = chipPosition(spot, chipIndex)
+          let visibility = "visible"
+          if (hiding) visibility = "hidden"
+          return (
+            <g
+              key={`${spot.index}-${chipIndex}-${value}`}
+              className="RouletteTable_chipWrap"
+              transform={`translate(${pos.x}, ${pos.y})`}
+              visibility={visibility}
+            >
+              <ChipMark value={value} />
+            </g>
+          )
+        })
+      })}
+      {dragging &&
+        <g
+          className="RouletteTable_chipWrap is-ghost"
+          transform={`translate(${drag.x}, ${drag.y})`}
+        >
+          <ChipMark
+            value={drag.value}
+            className={ghostClass}
+          />
+        </g>
+      }
     </svg>
   )
 })

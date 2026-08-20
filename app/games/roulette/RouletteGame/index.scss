@@ -159,14 +159,6 @@
   white-space: nowrap;
 }
 
-.RouletteGame_mode {
-  border: 0.125rem solid var(--mantine-color-teal-6);
-}
-
-.RouletteGame_mode[data-value="up"] {
-  border-color: var(--mantine-color-red-6);
-}
-
 .RouletteGame_chip {
   font-size: 0.75rem;
   font-weight: 500;
@@ -203,5 +195,5 @@
   width: 100%;
   min-width: 0;
   padding: 0.75rem;
-  touch-action: manipulation;
+  touch-action: none;
 }

@@ -2,7 +2,7 @@ import React from "react"
 import { createPortal } from "react-dom"
 import "./index.scss"
 import _ from "lodash"
-import { Card, Indicator, Text } from "@mantine/core"
+import { Card, Text } from "@mantine/core"
 import { useTranslation } from "react-i18next"
 import { fetchRoulette, postRouletteBet, pushSpinHistory, selectRoulette } from ".."
 import { useSelector } from "react-redux"
@@ -10,7 +10,7 @@ import { fetchBalance, selectAuth } from "app/core/auth"
 import RouletteTable from "./RouletteTable"
 import { CHIP_VALUES, chipLabel, clampEth, ethLabel, isTableLocked, MIN_BET, tableMaxBet } from "../chips"
 import { BET_COUNT, BLACK_NUMBERS, betWins, maxPotentialPayout } from "../bets"
-import { MinusIcon, PlayIcon, PlusIcon, PokerChipIcon, WalletIcon } from "@phosphor-icons/react"
+import { PlayIcon, WalletIcon } from "@phosphor-icons/react"
 import { AppFab, AppFabs } from "app/components/AppFabs"
 import { showModal } from "app/core/modals"
 import AuthModal from "app/core/auth/AuthModal"
@@ -21,7 +21,6 @@ const RouletteGame = React.memo(({ address }) => {
   const [bets, setBets] = React.useState(_.range(BET_COUNT).fill(0))
   const [chip, setChip] = React.useState(CHIP_VALUES[0])
   const [pickingChip, setPickingChip] = React.useState(false)
-  const [pickingUp, setPickingUp] = React.useState(false)
   const [revealing, setRevealing] = React.useState(false)
   const [landingNumber, setLandingNumber] = React.useState(null)
   const [showBanner, setShowBanner] = React.useState(false)
@@ -42,8 +41,6 @@ const RouletteGame = React.memo(({ address }) => {
   let bannerColor = "red"
   if (winningNumber === 0) bannerColor = "green"
   if (_.includes(BLACK_NUMBERS, winningNumber)) bannerColor = "black"
-  let modeColor = "teal"
-  if (pickingUp) modeColor = "red"
 
   React.useEffect(() => {
     fetchRoulette(address)
@@ -69,6 +66,12 @@ const RouletteGame = React.memo(({ address }) => {
     node.scrollLeft = 0
   }, [history])
 
+  const commitBets = (nextBets) => {
+    const nextTotal = clampEth(_.sum(nextBets))
+    if (clampEth(maxPotentialPayout(nextBets)) > bankroll + nextTotal) return
+    setBets(nextBets)
+  }
+
   const changeBet = (index, amount) => {
     if (revealing) return
     if (tableLocked) return
@@ -81,9 +84,23 @@ const RouletteGame = React.memo(({ address }) => {
     }
     if (nextValue > maxBetAmount) nextValue = maxBetAmount
     nextBets[index] = nextValue
-    const nextTotal = clampEth(_.sum(nextBets))
-    if (clampEth(maxPotentialPayout(nextBets)) > bankroll + nextTotal) return
-    setBets(nextBets)
+    commitBets(nextBets)
+  }
+
+  const moveChip = (fromIndex, toIndex, value) => {
+    if (revealing) return
+    if (tableLocked) return
+    if (fromIndex === toIndex) return
+    const nextBets = [...bets]
+    let fromValue = clampEth(nextBets[fromIndex] - value)
+    if (fromValue < 0) fromValue = 0
+    if (fromValue > 0 && fromValue < minBetAmount) fromValue = 0
+    let toValue = clampEth(nextBets[toIndex] + value)
+    if (toValue > maxBetAmount) return
+    if (toValue > 0 && toValue < minBetAmount) return
+    nextBets[fromIndex] = fromValue
+    nextBets[toIndex] = toValue
+    commitBets(nextBets)
   }
 
   const cancelSpinHold = () => {
@@ -153,11 +170,10 @@ const RouletteGame = React.memo(({ address }) => {
             winningNumber={showResult ? winningNumber : undefined}
             landingNumber={landingNumber}
             spinning={revealing}
-            onSpotClick={(index) => {
-              let amount = chip
-              if (pickingUp) amount = -chip
-              changeBet(index, amount)
-            }}
+            disabled={revealing || tableLocked}
+            onSpotClick={(index) => changeBet(index, chip)}
+            onChipMove={moveChip}
+            onChipRemove={(index, value) => changeBet(index, -value)}
             onReveal={() => {
               setRevealing(false)
               setLandingNumber(null)
@@ -231,39 +247,6 @@ const RouletteGame = React.memo(({ address }) => {
           >
             <PlayIcon size={24} />
           </AppFab>
-        }
-        {account &&
-          <Indicator
-            inline
-            withBorder
-            position="top-end"
-            offset={4}
-            size={18}
-            color={modeColor}
-            zIndex={201}
-            label={
-              <>
-                {pickingUp &&
-                  <MinusIcon size={10} weight="bold" />
-                }
-                {!pickingUp &&
-                  <PlusIcon size={10} weight="bold" />
-                }
-              </>
-            }
-          >
-            <AppFab
-              secondary
-              selected={pickingUp}
-              className="RouletteGame_mode"
-              dataValue={pickingUp ? "up" : "place"}
-              label={pickingUp ? "Pick up" : "Place"}
-              disabled={revealing || tableLocked}
-              onClick={() => setPickingUp(!pickingUp)}
-            >
-              <PokerChipIcon size={24} />
-            </AppFab>
-          </Indicator>
         }
         {account && CHIP_VALUES.map((value) => {
           const isCurrent = value === chip

@@ -5,17 +5,18 @@
   aspect-ratio: 404 / 784;
   display: block;
   overflow: visible;
-  touch-action: manipulation;
+  touch-action: none;
   user-select: none;
+  -webkit-user-select: none;
   -webkit-tap-highlight-color: transparent;
+}
+
+.RouletteTable_svg.is-dragging {
+  cursor: grabbing;
 }
 
 .RouletteTable_spot {
   cursor: pointer;
-}
-
-.RouletteTable_spot.is-bet {
-  filter: drop-shadow(0 0.125rem 0.25rem color-mix(in srgb, var(--mantine-color-dark-9) 28%, transparent));
 }
 
 .RouletteTable_spotBody {
@@ -33,11 +34,6 @@
   fill: transparent;
   stroke: none;
   pointer-events: all;
-}
-
-.RouletteTable_spot.is-inside:hover .RouletteTable_spotBody,
-.RouletteTable_spot.is-inside.is-bet .RouletteTable_spotBody {
-  fill: color-mix(in srgb, var(--mantine-color-indigo-6) 16%, transparent);
 }
 
 .RouletteTable_spot.is-flash .RouletteTable_spotBody,
@@ -62,8 +58,21 @@
 }
 
 .RouletteTable_chip {
-  pointer-events: none;
+  cursor: grab;
   animation: chipDrop 0.16s ease-out;
+}
+
+.RouletteTable_svg.is-dragging .RouletteTable_chip {
+  cursor: grabbing;
+}
+
+.RouletteTable_chip.is-ghost {
+  animation: none;
+  pointer-events: none;
+}
+
+.RouletteTable_chip.is-removing {
+  opacity: 0.45;
 }
 
 @keyframes numberFlash {

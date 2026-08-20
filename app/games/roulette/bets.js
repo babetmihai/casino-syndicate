@@ -37,3 +37,18 @@ export const betWins = (index, number) => {
   if (index === OUTSIDE.COL_1) return number % 3 === 1
   return false
 }
+
+export const maxPotentialPayout = (bets) => {
+  return _.max(_.map(_.range(37), (number) => {
+    let amount = 0
+    _.forEach(bets, (bet, index) => {
+      if (!bet) return
+      if (!betWins(index, number)) return
+      let payout = 3
+      if (index < 37) payout = 36
+      else if (index <= 42) payout = 2
+      amount += bet * payout
+    })
+    return amount
+  })) || 0
+}

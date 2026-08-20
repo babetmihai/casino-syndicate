@@ -8,14 +8,20 @@ contract Roulette {
 	uint256 public createdAt;
 
 	uint256 public totalShares = 0;
+	uint256 public minBet;
+	uint256 public maxBet;
 	mapping(address => uint256) public shares;
 	mapping(address => uint256) public balances;
+
+	uint256 public constant CHIP = 0.01 ether;
 
 	struct TableDTO {
 		uint256 memberShares;
 		uint256 playerBalance;
 		uint256 totalShares;
 		uint256 totalBalance;
+		uint256 minBet;
+		uint256 maxBet;
 	}
 
 	event Deposited(address indexed user, uint256 amount);
@@ -25,6 +31,8 @@ contract Roulette {
 		name = _name;
 		createdBy = _createdBy;
 		createdAt = block.timestamp;
+		minBet = CHIP;
+		maxBet = msg.value;
 		if (msg.value > 0) {
 			totalShares = msg.value;
 			shares[_createdBy] = msg.value;
@@ -42,8 +50,19 @@ contract Roulette {
 			memberShares: owned,
 			playerBalance: balances[msg.sender],
 			totalShares: bankroll,
-			totalBalance: bankroll
+			totalBalance: bankroll,
+			minBet: minBet,
+			maxBet: maxBet
 		});
+	}
+
+	function setLimits(uint256 _minBet, uint256 _maxBet) external {
+		require(msg.sender == createdBy, "Only owner");
+		require(_minBet >= CHIP, "Min too small");
+		require(_maxBet >= _minBet, "Max below min");
+		require(_maxBet <= address(this).balance, "Max exceeds bankroll");
+		minBet = _minBet;
+		maxBet = _maxBet;
 	}
 
 	function depositShares() public payable {
@@ -100,11 +119,21 @@ contract Roulette {
 	function postBet(uint256[49] memory _bets) external payable {
 		uint256 randomNumber = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender))) % 37;
 		uint256 totalBetAmount = 0;
-		uint256 maxBetAmount = 100 ether;
+		uint256 bankroll = address(this).balance - msg.value;
+		uint256 cap = maxBet;
+		if (cap > bankroll) {
+			cap = bankroll;
+		}
 
 		for (uint256 i = 0; i < 49; i++) {
 			totalBetAmount += _bets[i];
-			if (_bets[i] > maxBetAmount) {
+			if (_bets[i] == 0) {
+				continue;
+			}
+			if (_bets[i] < minBet) {
+				revert("Bet amount must be at least minBet");
+			}
+			if (_bets[i] > cap) {
 				revert("Bet amount must be less than maxBetAmount");
 			}
 		}
@@ -112,45 +141,57 @@ contract Roulette {
 		require(totalBetAmount > 0, "Must bet some Ether");
 		require(msg.value == totalBetAmount, "Total bet amount must equal sent Ether");
 
-		uint256 winningAmount = _bets[randomNumber] * 36;
-		if (randomNumber != 0) {
-			if (((uint256(0x154aad52aa) >> randomNumber) & 1) == 1) {
-				winningAmount += _bets[37] * 2;
-			} else {
-				winningAmount += _bets[38] * 2;
-			}
-			if (randomNumber % 2 == 0) {
-				winningAmount += _bets[39] * 2;
-			} else {
-				winningAmount += _bets[40] * 2;
-			}
-			if (randomNumber <= 18) {
-				winningAmount += _bets[41] * 2;
-			} else {
-				winningAmount += _bets[42] * 2;
-			}
-			if (randomNumber <= 12) {
-				winningAmount += _bets[43] * 3;
-			} else if (randomNumber <= 24) {
-				winningAmount += _bets[44] * 3;
-			} else {
-				winningAmount += _bets[45] * 3;
-			}
-			uint256 col = randomNumber % 3;
-			if (col == 0) {
-				winningAmount += _bets[46] * 3;
-			} else if (col == 2) {
-				winningAmount += _bets[47] * 3;
-			} else {
-				winningAmount += _bets[48] * 3;
+		uint256 maxPayout = 0;
+		for (uint256 n = 0; n < 37; n++) {
+			uint256 payout = payoutForNumber(_bets, n);
+			if (payout > maxPayout) {
+				maxPayout = payout;
 			}
 		}
+		require(address(this).balance >= maxPayout, "Table cannot cover this bet");
 
-		require(address(this).balance >= winningAmount, "Table cannot cover this win");
+		uint256 winningAmount = payoutForNumber(_bets, randomNumber);
 		if (winningAmount > 0) {
 			payable(msg.sender).transfer(winningAmount);
 		}
 
 		emit WinningNumber(randomNumber, totalBetAmount, winningAmount, balances[msg.sender]);
+	}
+
+	function payoutForNumber(uint256[49] memory _bets, uint256 randomNumber) private pure returns (uint256 winningAmount) {
+		winningAmount = _bets[randomNumber] * 36;
+		if (randomNumber == 0) {
+			return winningAmount;
+		}
+		if (((uint256(0x154aad52aa) >> randomNumber) & 1) == 1) {
+			winningAmount += _bets[37] * 2;
+		} else {
+			winningAmount += _bets[38] * 2;
+		}
+		if (randomNumber % 2 == 0) {
+			winningAmount += _bets[39] * 2;
+		} else {
+			winningAmount += _bets[40] * 2;
+		}
+		if (randomNumber <= 18) {
+			winningAmount += _bets[41] * 2;
+		} else {
+			winningAmount += _bets[42] * 2;
+		}
+		if (randomNumber <= 12) {
+			winningAmount += _bets[43] * 3;
+		} else if (randomNumber <= 24) {
+			winningAmount += _bets[44] * 3;
+		} else {
+			winningAmount += _bets[45] * 3;
+		}
+		uint256 col = randomNumber % 3;
+		if (col == 0) {
+			winningAmount += _bets[46] * 3;
+		} else if (col == 2) {
+			winningAmount += _bets[47] * 3;
+		} else {
+			winningAmount += _bets[48] * 3;
+		}
 	}
 }

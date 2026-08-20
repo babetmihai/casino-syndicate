@@ -34,7 +34,7 @@ const WithdrawModal = ({ onSubmit, max }) => {
       title={<Text fw={500}>{t("withdraw")}</Text>}
     >
       <NumberInput
-        label="Amount (ETH)"
+        label="Amount (chips)"
         min={1}
         max={maxAmount}
         step={1}

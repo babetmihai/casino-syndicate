@@ -1,5 +1,12 @@
 export const CHIP_VALUES = [1, 5, 25, 100]
-export const MAX_NUMBER_BET = 100
+export const CHIPS_PER_ETH = 100
+const CHIP_WEI = 10n ** 18n / BigInt(CHIPS_PER_ETH)
+
+export const formatChips = (wei) => (BigInt(wei) / CHIP_WEI).toString()
+
+export const parseChips = (chips) => BigInt(Math.floor(Number(chips) || 0)) * CHIP_WEI
+
+export const chipsLabel = (amount) => `${amount || 0} chips`
 
 export const CHIP_COLORS = {
   1: {

@@ -13,7 +13,7 @@ const TableModal = ({ onSubmit }) => {
     initialValues: {
       name: "",
       type: TABLE_TYPES.Roulette,
-      balance: 10
+      balance: 1000
     },
     validationSchema: Yup.object({
       name: Yup.string().required(t("name_required")),
@@ -46,7 +46,7 @@ const TableModal = ({ onSubmit }) => {
         }}
       />
       <NumberInput
-        label="Amount (ETH)"
+        label="Amount (chips)"
         min={1}
         step={1}
         allowDecimal={false}

@@ -10,7 +10,7 @@ const DepositModal = ({ onSubmit }) => {
   const { t } = useTranslation()
   const formik = useFormik({
     initialValues: {
-      balance: 10
+      balance: 1000
     },
     validationSchema: Yup.object({
       balance: Yup.number().moreThan(0, t("balance_required"))
@@ -33,7 +33,7 @@ const DepositModal = ({ onSubmit }) => {
       title={<Text fw={500}>{t("fund_table")}</Text>}
     >
       <NumberInput
-        label="Amount (ETH)"
+        label="Amount (chips)"
         min={1}
         step={1}
         allowDecimal={false}

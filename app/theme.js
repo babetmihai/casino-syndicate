@@ -34,7 +34,7 @@ export const theme = createTheme({
       defaultProps: {
         shadow: "xs",
         radius: "md",
-        padding: "md"
+        padding: "sm"
       }
     }
   }

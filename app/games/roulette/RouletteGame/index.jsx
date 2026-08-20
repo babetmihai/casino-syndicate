@@ -2,16 +2,18 @@ import React from "react"
 import { createPortal } from "react-dom"
 import "./index.scss"
 import _ from "lodash"
-import { Card, Text } from "@mantine/core"
+import { Card, Indicator, Text } from "@mantine/core"
 import { useTranslation } from "react-i18next"
 import { fetchRoulette, postRouletteBet, pushSpinHistory, selectRoulette } from ".."
 import { useSelector } from "react-redux"
 import { fetchBalance, selectAuth } from "app/core/auth"
 import RouletteTable from "./RouletteTable"
-import { CHIP_VALUES, MAX_NUMBER_BET } from "../chips"
-import { BET_COUNT, BLACK_NUMBERS, betWins } from "../bets"
-import { EraserIcon, PlayIcon } from "@phosphor-icons/react"
+import { CHIP_VALUES, chipsLabel } from "../chips"
+import { BET_COUNT, BLACK_NUMBERS, betWins, maxPotentialPayout } from "../bets"
+import { MinusIcon, PlayIcon, PlusIcon, PokerChipIcon, WalletIcon } from "@phosphor-icons/react"
 import { AppFab, AppFabs } from "app/components/AppFabs"
+import { showModal } from "app/core/modals"
+import AuthModal from "app/core/auth/AuthModal"
 
 
 const RouletteGame = React.memo(({ address }) => {
@@ -19,23 +21,29 @@ const RouletteGame = React.memo(({ address }) => {
   const [bets, setBets] = React.useState(_.range(BET_COUNT).fill(0))
   const [chip, setChip] = React.useState(1)
   const [pickingChip, setPickingChip] = React.useState(false)
+  const [pickingUp, setPickingUp] = React.useState(false)
   const [revealing, setRevealing] = React.useState(false)
   const [landingNumber, setLandingNumber] = React.useState(null)
   const [showBanner, setShowBanner] = React.useState(false)
+  const [holdingSpin, setHoldingSpin] = React.useState(false)
   const historyRef = React.useRef(null)
+  const holdTimer = React.useRef(null)
   const totalBet = _.sum(bets)
   const { account, balance } = useSelector(() => selectAuth()) || {}
-  const { lastSpin, history = [] } = useSelector(() => selectRoulette(address)) || {}
+  const { lastSpin, history = [], minBet, maxBet, totalBalance } = useSelector(() => selectRoulette(address)) || {}
   const { number: winningNumber, winningAmount } = lastSpin || {}
   const showResult = lastSpin && !revealing
-  const canSpin = totalBet > 0 && !revealing && !showBanner
+  const minBetAmount = Number(minBet) || 1
+  const bankroll = Number(totalBalance) || 0
+  const maxBetAmount = Math.min(Number(maxBet) || 0, bankroll)
+  const canCover = maxPotentialPayout(bets) <= bankroll + totalBet
+  const canSpin = totalBet > 0 && !revealing && !showBanner && canCover
   let bannerColor = "red"
   if (winningNumber === 0) bannerColor = "green"
   if (_.includes(BLACK_NUMBERS, winningNumber)) bannerColor = "black"
-  let balanceLabel = "0 ETH"
-  if (balance) {
-    balanceLabel = `${parseInt(balance, 10)} ETH`
-  }
+  const balanceLabel = chipsLabel(parseInt(balance, 10) || 0)
+  let modeColor = "teal"
+  if (pickingUp) modeColor = "red"
 
   React.useEffect(() => {
     fetchRoulette(address)
@@ -61,56 +69,91 @@ const RouletteGame = React.memo(({ address }) => {
     node.scrollLeft = 0
   }, [history])
 
-  const addBet = (number) => {
+  const changeBet = (index, amount) => {
     if (revealing) return
     const nextBets = [...bets]
-    const nextValue = nextBets[number] + chip
-    if (nextValue > MAX_NUMBER_BET) return
-    nextBets[number] = nextValue
+    let nextValue = nextBets[index] + amount
+    if (nextValue < 0) nextValue = 0
+    if (nextValue > 0 && nextValue < minBetAmount) {
+      if (amount < 0) nextValue = 0
+      else nextValue = minBetAmount
+    }
+    if (nextValue > maxBetAmount) return
+    nextBets[index] = nextValue
+    const nextTotal = _.sum(nextBets)
+    if (maxPotentialPayout(nextBets) > bankroll + nextTotal) return
     setBets(nextBets)
+  }
+
+  const cancelSpinHold = () => {
+    if (holdTimer.current) {
+      clearTimeout(holdTimer.current)
+      holdTimer.current = null
+    }
+    setHoldingSpin(false)
+  }
+
+  const startSpinHold = (event) => {
+    if (!canSpin) return
+    if (event.button > 0) return
+    event.currentTarget.setPointerCapture(event.pointerId)
+    setHoldingSpin(true)
+    holdTimer.current = _.delay(async () => {
+      holdTimer.current = null
+      setHoldingSpin(false)
+      setRevealing(true)
+      setLandingNumber(null)
+      try {
+        const spin = await postRouletteBet(address, bets)
+        if (!spin) {
+          setRevealing(false)
+          return
+        }
+        setLandingNumber(spin.number)
+      } catch {
+        setRevealing(false)
+        setLandingNumber(null)
+        return
+      }
+      if (account) await fetchBalance(account)
+    }, 1000)
   }
 
   return (
     <div className="RouletteGame_root">
+      <div
+        ref={historyRef}
+        className="RouletteGame_history"
+      >
+        {_.map(_.reverse([...history]), (number, index) => {
+          let color = "red"
+          if (number === 0) color = "green"
+          if (_.includes(BLACK_NUMBERS, number)) color = "black"
+          let className = "RouletteGame_historyItem"
+          if (index === 0) className = "RouletteGame_historyItem is-latest"
+          return (
+            <div
+              key={`${history.length - 1 - index}-${number}`}
+              className={className}
+              data-color={color}
+            >
+              {number}
+            </div>
+          )
+        })}
+      </div>
       <Card className="RouletteGame_sheet" padding={0}>
-        <div className="RouletteGame_rail">
-          <div
-            ref={historyRef}
-            className="RouletteGame_history"
-          >
-            {_.map(_.reverse([...history]), (number, index) => {
-              let color = "red"
-              if (number === 0) color = "green"
-              if (_.includes(BLACK_NUMBERS, number)) color = "black"
-              let className = "RouletteGame_historyItem"
-              if (index === 0) className = "RouletteGame_historyItem is-latest"
-              return (
-                <div
-                  key={`${history.length - 1 - index}-${number}`}
-                  className={className}
-                  data-color={color}
-                >
-                  {number}
-                </div>
-              )
-            })}
-          </div>
-          <div className="RouletteGame_hud">
-            <Text size="sm" c="dimmed">
-              Balance {balanceLabel}
-            </Text>
-            <Text size="sm">
-              Bet {totalBet} ETH
-            </Text>
-          </div>
-        </div>
         <div className="RouletteGame_board">
           <RouletteTable
             bets={bets}
             winningNumber={showResult ? winningNumber : undefined}
             landingNumber={landingNumber}
             spinning={revealing}
-            onSpotClick={addBet}
+            onSpotClick={(index) => {
+              let amount = chip
+              if (pickingUp) amount = -chip
+              changeBet(index, amount)
+            }}
             onReveal={() => {
               setRevealing(false)
               setLandingNumber(null)
@@ -125,6 +168,20 @@ const RouletteGame = React.memo(({ address }) => {
           />
         </div>
       </Card>
+      <div className="RouletteGame_status">
+        <Text size="sm" c="dimmed">
+          Balance {balanceLabel}
+        </Text>
+        <Text size="sm">
+          Bet {chipsLabel(totalBet)}
+        </Text>
+        <Text size="sm" c="dimmed">
+          Min {minBetAmount}
+        </Text>
+        <Text size="sm" c="dimmed">
+          Max {maxBetAmount}
+        </Text>
+      </div>
       {createPortal(
         showBanner &&
           <div className="RouletteGame_bannerLayer">
@@ -140,72 +197,94 @@ const RouletteGame = React.memo(({ address }) => {
                 {winningNumber}
               </Text>
               <Text size="sm">
-                Won {winningAmount} ETH
+                Won {chipsLabel(winningAmount)}
               </Text>
             </Card>
           </div>,
         document.body
       )}
-      {account &&
-        <AppFabs>
+      <AppFabs>
+        {!account &&
+          <AppFab
+            label="Connect"
+            onClick={() => showModal(AuthModal)}
+          >
+            <WalletIcon size={24} />
+          </AppFab>
+        }
+        {account &&
           <AppFab
             label={t("place_bet")}
+            holding={holdingSpin}
             disabled={!canSpin}
             loading={revealing}
-            onClick={async () => {
-              setRevealing(true)
-              setLandingNumber(null)
-              try {
-                const spin = await postRouletteBet(address, bets)
-                if (!spin) {
-                  setRevealing(false)
-                  return
-                }
-                setLandingNumber(spin.number)
-              } catch {
-                setRevealing(false)
-                setLandingNumber(null)
-                return
-              }
-              if (account) await fetchBalance(account)
-            }}
+            onPointerDown={startSpinHold}
+            onPointerUp={cancelSpinHold}
+            onPointerCancel={cancelSpinHold}
+            onLostPointerCapture={cancelSpinHold}
           >
             <PlayIcon size={24} />
           </AppFab>
-          <AppFab
-            secondary
-            label="Clear"
-            disabled={totalBet === 0 || revealing}
-            onClick={() => setBets(_.range(BET_COUNT).fill(0))}
+        }
+        {account &&
+          <Indicator
+            inline
+            withBorder
+            position="top-end"
+            offset={4}
+            size={18}
+            color={modeColor}
+            zIndex={201}
+            label={
+              <>
+                {pickingUp &&
+                  <MinusIcon size={10} weight="bold" />
+                }
+                {!pickingUp &&
+                  <PlusIcon size={10} weight="bold" />
+                }
+              </>
+            }
           >
-            <EraserIcon size={24} />
-          </AppFab>
-          {CHIP_VALUES.map((value) => {
-            const isCurrent = value === chip
-            if (!pickingChip && !isCurrent) return null
-            return (
-              <AppFab
-                key={value}
-                secondary
-                selected={isCurrent}
-                className="RouletteGame_chip"
-                dataValue={value}
-                label={`${value} chip`}
-                onClick={() => {
-                  if (!pickingChip) {
-                    setPickingChip(true)
-                    return
-                  }
-                  setChip(value)
-                  setPickingChip(false)
-                }}
-              >
-                {value}
-              </AppFab>
-            )
-          })}
-        </AppFabs>
-      }
+            <AppFab
+              secondary
+              selected={pickingUp}
+              className="RouletteGame_mode"
+              dataValue={pickingUp ? "up" : "place"}
+              label={pickingUp ? "Pick up" : "Place"}
+              disabled={revealing}
+              onClick={() => setPickingUp(!pickingUp)}
+            >
+              <PokerChipIcon size={24} />
+            </AppFab>
+          </Indicator>
+        }
+        {account && CHIP_VALUES.map((value) => {
+          const isCurrent = value === chip
+          if (value > maxBetAmount && !isCurrent) return null
+          if (!pickingChip && !isCurrent) return null
+          return (
+            <AppFab
+              key={value}
+              secondary
+              selected={isCurrent}
+              className="RouletteGame_chip"
+              dataValue={value}
+              label={`${value} chip`}
+              onClick={() => {
+                if (!pickingChip) {
+                  setPickingChip(true)
+                  return
+                }
+                setChip(value)
+                setPickingChip(false)
+              }}
+            >
+              {value}
+            </AppFab>
+          )
+        })}
+      </AppFabs>
     </div>
   )
 })

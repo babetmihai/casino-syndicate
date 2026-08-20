@@ -144,7 +144,7 @@ const spotLayout = (number) => {
   if (number === 0) {
     return { x: 0, y: CELL_H * 12, w: CELL_W * 3, h: ZERO_H, color: COLORS.green }
   }
-  const col = (number - 1) % 3
+  const col = 2 - ((number - 1) % 3)
   const row = Math.floor((number - 1) / 3)
   let color = COLORS.red
   if (BLACK_NUMBERS.includes(number)) color = COLORS.black

@@ -2,11 +2,17 @@
 pragma solidity ^0.8.0;
 
 import "./Roulette.sol";
+import "./Lottery.sol";
+
+interface INamedGame {
+	function setName(string calldata name) external;
+}
 
 
 contract GameFactory {
 	enum GameType {
-		Roulette
+		Roulette,
+		Lottery
 	}
 
 	struct GameInfo {
@@ -29,11 +35,13 @@ contract GameFactory {
 		string name
 	);
 
-	function createGame(string calldata name, GameType gameType, uint256 minBet, uint256 maxBet) external payable returns (address game) {
-		require(msg.value >= 1 ether, "Min deposit 1");
+	function createGame(string calldata name, GameType gameType, uint256 a, uint256 b, uint256 c) external payable returns (address game) {
 		require(bytes(name).length > 0, "Name required");
 		if (gameType == GameType.Roulette) {
-			game = address(new Roulette{value: msg.value}(name, msg.sender, minBet, maxBet));
+			require(msg.value >= 1 ether, "Min deposit 1");
+			game = address(new Roulette{value: msg.value}(name, msg.sender, a, b));
+		} else if (gameType == GameType.Lottery) {
+			game = address(new Lottery{value: msg.value}(name, msg.sender, a, b, c));
 		} else {
 			revert("Unsupported game type");
 		}
@@ -75,7 +83,7 @@ contract GameFactory {
 		require(info.createdBy == msg.sender, "Only owner");
 		require(bytes(name).length > 0, "Name required");
 		info.name = name;
-		Roulette(game).setName(name);
+		INamedGame(game).setName(name);
 	}
 
 	function getGame(address game) external view returns (GameInfo memory) {

@@ -1,9 +1,9 @@
 const { expect } = require("chai")
 const { ethers } = require("hardhat")
 
-const TABLE_TYPES = { Roulette: "Roulette" }
-const TABLE_TYPE_IDS = { [TABLE_TYPES.Roulette]: 0 }
-const TABLE_TYPE_BY_ID = { 0: TABLE_TYPES.Roulette }
+const TABLE_TYPES = { Roulette: "Roulette", Lottery: "Lottery" }
+const TABLE_TYPE_IDS = { [TABLE_TYPES.Roulette]: 0, [TABLE_TYPES.Lottery]: 1 }
+const TABLE_TYPE_BY_ID = { 0: TABLE_TYPES.Roulette, 1: TABLE_TYPES.Lottery }
 
 const toTable = ({ game, name, createdBy, createdAt, gameType }) => {
   const address = ethers.getAddress(game)
@@ -29,6 +29,7 @@ describe("UI flow: create, view, play roulette", () => {
       TABLE_TYPE_IDS.Roulette,
       ethers.parseEther("0.01"),
       ethers.parseEther("1"),
+      0,
       {
         value: ethers.parseEther("100")
       }
@@ -117,6 +118,7 @@ describe("UI flow: create, view, play roulette", () => {
       TABLE_TYPE_IDS.Roulette,
       ethers.parseEther("0.01"),
       ethers.parseEther("1"),
+      0,
       {
         value: ethers.parseEther("100")
       }
@@ -158,6 +160,7 @@ describe("UI flow: create, view, play roulette", () => {
       TABLE_TYPE_IDS.Roulette,
       ethers.parseEther("0.01"),
       ethers.parseEther("1"),
+      0,
       {
         value: ethers.parseEther("100")
       }
@@ -210,6 +213,7 @@ describe("UI flow: create, view, play roulette", () => {
       TABLE_TYPE_IDS.Roulette,
       ethers.parseEther("0.01"),
       ethers.parseEther("1"),
+      0,
       {
         value: ethers.parseEther("100")
       }
@@ -268,6 +272,7 @@ describe("UI flow: create, view, play roulette", () => {
       TABLE_TYPE_IDS.Roulette,
       ethers.parseEther("0.05"),
       ethers.parseEther("0.5"),
+      0,
       {
         value: ethers.parseEther("100")
       }
@@ -310,6 +315,7 @@ describe("UI flow: create, view, play roulette", () => {
         TABLE_TYPE_IDS.Roulette,
         ethers.parseEther("0.05"),
         ethers.parseEther("0.01"),
+        0,
         { value: ethers.parseEther("1") }
       )
     ).to.be.revertedWith("Max below min")
@@ -333,6 +339,7 @@ describe("UI flow: create, view, play roulette", () => {
       TABLE_TYPE_IDS.Roulette,
       ethers.parseEther("0.01"),
       ethers.parseEther("0.01"),
+      0,
       {
         value: ethers.parseEther("1")
       }
@@ -374,6 +381,7 @@ describe("UI flow: create, view, play roulette", () => {
         TABLE_TYPE_IDS.Roulette,
         ethers.parseEther("0.01"),
         ethers.parseEther("0.01"),
+        0,
         {
           value: ethers.parseEther("0.99")
         }
@@ -385,6 +393,7 @@ describe("UI flow: create, view, play roulette", () => {
       TABLE_TYPE_IDS.Roulette,
       ethers.parseEther("0.01"),
       ethers.parseEther("0.01"),
+      0,
       {
         value: ethers.parseEther("1")
       }
@@ -433,6 +442,7 @@ describe("UI flow: create, view, play roulette", () => {
       TABLE_TYPE_IDS.Roulette,
       ethers.parseEther("0.01"),
       ethers.parseEther("0.05"),
+      0,
       {
         value: ethers.parseEther("1")
       }
@@ -485,3 +495,224 @@ describe("UI flow: create, view, play roulette", () => {
     expect((await factory.getGamesByCreator(creator.address)).length).to.equal(0)
   })
 })
+
+describe("UI flow: create, view, play lottery", () => {
+  const deployFactory = async () => {
+    const Factory = await ethers.getContractFactory("GameFactory")
+    const factory = await Factory.deploy()
+    await factory.waitForDeployment()
+    return factory
+  }
+
+  const createdAddress = (factory, receipt) => {
+    const created = receipt.logs
+      .map((log) => {
+        try {
+          return factory.interface.parseLog(log)
+        } catch {
+          return null
+        }
+      })
+      .find((parsed) => parsed && parsed.name === "GameCreated")
+    return created.args.game
+  }
+
+  const parseTicket = (lottery, receipt) => {
+    return receipt.logs
+      .map((log) => {
+        try {
+          return lottery.interface.parseLog(log)
+        } catch {
+          return null
+        }
+      })
+      .filter((parsed) => parsed && parsed.name === "TicketBought")
+      .map((parsed) => parsed.args)
+  }
+
+  const parsePaid = (lottery, receipt) => {
+    return receipt.logs
+      .map((log) => {
+        try {
+          return lottery.interface.parseLog(log)
+        } catch {
+          return null
+        }
+      })
+      .filter((parsed) => parsed && parsed.name === "PrizePaid")
+      .map((parsed) => parsed.args)
+  }
+
+  const parseSettled = (lottery, receipt) => {
+    return receipt.logs
+      .map((log) => {
+        try {
+          return lottery.interface.parseLog(log)
+        } catch {
+          return null
+        }
+      })
+      .find((parsed) => parsed && parsed.name === "Settled")
+  }
+
+  it("creates a lottery, lists it, and loads polygon config", async () => {
+    const [creator] = await ethers.getSigners()
+    const factory = await deployFactory()
+    const createTx = await factory.connect(creator).createGame(
+      "Night Map",
+      TABLE_TYPE_IDS.Lottery,
+      12,
+      2050,
+      ethers.parseEther("0.05")
+    )
+    const receipt = await createTx.wait()
+    const address = createdAddress(factory, receipt)
+
+    const rows = await factory.getGamesByCreator(creator.address)
+    expect(rows.length).to.equal(1)
+    const listed = toTable(rows[0])
+    expect(listed.address).to.equal(ethers.getAddress(address))
+    expect(listed.name).to.equal("Night Map")
+    expect(listed.type).to.equal(TABLE_TYPES.Lottery)
+
+    const lottery = await ethers.getContractAt("Lottery", address)
+    const table = await lottery.connect(creator).getTable()
+    expect(table.polygonCount).to.equal(12n)
+    expect(table.winPercent).to.equal(2050n)
+    expect(table.ticketPrice).to.equal(ethers.parseEther("0.05"))
+    expect(table.claimedCount).to.equal(0n)
+    expect(table.prize).to.equal(0n)
+    expect(table.owners.length).to.equal(12)
+  })
+
+  it("rejects bad lottery params and wrong ticket price", async () => {
+    const [creator, player] = await ethers.getSigners()
+    const factory = await deployFactory()
+    await expect(
+      factory.connect(creator).createGame(
+        "Few",
+        TABLE_TYPE_IDS.Lottery,
+        2,
+        2000,
+        ethers.parseEther("0.01")
+      )
+    ).to.be.revertedWith("Bad polygons")
+    await expect(
+      factory.connect(creator).createGame(
+        "Zero",
+        TABLE_TYPE_IDS.Lottery,
+        12,
+        0,
+        ethers.parseEther("0.01")
+      )
+    ).to.be.revertedWith("Bad percent")
+    await expect(
+      factory.connect(creator).createGame(
+        "Cheap",
+        TABLE_TYPE_IDS.Lottery,
+        12,
+        2000,
+        ethers.parseEther("0.001")
+      )
+    ).to.be.revertedWith("Price too small")
+
+    const createTx = await factory.connect(creator).createGame(
+      "Ticket Map",
+      TABLE_TYPE_IDS.Lottery,
+      4,
+      10000,
+      ethers.parseEther("0.01")
+    )
+    const lottery = await ethers.getContractAt("Lottery", createdAddress(factory, await createTx.wait()))
+    await expect(
+      lottery.connect(player).buyTicket({ value: ethers.parseEther("0.02") })
+    ).to.be.revertedWith("Wrong price")
+  })
+
+    it("assigns a polygon once, then splits the prize and resets the map", async () => {
+    const [creator, player, other] = await ethers.getSigners()
+    const factory = await deployFactory()
+    const price = ethers.parseEther("0.01")
+    const createTx = await factory.connect(creator).createGame(
+      "Fill Map",
+      TABLE_TYPE_IDS.Lottery,
+      4,
+      10000,
+      price
+    )
+    const lottery = await ethers.getContractAt("Lottery", createdAddress(factory, await createTx.wait()))
+    const buyers = [player, other]
+    let assigned = 0
+    const firstOwners = [null, null, null, null]
+    let roundPrize = 0n
+
+    for (let i = 0; i < 80; i++) {
+      const buyer = buyers[i % 2]
+      const tx = await lottery.connect(buyer).buyTicket({ value: price })
+      const receipt = await tx.wait()
+      const tickets = parseTicket(lottery, receipt)
+      expect(tickets.length).to.equal(1)
+      const ticket = tickets[0]
+      if (ticket.assigned) {
+        const polygonId = Number(ticket.polygonId)
+        expect(firstOwners[polygonId]).to.equal(null)
+        firstOwners[polygonId] = ticket.player
+        assigned += 1
+      }
+      const settled = parseSettled(lottery, receipt)
+      if (settled) {
+        roundPrize = settled.args.prize
+        break
+      }
+    }
+
+    expect(assigned).to.equal(4)
+    expect(roundPrize).to.be.greaterThan(0n)
+    const table = await lottery.getTable()
+    expect(table.claimedCount).to.equal(0n)
+    expect(table.prize).to.equal(0n)
+    expect(table.owners.filter((owner) => owner !== ethers.ZeroAddress).length).to.equal(0)
+    const claimed = {}
+    let paidTotal = 0n
+    for (const owner of firstOwners) {
+      if (claimed[owner]) continue
+      claimed[owner] = true
+      let signer = other
+      if (ethers.getAddress(owner) === ethers.getAddress(player.address)) signer = player
+      const before = await lottery.connect(signer).getTable()
+      expect(before.myPrize).to.be.greaterThan(0n)
+      const paidTx = await lottery.connect(signer).withdrawPrize()
+      const paid = parsePaid(lottery, await paidTx.wait())
+      expect(paid.length).to.equal(1)
+      paidTotal += paid[0].amount
+    }
+    expect(paidTotal).to.equal(roundPrize)
+    expect(await ethers.provider.getBalance(await lottery.getAddress())).to.equal(0n)
+
+    await (await lottery.connect(player).buyTicket({ value: price })).wait()
+    const next = await lottery.connect(player).getTable()
+    expect(next.prize).to.equal(price)
+    expect(next.claimedCount).to.be.lte(1n)
+  })
+
+  it("edits only the name through the factory", async () => {
+    const [creator, player] = await ethers.getSigners()
+    const factory = await deployFactory()
+    const createTx = await factory.connect(creator).createGame(
+      "Rename Map",
+      TABLE_TYPE_IDS.Lottery,
+      6,
+      1550,
+      ethers.parseEther("0.01")
+    )
+    const address = createdAddress(factory, await createTx.wait())
+    const lottery = await ethers.getContractAt("Lottery", address)
+    await (await factory.connect(creator).setGameName(address, "Street Map")).wait()
+    expect((await factory.getGame(address)).name).to.equal("Street Map")
+    expect(await lottery.name()).to.equal("Street Map")
+    await expect(
+      factory.connect(player).setGameName(address, "Stolen")
+    ).to.be.revertedWith("Only owner")
+  })
+})
+

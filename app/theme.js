@@ -130,6 +130,13 @@ export const theme = createTheme({
         item: "menu-item",
         label: "menu-label"
       }
+    },
+    SegmentedControl: {
+      classNames: {
+        root: "segmented-control",
+        label: "segmented-control-label",
+        control: "segmented-control-control"
+      }
     }
   }
 })

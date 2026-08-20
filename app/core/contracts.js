@@ -132,7 +132,11 @@ export const getFactory = async () => {
 export const sendTx = async (method, args, overrides) => {
   const params = args || []
   const extra = overrides || {}
-  const gas = await method.estimateGas(...params, extra)
-  const tx = await method(...params, { ...extra, gasLimit: gas * 15n / 10n })
+  let { gasLimit } = extra
+  if (!gasLimit) {
+    const gas = await method.estimateGas(...params, extra)
+    gasLimit = gas * 15n / 10n
+  }
+  const tx = await method(...params, { ...extra, gasLimit })
   return tx.wait()
 }

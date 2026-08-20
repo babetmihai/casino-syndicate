@@ -1,7 +1,7 @@
 import React from "react"
 import AppScreen from "app/components/AppScreen"
 import { useSelector } from "react-redux"
-import { createTable, fetchTables, selectTables } from "app/core/tables"
+import { createTable, fetchTables, selectTables, TABLE_TYPES } from "app/core/tables"
 import { Button, Text } from "@mantine/core"
 import { showModal } from "app/core/modals"
 import TableModal from "app/core/tables/TableModal"
@@ -11,6 +11,7 @@ import _ from "lodash"
 import { cn, labelClass, titleClass } from "app/core"
 import { selectAuth } from "app/core/auth"
 import { selectRoulette } from "app/games/roulette"
+import { selectLottery } from "app/games/lottery"
 import { bankrollClass, clampEth, ethLabel, MIN_BET, tableMaxBet } from "app/games/roulette/chips"
 import { ethers } from "ethers"
 import { selectNativeSymbol } from "app/core/chain"
@@ -44,7 +45,7 @@ const MainScreen = () => {
           <div className={cn("main-hero", "flex min-h-0 flex-1 flex-col items-start justify-center")}>
             <div className={cn("main-hero-label", labelClass, "mb-3 inline-flex items-center gap-2")}>
               <span className={cn("main-hero-rule", "h-px w-8 bg-cs-accent")} />
-              On-chain roulette
+              On-chain tables
             </div>
             <h1 className={cn("main-hero-title", titleClass, "mb-3 text-[clamp(1.75rem,8vw,2.75rem)] font-extrabold leading-[1.15]")}>
               Casino{" "}
@@ -102,15 +103,20 @@ const MainScreen = () => {
 }
 
 const TableCard = React.memo(({ table, index }) => {
-  const { name, address } = table || {}
+  const { name, address, type } = table || {}
   const roulette = useSelector(() => selectRoulette(address)) || {}
+  const lottery = useSelector(() => selectLottery(address)) || {}
   const symbol = useSelector(() => selectNativeSymbol())
+  const isLottery = type === TABLE_TYPES.Lottery
   const { minBet, maxBet, totalBalance } = roulette
+  const { prize, claimedCount, polygonCount, ticketPrice } = lottery
   const shortAddress = `${address.slice(0, 6)}…${address.slice(-4)}`
   const bankroll = clampEth(totalBalance)
   const minBetAmount = clampEth(minBet) || MIN_BET
   const maxBetAmount = tableMaxBet(maxBet)
-  const hasStats = !_.isEmpty(roulette)
+  let stats = roulette
+  if (isLottery) stats = lottery
+  const hasStats = !_.isEmpty(stats)
   const order = String(index + 1).padStart(2, "0")
 
   return (
@@ -130,7 +136,17 @@ const TableCard = React.memo(({ table, index }) => {
         <h3 className={cn("table-card-name", titleClass, "m-0 truncate text-base")}>{name}</h3>
         <Text className={cn("table-card-address")} size="xs" c="dimmed">{shortAddress}</Text>
       </div>
-      {hasStats &&
+      {hasStats && isLottery &&
+        <div className={cn("table-card-stats", "flex shrink-0 flex-col items-end gap-0.5 text-right")}>
+          <span className={cn("table-card-bankroll", titleClass, "text-base text-cs-accent")}>
+            {ethLabel(prize, symbol)}
+          </span>
+          <Text className={cn("table-card-limits")} size="xs" c="dimmed">
+            {claimedCount || 0}/{polygonCount || 0} · {ethLabel(ticketPrice, symbol)}
+          </Text>
+        </div>
+      }
+      {hasStats && !isLottery &&
         <div className={cn("table-card-stats", "flex shrink-0 flex-col items-end gap-0.5 text-right")}>
           <span className={cn("table-card-bankroll", titleClass, "text-base", bankrollClass(bankroll, maxBet))}>
             {ethLabel(bankroll, symbol)}

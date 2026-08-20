@@ -4,6 +4,7 @@ import { useSelector } from "react-redux"
 import { useParams } from "react-router-dom"
 import AppScreen from "app/components/AppScreen"
 import RouletteGame from "app/games/roulette/RouletteGame"
+import LotteryGame from "app/games/lottery/LotteryGame"
 
 
 const GameScreen = () => {
@@ -21,6 +22,9 @@ const GameScreen = () => {
     <AppScreen>
       {type === TABLE_TYPES.Roulette &&
         <RouletteGame address={address} />
+      }
+      {type === TABLE_TYPES.Lottery &&
+        <LotteryGame address={address} />
       }
     </AppScreen>
   )

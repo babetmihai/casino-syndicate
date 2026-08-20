@@ -27,6 +27,11 @@ export const fetchRoulette = async (address) => {
   const totalBalance = row[3]
   const minBet = row[4]
   const maxBet = row[5]
+  const lastWithdrawAt = Number(row[6])
+  const ownerRaw = row[7]
+  const tableAddress = ethers.getAddress(address)
+  let owner
+  if (ownerRaw && ownerRaw !== ethers.ZeroAddress) owner = ethers.getAddress(ownerRaw)
   actions.update(roulettePath(address), {
     memberShares: formatEth(memberShares),
     playerBalance: formatEth(playerBalance),
@@ -34,8 +39,12 @@ export const fetchRoulette = async (address) => {
     totalBalance: formatEth(totalBalance),
     minBet: formatEth(minBet),
     maxBet: formatEth(maxBet),
-    lastWithdrawAt: Number(row[6])
+    lastWithdrawAt,
+    owner
   })
+  if (owner) {
+    actions.update(`tables.${tableAddress}`, { createdBy: owner })
+  }
 }
 
 export const buyTableShares = async ({ balance }, address) => {

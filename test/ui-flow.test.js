@@ -422,4 +422,66 @@ describe("UI flow: create, view, play roulette", () => {
     await ethers.provider.send("evm_mine")
     await (await roulette.connect(creator).withdrawShares(ethers.parseEther("0.01"))).wait()
   })
+
+  it("transfers ownership to the largest shareholder on deposit and withdraw", async () => {
+    const [creator, player] = await ethers.getSigners()
+    const Factory = await ethers.getContractFactory("GameFactory")
+    const factory = await Factory.deploy()
+    await factory.waitForDeployment()
+    const createTx = await factory.connect(creator).createGame(
+      "Share Table",
+      TABLE_TYPE_IDS.Roulette,
+      ethers.parseEther("0.01"),
+      ethers.parseEther("0.05"),
+      {
+        value: ethers.parseEther("1")
+      }
+    )
+    const receipt = await createTx.wait()
+    const created = receipt.logs
+      .map((log) => {
+        try {
+          return factory.interface.parseLog(log)
+        } catch {
+          return null
+        }
+      })
+      .find((parsed) => parsed && parsed.name === "GameCreated")
+    const game = created.args.game
+    const roulette = await ethers.getContractAt("Roulette", game)
+
+    expect(await roulette.createdBy()).to.equal(creator.address)
+    expect((await factory.getGame(game)).createdBy).to.equal(creator.address)
+
+    await (await roulette.connect(player).depositShares({ value: ethers.parseEther("2") })).wait()
+    expect(await roulette.createdBy()).to.equal(player.address)
+    expect((await factory.getGame(game)).createdBy).to.equal(player.address)
+    expect((await factory.getGamesByCreator(player.address)).length).to.equal(1)
+    expect((await factory.getGamesByCreator(creator.address)).length).to.equal(0)
+    expect((await roulette.connect(player).getTable()).owner).to.equal(player.address)
+
+    await (await roulette.connect(player).setLimits(
+      ethers.parseEther("0.01"),
+      ethers.parseEther("0.1")
+    )).wait()
+    await expect(
+      roulette.connect(creator).setLimits(ethers.parseEther("0.01"), ethers.parseEther("0.1"))
+    ).to.be.revertedWith("Only owner")
+    await expect(
+      factory.connect(creator).setGameName(game, "Stolen")
+    ).to.be.revertedWith("Only owner")
+    await (await factory.connect(player).setGameName(game, "House Table")).wait()
+    expect(await roulette.name()).to.equal("House Table")
+
+    await (await roulette.connect(creator).depositShares({ value: ethers.parseEther("3") })).wait()
+    expect(await roulette.createdBy()).to.equal(creator.address)
+    expect((await factory.getGamesByCreator(creator.address)).length).to.equal(1)
+    expect((await factory.getGamesByCreator(player.address)).length).to.equal(0)
+
+    await (await roulette.connect(creator).withdrawShares(ethers.parseEther("3.5"))).wait()
+    expect(await roulette.createdBy()).to.equal(player.address)
+    expect((await factory.getGame(game)).createdBy).to.equal(player.address)
+    expect((await factory.getGamesByCreator(player.address)).length).to.equal(1)
+    expect((await factory.getGamesByCreator(creator.address)).length).to.equal(0)
+  })
 })

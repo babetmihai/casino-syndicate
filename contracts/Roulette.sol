@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
+interface IGameFactory {
+	function setGameOwner(address owner) external;
+}
+
 
 contract Roulette {
 	string public name;
@@ -14,6 +18,8 @@ contract Roulette {
 	mapping(address => uint256) public shares;
 	mapping(address => uint256) public balances;
 	mapping(address => uint256) public lastWithdrawAt;
+	address[] private holders;
+	mapping(address => uint256) private holderIndex;
 
 	uint256 public constant CHIP = 0.01 ether;
 	uint256 public constant MIN_DEPOSIT = 1 ether;
@@ -27,6 +33,7 @@ contract Roulette {
 		uint256 minBet;
 		uint256 maxBet;
 		uint256 lastWithdrawAt;
+		address owner;
 	}
 
 	event Deposited(address indexed user, uint256 amount);
@@ -45,6 +52,7 @@ contract Roulette {
 		maxBet = _maxBet;
 		totalShares = msg.value;
 		shares[_createdBy] = msg.value;
+		addHolder(_createdBy);
 		emit Deposited(_createdBy, msg.value);
 	}
 
@@ -61,7 +69,8 @@ contract Roulette {
 			totalBalance: bankroll,
 			minBet: minBet,
 			maxBet: maxBet,
-			lastWithdrawAt: lastWithdrawAt[msg.sender]
+			lastWithdrawAt: lastWithdrawAt[msg.sender],
+			owner: createdBy
 		});
 	}
 
@@ -91,6 +100,8 @@ contract Roulette {
 
 		totalShares += memberShares;
 		shares[msg.sender] += memberShares;
+		addHolder(msg.sender);
+		syncOwner();
 		emit Deposited(msg.sender, msg.value);
 	}
 
@@ -117,7 +128,9 @@ contract Roulette {
 		shares[msg.sender] -= burned;
 		if (shares[msg.sender] == 0) {
 			delete shares[msg.sender];
+			removeHolder(msg.sender);
 		}
+		syncOwner();
 		lastWithdrawAt[msg.sender] = block.timestamp;
 		payable(msg.sender).transfer(amount);
 	}
@@ -170,6 +183,48 @@ contract Roulette {
 		}
 
 		emit WinningNumber(randomNumber, totalBetAmount, winningAmount, balances[msg.sender]);
+	}
+
+	function addHolder(address account) private {
+		if (holderIndex[account] != 0) {
+			return;
+		}
+		holders.push(account);
+		holderIndex[account] = holders.length;
+	}
+
+	function removeHolder(address account) private {
+		uint256 stored = holderIndex[account];
+		if (stored == 0) {
+			return;
+		}
+		uint256 i = stored - 1;
+		uint256 lastPos = holders.length - 1;
+		if (i != lastPos) {
+			address last = holders[lastPos];
+			holders[i] = last;
+			holderIndex[last] = stored;
+		}
+		holders.pop();
+		delete holderIndex[account];
+	}
+
+	function syncOwner() private {
+		address next = createdBy;
+		uint256 best = shares[next];
+		for (uint256 i = 0; i < holders.length; i++) {
+			address holder = holders[i];
+			uint256 amount = shares[holder];
+			if (amount > best) {
+				best = amount;
+				next = holder;
+			}
+		}
+		if (next == createdBy) {
+			return;
+		}
+		createdBy = next;
+		IGameFactory(factory).setGameOwner(next);
 	}
 
 	function payoutForNumber(uint256[157] memory _bets, uint256 randomNumber) private pure returns (uint256 winningAmount) {

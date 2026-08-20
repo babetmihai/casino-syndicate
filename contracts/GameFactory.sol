@@ -20,6 +20,7 @@ contract GameFactory {
 	GameInfo[] public games;
 	mapping(address => uint256[]) private gameIndexesByCreator;
 	mapping(address => uint256) private gameIndexByAddress;
+	mapping(address => mapping(address => uint256)) private creatorGameSlot;
 
 	event GameCreated(
 		address indexed game,
@@ -48,7 +49,23 @@ contract GameFactory {
 		}));
 		gameIndexesByCreator[msg.sender].push(index);
 		gameIndexByAddress[game] = index + 1;
+		creatorGameSlot[msg.sender][game] = gameIndexesByCreator[msg.sender].length;
 		emit GameCreated(game, msg.sender, gameType, name);
+	}
+
+	function setGameOwner(address owner) external {
+		require(owner != address(0), "Owner required");
+		uint256 stored = gameIndexByAddress[msg.sender];
+		require(stored > 0, "Unknown game");
+		uint256 index = stored - 1;
+		GameInfo storage info = games[index];
+		address previous = info.createdBy;
+		if (previous == owner) {
+			return;
+		}
+		info.createdBy = owner;
+		removeCreatorGame(previous, msg.sender);
+		addCreatorGame(owner, msg.sender, index);
 	}
 
 	function setGameName(address game, string calldata name) external {
@@ -74,5 +91,27 @@ contract GameFactory {
 			result[i] = games[indexes[i]];
 		}
 		return result;
+	}
+
+	function addCreatorGame(address creator, address game, uint256 index) private {
+		uint256[] storage list = gameIndexesByCreator[creator];
+		list.push(index);
+		creatorGameSlot[creator][game] = list.length;
+	}
+
+	function removeCreatorGame(address creator, address game) private {
+		uint256 slot = creatorGameSlot[creator][game];
+		if (slot == 0) {
+			return;
+		}
+		uint256[] storage list = gameIndexesByCreator[creator];
+		uint256 lastPos = list.length - 1;
+		if (slot - 1 != lastPos) {
+			uint256 lastIndex = list[lastPos];
+			list[slot - 1] = lastIndex;
+			creatorGameSlot[creator][games[lastIndex].game] = slot;
+		}
+		list.pop();
+		delete creatorGameSlot[creator][game];
 	}
 }

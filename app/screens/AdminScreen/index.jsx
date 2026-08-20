@@ -24,10 +24,11 @@ const AdminScreen = () => {
   const { account } = useSelector(() => selectAuth()) || {}
   const table = useSelector(() => selectTable(address))
   const roulette = useSelector(() => selectRoulette(address)) || {}
-  const { memberShares, minBet, maxBet, lastWithdrawAt } = roulette
+  const { memberShares, minBet, maxBet, lastWithdrawAt, owner } = roulette
   const { name, type, createdBy } = table || {}
   const hasShare = clampEth(memberShares) > 0
-  const isOwner = createdBy && account && ethers.getAddress(createdBy) === ethers.getAddress(account)
+  const tableOwner = owner || createdBy
+  const isOwner = tableOwner && account && ethers.getAddress(tableOwner) === ethers.getAddress(account)
 
   React.useEffect(() => {
     if (!address) return

@@ -4,13 +4,14 @@ import { hideModal } from "app/core/modals"
 import { useFormik } from "formik"
 import * as Yup from "yup"
 import { useTranslation } from "react-i18next"
+import { MIN_BET, clampEth } from "app/games/roulette/chips"
 
 
 const DepositModal = ({ onSubmit }) => {
   const { t } = useTranslation()
   const formik = useFormik({
     initialValues: {
-      balance: 1000
+      balance: 10
     },
     validationSchema: Yup.object({
       balance: Yup.number().moreThan(0, t("balance_required"))
@@ -18,7 +19,9 @@ const DepositModal = ({ onSubmit }) => {
     onSubmit: async (values, form) => {
       form.setSubmitting(true)
       try {
-        await onSubmit(values)
+        await onSubmit({
+          balance: clampEth(values.balance)
+        })
         hideModal()
       } finally {
         form.setSubmitting(false)
@@ -33,11 +36,13 @@ const DepositModal = ({ onSubmit }) => {
       title={<Text fw={500}>{t("fund_table")}</Text>}
     >
       <NumberInput
-        label="Amount (chips)"
-        min={1}
-        step={1}
-        allowDecimal={false}
-        hideControls
+        label="Amount (ETH)"
+        min={MIN_BET}
+        step={0.01}
+        decimalScale={2}
+        allowDecimal
+        allowNegative={false}
+        clampBehavior="strict"
         value={formik.values.balance}
         onChange={(value) => {
           formik.setFieldValue("balance", value)

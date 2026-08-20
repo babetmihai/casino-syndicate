@@ -4,7 +4,7 @@ import { ethers } from "ethers"
 import { clearLoader, setLoader } from "../loaders"
 import { generateContract, getFactory } from "../contracts"
 import { selectAuth } from "../auth"
-import { parseChips } from "app/games/roulette/chips"
+import { parseEth } from "app/games/roulette/chips"
 import _ from "lodash"
 
 export const TABLE_TYPES = {
@@ -61,7 +61,7 @@ export const createTable = async (values) => {
 
   const factory = await getFactory()
   const tx = await factory.createGame(name, gameType, {
-    value: parseChips(balance)
+    value: parseEth(balance)
   })
   const receipt = await tx.wait()
 

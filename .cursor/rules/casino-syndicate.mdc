@@ -29,6 +29,7 @@ Vite/React/Redux UI (`app`), Hardhat contracts (`contracts`). `GameFactory` crea
 - Material Design, minimal: quiet gray surfaces, clear hierarchy, one primary action per screen
 - Chrome (header, page, modal header) uses `gray.1` / `gray.2` — not white-on-white, not casino felt/brass/gold
 - Mantine components over custom chrome; FABs for screen actions; no extra frames, docks, or ornamental UI
+- Mantine `NumberInput` for numeric values (amounts, min, max) — not `TextInput`. Keep stepper controls; do not `hideControls`. Clamp on submit, not on each keystroke
 
 ## Contracts
 

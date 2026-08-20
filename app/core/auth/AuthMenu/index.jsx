@@ -3,7 +3,7 @@ import "./index.scss"
 import { Menu, Avatar, UnstyledButton } from "@mantine/core"
 import { SignOutIcon, WalletIcon } from "@phosphor-icons/react"
 import { selectAuth, logout, fetchBalance, requestTestEth } from "app/core/auth"
-import { chipsLabel } from "app/games/roulette/chips"
+import { ethLabel } from "app/games/roulette/chips"
 import { useSelector } from "react-redux"
 
 
@@ -11,7 +11,7 @@ const AuthMenu = () => {
   const { account, balance } = useSelector(() => selectAuth()) || {}
   const initials = account.replace(/\d/g, "").toUpperCase().slice(0, 2)
   const shortAccount = `${account.slice(0, 6)}…${account.slice(-4)}`
-  const balanceLabel = chipsLabel(parseInt(balance, 10) || 0)
+  const balanceLabel = ethLabel(balance)
 
   React.useEffect(() => {
     if (!account) return

@@ -1,15 +1,12 @@
 import React from "react"
-import { ActionIcon, Button, Card, CopyButton, NumberInput, Text } from "@mantine/core"
+import { ActionIcon, Card, CopyButton, Text } from "@mantine/core"
 import "./index.scss"
 import { useSelector } from "react-redux"
-import { fetchRoulette, selectRoulette, setRouletteLimits } from ".."
+import { fetchRoulette, selectRoulette } from ".."
 import { CheckIcon, CopyIcon } from "@phosphor-icons/react"
 import { arc, pie } from "d3-shape"
 import _ from "lodash"
-import { ethers } from "ethers"
-import { selectAuth } from "app/core/auth"
-import { selectTable } from "app/core/tables"
-import { chipsLabel } from "../chips"
+import { clampEth, ethLabel, isTableLocked, MIN_BET, tableMaxBet } from "../chips"
 
 
 const CHART_SIZE = 192
@@ -19,21 +16,16 @@ const CHART_INNER = 62
 
 const RouletteAdmin = ({ address }) => {
   const roulette = useSelector(() => selectRoulette(address)) || {}
-  const { account } = useSelector(() => selectAuth()) || {}
-  const table = useSelector(() => selectTable(address)) || {}
-  const { memberShares, totalBalance, minBet, maxBet } = roulette
-  const { createdBy } = table
-  const share = Number(memberShares) || 0
-  const bankroll = Number(totalBalance) || 0
+  const { memberShares, totalBalance, minBet, maxBet, locked } = roulette
+  const share = clampEth(memberShares)
+  const bankroll = clampEth(totalBalance)
   const rest = _.max([bankroll - share, 0])
   const tableUrl = `${window.location.origin}/#/tables/${address}`
   let pct = 0
   if (bankroll > 0) pct = Math.round((share / bankroll) * 100)
-  const isOwner = createdBy && account && ethers.getAddress(createdBy) === ethers.getAddress(account)
-  const [minValue, setMinValue] = React.useState(1)
-  const [maxValue, setMaxValue] = React.useState(1)
-  const [saving, setSaving] = React.useState(false)
-  const canSave = minValue >= 1 && maxValue >= minValue && maxValue <= bankroll
+  const minBetAmount = clampEth(minBet) || MIN_BET
+  const maxBetAmount = tableMaxBet(maxBet, bankroll)
+  const tableLocked = locked || isTableLocked(bankroll, maxBet)
 
   const pieData = []
   if (share > 0) pieData.push({ key: "yours", value: share, color: "var(--mantine-color-indigo-6)" })
@@ -49,12 +41,6 @@ const RouletteAdmin = ({ address }) => {
   React.useEffect(() => {
     fetchRoulette(address)
   }, [address])
-
-  React.useEffect(() => {
-    if (minBet == null) return
-    setMinValue(Number(minBet))
-    setMaxValue(Number(maxBet))
-  }, [minBet, maxBet])
 
   return (
     <div className="RouletteAdmin_content">
@@ -76,7 +62,7 @@ const RouletteAdmin = ({ address }) => {
           </svg>
           <div className="RouletteAdmin_chartCenter">
             <Text className="RouletteAdmin_shareValue">
-              {chipsLabel(memberShares)}
+              {ethLabel(memberShares)}
             </Text>
             <Text size="sm" c="dimmed">{pct}%</Text>
           </div>
@@ -85,65 +71,26 @@ const RouletteAdmin = ({ address }) => {
           <div className="RouletteAdmin_legendItem">
             <span className="RouletteAdmin_swatch is-yours" />
             <Text size="sm">You</Text>
-            <Text size="sm" c="dimmed">{chipsLabel(memberShares)}</Text>
+            <Text size="sm" c="dimmed">{ethLabel(memberShares)}</Text>
           </div>
           <div className="RouletteAdmin_legendItem">
             <span className="RouletteAdmin_swatch is-rest" />
             <Text size="sm">Others</Text>
-            <Text size="sm" c="dimmed">{chipsLabel(rest)}</Text>
+            <Text size="sm" c="dimmed">{ethLabel(rest)}</Text>
           </div>
         </div>
       </div>
-      {isOwner &&
-        <Card className="RouletteAdmin_limits">
-          <div className="RouletteAdmin_limitsHead">
-            <Text fw={500}>Table limits</Text>
-            <Text size="sm" c="dimmed">
-              Bankroll {chipsLabel(bankroll)}. Max cannot exceed bankroll.
-            </Text>
-          </div>
-          <div className="RouletteAdmin_limitsFields">
-            <NumberInput
-              label="Minimum"
-              min={1}
-              max={bankroll}
-              step={1}
-              allowDecimal={false}
-              allowNegative={false}
-              clampBehavior="strict"
-              hideControls
-              value={minValue}
-              onChange={(value) => setMinValue(Number(value) || 1)}
-            />
-            <NumberInput
-              label="Maximum"
-              min={1}
-              max={bankroll}
-              step={1}
-              allowDecimal={false}
-              allowNegative={false}
-              clampBehavior="strict"
-              hideControls
-              value={maxValue}
-              onChange={(value) => setMaxValue(Number(value) || 1)}
-            />
-          </div>
-          <Button
-            loading={saving}
-            disabled={!canSave}
-            onClick={async () => {
-              setSaving(true)
-              try {
-                await setRouletteLimits(address, { minBet: minValue, maxBet: maxValue })
-              } finally {
-                setSaving(false)
-              }
-            }}
-          >
-            Save limits
-          </Button>
-        </Card>
-      }
+      <Card className="RouletteAdmin_limits">
+        <Text fw={500}>Table limits</Text>
+        <Text size="sm" c="dimmed">
+          Min {ethLabel(minBetAmount)} · Max {ethLabel(maxBetAmount)}
+        </Text>
+        {tableLocked &&
+          <Text size="sm" c="red">
+            Locked. Bankroll must be at least 100× max.
+          </Text>
+        }
+      </Card>
       <Card className="RouletteAdmin_invite">
         <div className="RouletteAdmin_inviteInfo">
           <Text size="sm" c="dimmed">Player link</Text>

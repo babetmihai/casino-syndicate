@@ -2,7 +2,7 @@ import { ethers } from "ethers"
 import { actions } from "app/core/store"
 import { EMPTY_OBJECT } from "app/core"
 import { generateContract, getContract } from "app/core/contracts"
-import { formatChips, parseChips } from "./chips"
+import { formatEth, MAX_BET_DIVISOR, MIN_BET, parseEth } from "./chips"
 
 
 const roulettePath = (address) => `games.roulette.${ethers.getAddress(address)}`
@@ -17,19 +17,22 @@ export const fetchRoulette = async (address) => {
   let contract = getContract(address)
   if (!contract) contract = await generateContract(address)
   const row = await contract.getTable()
-  const memberShares = row[0]
-  const playerBalance = row[1]
-  const totalShares = row[2]
-  const totalBalance = row[3]
-  const minBet = row[4]
-  const maxBet = row[5]
+  const memberShares = row.memberShares
+  const playerBalance = row.playerBalance
+  const totalShares = row.totalShares
+  const totalBalance = row.totalBalance
+  let minBet = row.minBet
+  let maxBet = row.maxBet
+  if (!minBet) minBet = parseEth(MIN_BET)
+  if (!maxBet) maxBet = totalBalance / BigInt(MAX_BET_DIVISOR)
   actions.update(roulettePath(address), {
-    memberShares: formatChips(memberShares),
-    playerBalance: formatChips(playerBalance),
-    totalShares: formatChips(totalShares),
-    totalBalance: formatChips(totalBalance),
-    minBet: formatChips(minBet),
-    maxBet: formatChips(maxBet)
+    memberShares: formatEth(memberShares),
+    playerBalance: formatEth(playerBalance),
+    totalShares: formatEth(totalShares),
+    totalBalance: formatEth(totalBalance),
+    minBet: formatEth(minBet),
+    maxBet: formatEth(maxBet),
+    locked: row.locked
   })
 }
 
@@ -37,7 +40,7 @@ export const buyTableShares = async ({ balance }, address) => {
   let contract = getContract(address)
   if (!contract) contract = await generateContract(address)
   const tx = await contract.depositShares({
-    value: parseChips(balance)
+    value: parseEth(balance)
   })
   await tx.wait()
   await fetchRoulette(address)
@@ -46,7 +49,7 @@ export const buyTableShares = async ({ balance }, address) => {
 export const withdrawTableShares = async ({ balance }, address) => {
   let contract = getContract(address)
   if (!contract) contract = await generateContract(address)
-  const tx = await contract.withdrawShares(parseChips(balance))
+  const tx = await contract.withdrawShares(parseEth(balance))
   await tx.wait()
   await fetchRoulette(address)
 }
@@ -54,7 +57,7 @@ export const withdrawTableShares = async ({ balance }, address) => {
 export const setRouletteLimits = async (address, { minBet, maxBet }) => {
   let contract = getContract(address)
   if (!contract) contract = await generateContract(address)
-  const tx = await contract.setLimits(parseChips(minBet), parseChips(maxBet))
+  const tx = await contract.setLimits(parseEth(minBet), parseEth(maxBet))
   await tx.wait()
   await fetchRoulette(address)
 }
@@ -62,7 +65,7 @@ export const setRouletteLimits = async (address, { minBet, maxBet }) => {
 export const postRouletteBet = async (address, bets) => {
   let contract = getContract(address)
   if (!contract) contract = await generateContract(address)
-  const values = bets.map((bet) => parseChips(bet || 0))
+  const values = bets.map((bet) => parseEth(bet || 0))
   const value = values.reduce((sum, amount) => sum + amount, 0n)
   const tx = await contract.postBet(values, { value })
   const receipt = await tx.wait()
@@ -92,9 +95,9 @@ const readWinningNumber = (contract, receipt) => {
       if (name !== "WinningNumber") continue
       return {
         number: Number(args.number),
-        totalBetAmount: formatChips(args.totalBetAmount),
-        winningAmount: formatChips(args.winningAmount),
-        playerBalance: formatChips(args.playerBalance)
+        totalBetAmount: formatEth(args.totalBetAmount),
+        winningAmount: formatEth(args.winningAmount),
+        playerBalance: formatEth(args.playerBalance)
       }
     } catch {
       // ignore logs from other contracts

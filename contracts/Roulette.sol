@@ -14,6 +14,8 @@ contract Roulette {
 	mapping(address => uint256) public balances;
 
 	uint256 public constant CHIP = 0.01 ether;
+	uint256 public constant MAX_BET_DIVISOR = 100;
+	uint256 public constant MIN_DEPOSIT = CHIP * MAX_BET_DIVISOR;
 
 	struct TableDTO {
 		uint256 memberShares;
@@ -22,22 +24,22 @@ contract Roulette {
 		uint256 totalBalance;
 		uint256 minBet;
 		uint256 maxBet;
+		bool locked;
 	}
 
 	event Deposited(address indexed user, uint256 amount);
 	event WinningNumber(uint256 number, uint256 totalBetAmount, uint256 winningAmount, uint256 playerBalance);
 
 	constructor(string memory _name, address _createdBy) payable {
+		require(msg.value >= MIN_DEPOSIT, "Min deposit 1");
 		name = _name;
 		createdBy = _createdBy;
 		createdAt = block.timestamp;
 		minBet = CHIP;
-		maxBet = msg.value;
-		if (msg.value > 0) {
-			totalShares = msg.value;
-			shares[_createdBy] = msg.value;
-			emit Deposited(_createdBy, msg.value);
-		}
+		maxBet = msg.value / MAX_BET_DIVISOR;
+		totalShares = msg.value;
+		shares[_createdBy] = msg.value;
+		emit Deposited(_createdBy, msg.value);
 	}
 
 	function getTable() public view returns (TableDTO memory) {
@@ -52,7 +54,8 @@ contract Roulette {
 			totalShares: bankroll,
 			totalBalance: bankroll,
 			minBet: minBet,
-			maxBet: maxBet
+			maxBet: maxBet,
+			locked: isLocked(bankroll)
 		});
 	}
 
@@ -60,7 +63,7 @@ contract Roulette {
 		require(msg.sender == createdBy, "Only owner");
 		require(_minBet >= CHIP, "Min too small");
 		require(_maxBet >= _minBet, "Max below min");
-		require(_maxBet <= address(this).balance, "Max exceeds bankroll");
+		require(_maxBet <= maxBetLimit(address(this).balance), "Max exceeds cap");
 		minBet = _minBet;
 		maxBet = _maxBet;
 	}
@@ -120,10 +123,7 @@ contract Roulette {
 		uint256 randomNumber = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender))) % 37;
 		uint256 totalBetAmount = 0;
 		uint256 bankroll = address(this).balance - msg.value;
-		uint256 cap = maxBet;
-		if (cap > bankroll) {
-			cap = bankroll;
-		}
+		require(!isLocked(bankroll), "Table locked");
 
 		for (uint256 i = 0; i < 49; i++) {
 			totalBetAmount += _bets[i];
@@ -133,7 +133,7 @@ contract Roulette {
 			if (_bets[i] < minBet) {
 				revert("Bet amount must be at least minBet");
 			}
-			if (_bets[i] > cap) {
+			if (_bets[i] > maxBet) {
 				revert("Bet amount must be less than maxBetAmount");
 			}
 		}
@@ -156,6 +156,14 @@ contract Roulette {
 		}
 
 		emit WinningNumber(randomNumber, totalBetAmount, winningAmount, balances[msg.sender]);
+	}
+
+	function maxBetLimit(uint256 bankroll) private pure returns (uint256) {
+		return bankroll / MAX_BET_DIVISOR;
+	}
+
+	function isLocked(uint256 bankroll) private view returns (bool) {
+		return bankroll < maxBet * MAX_BET_DIVISOR;
 	}
 
 	function payoutForNumber(uint256[49] memory _bets, uint256 randomNumber) private pure returns (uint256 winningAmount) {

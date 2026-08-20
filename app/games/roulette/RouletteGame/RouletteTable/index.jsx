@@ -1,7 +1,7 @@
 import React from "react"
 import "./index.scss"
 import _ from "lodash"
-import { CHIP_COLORS, toChips } from "../../chips"
+import { CHIP_COLORS, chipLabel, toChips } from "../../chips"
 import { BLACK_NUMBERS, OUTSIDE, betWins } from "../../bets"
 
 const CELL_W = 84
@@ -166,7 +166,7 @@ const RouletteTable = React.memo(({ bets, winningNumber, landingNumber, spinning
                     textAnchor="middle"
                     dy="0.35em"
                   >
-                    {value}
+                    {chipLabel(value)}
                   </text>
                 </g>
               </g>

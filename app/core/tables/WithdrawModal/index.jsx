@@ -4,22 +4,25 @@ import { hideModal } from "app/core/modals"
 import { useFormik } from "formik"
 import * as Yup from "yup"
 import { useTranslation } from "react-i18next"
+import { MIN_BET, clampEth, isTableLocked } from "app/games/roulette/chips"
 
 
-const WithdrawModal = ({ onSubmit, max }) => {
+const WithdrawModal = ({ onSubmit, max, bankroll, maxBet }) => {
   const { t } = useTranslation()
-  const maxAmount = Math.floor(max)
+  const maxAmount = clampEth(max)
   const formik = useFormik({
     initialValues: {
       balance: maxAmount
     },
     validationSchema: Yup.object({
-      balance: Yup.number().min(1, t("balance_required")).max(maxAmount, t("balance_required"))
+      balance: Yup.number().min(MIN_BET, t("balance_required")).max(maxAmount, t("balance_required"))
     }),
     onSubmit: async (values, form) => {
       form.setSubmitting(true)
       try {
-        await onSubmit(values)
+        await onSubmit({
+          balance: clampEth(values.balance)
+        })
         hideModal()
       } finally {
         form.setSubmitting(false)
@@ -27,18 +30,32 @@ const WithdrawModal = ({ onSubmit, max }) => {
     }
   })
 
+  const remaining = clampEth(clampEth(bankroll) - clampEth(formik.values.balance))
+  const willLock = isTableLocked(remaining, maxBet)
+
   return (
     <Modal
       opened
       onClose={hideModal}
       title={<Text fw={500}>{t("withdraw")}</Text>}
     >
+      {willLock &&
+        <Text size="sm" c="red" mb="md">
+          This withdraw will lock the table.
+        </Text>
+      }
+      {!willLock &&
+        <Text size="sm" c="dimmed" mb="md">
+          Withdrawing below 100× max will lock the table.
+        </Text>
+      }
       <NumberInput
-        label="Amount (chips)"
-        min={1}
+        label="Amount (ETH)"
+        min={MIN_BET}
         max={maxAmount}
-        step={1}
-        allowDecimal={false}
+        step={0.01}
+        decimalScale={2}
+        allowDecimal
         allowNegative={false}
         clampBehavior="strict"
         data-autofocus
@@ -57,6 +74,7 @@ const WithdrawModal = ({ onSubmit, max }) => {
         </Button>
         <Button
           loading={formik.isSubmitting}
+          disabled={maxAmount < MIN_BET}
           onClick={formik.handleSubmit}
         >
           {t("withdraw")}

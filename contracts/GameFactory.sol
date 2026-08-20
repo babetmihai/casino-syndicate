@@ -29,7 +29,7 @@ contract GameFactory {
 	);
 
 	function createGame(string calldata name, GameType gameType) external payable returns (address game) {
-		require(msg.value > 0, "Must fund table");
+		require(msg.value >= 1 ether, "Min deposit 1");
 		if (gameType == GameType.Roulette) {
 			game = address(new Roulette{value: msg.value}(name, msg.sender));
 		} else {

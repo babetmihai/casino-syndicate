@@ -200,26 +200,26 @@ describe("UI flow: create, view, play roulette", () => {
 
     const afterCreate = await roulette.connect(creator).getTable()
     expect(afterCreate.minBet).to.equal(ethers.parseEther("0.01"))
-    expect(afterCreate.maxBet).to.equal(ethers.parseEther("100"))
+    expect(afterCreate.maxBet).to.equal(ethers.parseEther("1"))
 
     await (await roulette.connect(creator).setLimits(
       ethers.parseEther("0.05"),
-      ethers.parseEther("10")
+      ethers.parseEther("0.5")
     )).wait()
     const afterSet = await roulette.connect(creator).getTable()
     expect(afterSet.minBet).to.equal(ethers.parseEther("0.05"))
-    expect(afterSet.maxBet).to.equal(ethers.parseEther("10"))
+    expect(afterSet.maxBet).to.equal(ethers.parseEther("0.5"))
 
     await expect(
       roulette.connect(player).setLimits(ethers.parseEther("0.01"), ethers.parseEther("1"))
     ).to.be.revertedWith("Only owner")
 
     await expect(
-      roulette.connect(creator).setLimits(ethers.parseEther("0.01"), ethers.parseEther("101"))
-    ).to.be.revertedWith("Max exceeds bankroll")
+      roulette.connect(creator).setLimits(ethers.parseEther("0.01"), ethers.parseEther("2"))
+    ).to.be.revertedWith("Max exceeds cap")
   })
 
-  it("rejects bets outside table limits or beyond what the bankroll can cover", async () => {
+  it("rejects bets outside table limits", async () => {
     const [creator, player] = await ethers.getSigners()
     const Factory = await ethers.getContractFactory("GameFactory")
     const factory = await Factory.deploy()
@@ -245,10 +245,58 @@ describe("UI flow: create, view, play roulette", () => {
       roulette.connect(player).postBet(belowMin, { value: ethers.parseEther("0.001") })
     ).to.be.revertedWith("Bet amount must be at least minBet")
 
-    const uncovered = Array(49).fill(0n)
-    uncovered[1] = ethers.parseEther("1")
+    const aboveMax = Array(49).fill(0n)
+    aboveMax[1] = ethers.parseEther("0.02")
     await expect(
-      roulette.connect(player).postBet(uncovered, { value: ethers.parseEther("1") })
-    ).to.be.revertedWith("Table cannot cover this bet")
+      roulette.connect(player).postBet(aboveMax, { value: ethers.parseEther("0.02") })
+    ).to.be.revertedWith("Bet amount must be less than maxBetAmount")
+  })
+
+  it("requires a 1 ETH deposit and locks when withdraw drops below 100x max", async () => {
+    const [creator, player] = await ethers.getSigners()
+    const Factory = await ethers.getContractFactory("GameFactory")
+    const factory = await Factory.deploy()
+    await factory.waitForDeployment()
+
+    await expect(
+      factory.connect(creator).createGame("Thin Table", TABLE_TYPE_IDS.Roulette, {
+        value: ethers.parseEther("0.99")
+      })
+    ).to.be.revertedWith("Min deposit 1")
+
+    const createTx = await factory.connect(creator).createGame("Lock Table", TABLE_TYPE_IDS.Roulette, {
+      value: ethers.parseEther("1")
+    })
+    const receipt = await createTx.wait()
+    const created = receipt.logs
+      .map((log) => {
+        try {
+          return factory.interface.parseLog(log)
+        } catch {
+          return null
+        }
+      })
+      .find((parsed) => parsed && parsed.name === "GameCreated")
+    const roulette = await ethers.getContractAt("Roulette", created.args.game)
+
+    const open = await roulette.connect(creator).getTable()
+    expect(open.locked).to.equal(false)
+    expect(open.maxBet).to.equal(ethers.parseEther("0.01"))
+
+    await (await roulette.connect(creator).withdrawShares(ethers.parseEther("0.01"))).wait()
+    const closed = await roulette.connect(creator).getTable()
+    expect(closed.locked).to.equal(true)
+    expect(closed.totalBalance).to.equal(ethers.parseEther("0.99"))
+
+    const bets = Array(49).fill(0n)
+    bets[0] = ethers.parseEther("0.01")
+    await expect(
+      roulette.connect(player).postBet(bets, { value: ethers.parseEther("0.01") })
+    ).to.be.revertedWith("Table locked")
+
+    await (await roulette.connect(creator).depositShares({ value: ethers.parseEther("0.01") })).wait()
+    const reopened = await roulette.connect(creator).getTable()
+    expect(reopened.locked).to.equal(false)
+    await (await roulette.connect(player).postBet(bets, { value: ethers.parseEther("0.01") })).wait()
   })
 })

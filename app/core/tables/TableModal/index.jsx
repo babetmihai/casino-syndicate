@@ -5,6 +5,7 @@ import { useFormik } from "formik"
 import * as Yup from "yup"
 import { useTranslation } from "react-i18next"
 import { TABLE_TYPES } from ".."
+import { MIN_TABLE_DEPOSIT, clampEth } from "app/games/roulette/chips"
 
 
 const TableModal = ({ onSubmit }) => {
@@ -13,16 +14,19 @@ const TableModal = ({ onSubmit }) => {
     initialValues: {
       name: "",
       type: TABLE_TYPES.Roulette,
-      balance: 1000
+      balance: 10
     },
     validationSchema: Yup.object({
       name: Yup.string().required(t("name_required")),
-      balance: Yup.number().moreThan(0, t("balance_required"))
+      balance: Yup.number().min(MIN_TABLE_DEPOSIT, t("balance_required"))
     }),
     onSubmit: async (values, form) => {
       form.setSubmitting(true)
       try {
-        await onSubmit(values)
+        await onSubmit({
+          ...values,
+          balance: clampEth(values.balance)
+        })
         hideModal()
       } finally {
         form.setSubmitting(false)
@@ -46,17 +50,22 @@ const TableModal = ({ onSubmit }) => {
         }}
       />
       <NumberInput
-        label="Amount (chips)"
-        min={1}
-        step={1}
-        allowDecimal={false}
-        hideControls
+        label="Amount (ETH)"
+        min={MIN_TABLE_DEPOSIT}
+        step={0.01}
+        decimalScale={2}
+        allowDecimal
+        allowNegative={false}
+        clampBehavior="strict"
         mt="md"
         value={formik.values.balance}
         onChange={(value) => {
           formik.setFieldValue("balance", value)
         }}
       />
+      <Text size="sm" c="dimmed" mt="xs">
+        Minimum {MIN_TABLE_DEPOSIT} ETH.
+      </Text>
       <Group justify="flex-end" gap="sm" mt="md">
         <Button
           variant="subtle"

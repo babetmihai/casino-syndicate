@@ -171,23 +171,23 @@
   border-color: var(--mantine-color-indigo-6);
 }
 
-.RouletteGame_chip[data-value="1"] {
+.RouletteGame_chip[data-value="0.01"] {
   background: var(--mantine-color-gray-0);
   color: var(--mantine-color-dark-6);
   outline: 0.0625rem solid var(--mantine-color-gray-5);
 }
 
-.RouletteGame_chip[data-value="5"] {
+.RouletteGame_chip[data-value="0.05"] {
   background: var(--mantine-color-red-6);
   color: var(--mantine-color-white);
 }
 
-.RouletteGame_chip[data-value="25"] {
+.RouletteGame_chip[data-value="0.25"] {
   background: var(--mantine-color-teal-6);
   color: var(--mantine-color-white);
 }
 
-.RouletteGame_chip[data-value="100"] {
+.RouletteGame_chip[data-value="1"] {
   background: var(--mantine-color-dark-6);
   color: var(--mantine-color-white);
 }

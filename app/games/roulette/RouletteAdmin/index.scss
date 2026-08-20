@@ -92,24 +92,7 @@
 .RouletteAdmin_limits {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
-}
-
-.RouletteAdmin_limitsHead {
-  display: flex;
-  flex-direction: column;
   gap: 0.25rem;
-}
-
-.RouletteAdmin_limitsFields {
-  display: flex;
-  flex-direction: row;
-  gap: 0.75rem;
-}
-
-.RouletteAdmin_limitsFields > * {
-  flex: 1 1 0;
-  min-width: 0;
 }
 
 .RouletteAdmin_inviteInfo {

@@ -8,7 +8,7 @@ import { fetchRoulette, postRouletteBet, pushSpinHistory, selectRoulette } from 
 import { useSelector } from "react-redux"
 import { fetchBalance, selectAuth } from "app/core/auth"
 import RouletteTable from "./RouletteTable"
-import { CHIP_VALUES, chipsLabel } from "../chips"
+import { CHIP_VALUES, chipLabel, clampEth, ethLabel, isTableLocked, MIN_BET, tableMaxBet } from "../chips"
 import { BET_COUNT, BLACK_NUMBERS, betWins, maxPotentialPayout } from "../bets"
 import { MinusIcon, PlayIcon, PlusIcon, PokerChipIcon, WalletIcon } from "@phosphor-icons/react"
 import { AppFab, AppFabs } from "app/components/AppFabs"
@@ -19,7 +19,7 @@ import AuthModal from "app/core/auth/AuthModal"
 const RouletteGame = React.memo(({ address }) => {
   const { t } = useTranslation()
   const [bets, setBets] = React.useState(_.range(BET_COUNT).fill(0))
-  const [chip, setChip] = React.useState(1)
+  const [chip, setChip] = React.useState(CHIP_VALUES[0])
   const [pickingChip, setPickingChip] = React.useState(false)
   const [pickingUp, setPickingUp] = React.useState(false)
   const [revealing, setRevealing] = React.useState(false)
@@ -28,20 +28,21 @@ const RouletteGame = React.memo(({ address }) => {
   const [holdingSpin, setHoldingSpin] = React.useState(false)
   const historyRef = React.useRef(null)
   const holdTimer = React.useRef(null)
-  const totalBet = _.sum(bets)
+  const totalBet = clampEth(_.sum(bets))
   const { account, balance } = useSelector(() => selectAuth()) || {}
-  const { lastSpin, history = [], minBet, maxBet, totalBalance } = useSelector(() => selectRoulette(address)) || {}
+  const { lastSpin, history = [], minBet, maxBet, totalBalance, locked } = useSelector(() => selectRoulette(address)) || {}
   const { number: winningNumber, winningAmount } = lastSpin || {}
   const showResult = lastSpin && !revealing
-  const minBetAmount = Number(minBet) || 1
-  const bankroll = Number(totalBalance) || 0
-  const maxBetAmount = Math.min(Number(maxBet) || 0, bankroll)
-  const canCover = maxPotentialPayout(bets) <= bankroll + totalBet
-  const canSpin = totalBet > 0 && !revealing && !showBanner && canCover
+  const minBetAmount = clampEth(minBet) || MIN_BET
+  const bankroll = clampEth(totalBalance)
+  const maxBetAmount = tableMaxBet(maxBet, bankroll)
+  const tableLocked = locked || isTableLocked(bankroll, maxBet)
+  const canCover = clampEth(maxPotentialPayout(bets)) <= bankroll + totalBet
+  const canSpin = totalBet > 0 && !revealing && !showBanner && canCover && !tableLocked
   let bannerColor = "red"
   if (winningNumber === 0) bannerColor = "green"
   if (_.includes(BLACK_NUMBERS, winningNumber)) bannerColor = "black"
-  const balanceLabel = chipsLabel(parseInt(balance, 10) || 0)
+  const balanceLabel = ethLabel(balance)
   let modeColor = "teal"
   if (pickingUp) modeColor = "red"
 
@@ -71,17 +72,18 @@ const RouletteGame = React.memo(({ address }) => {
 
   const changeBet = (index, amount) => {
     if (revealing) return
+    if (tableLocked) return
     const nextBets = [...bets]
-    let nextValue = nextBets[index] + amount
+    let nextValue = clampEth(nextBets[index] + amount)
     if (nextValue < 0) nextValue = 0
     if (nextValue > 0 && nextValue < minBetAmount) {
       if (amount < 0) nextValue = 0
       else nextValue = minBetAmount
     }
-    if (nextValue > maxBetAmount) return
+    if (nextValue > maxBetAmount) nextValue = maxBetAmount
     nextBets[index] = nextValue
-    const nextTotal = _.sum(nextBets)
-    if (maxPotentialPayout(nextBets) > bankroll + nextTotal) return
+    const nextTotal = clampEth(_.sum(nextBets))
+    if (clampEth(maxPotentialPayout(nextBets)) > bankroll + nextTotal) return
     setBets(nextBets)
   }
 
@@ -173,14 +175,19 @@ const RouletteGame = React.memo(({ address }) => {
           Balance {balanceLabel}
         </Text>
         <Text size="sm">
-          Bet {chipsLabel(totalBet)}
+          Bet {ethLabel(totalBet)}
         </Text>
         <Text size="sm" c="dimmed">
-          Min {minBetAmount}
+          Min {ethLabel(minBetAmount)}
         </Text>
         <Text size="sm" c="dimmed">
-          Max {maxBetAmount}
+          Max {ethLabel(maxBetAmount)}
         </Text>
+        {tableLocked &&
+          <Text size="sm" c="red">
+            Table locked
+          </Text>
+        }
       </div>
       {createPortal(
         showBanner &&
@@ -197,7 +204,7 @@ const RouletteGame = React.memo(({ address }) => {
                 {winningNumber}
               </Text>
               <Text size="sm">
-                Won {chipsLabel(winningAmount)}
+                Won {ethLabel(winningAmount)}
               </Text>
             </Card>
           </div>,
@@ -214,7 +221,7 @@ const RouletteGame = React.memo(({ address }) => {
         }
         {account &&
           <AppFab
-            label={t("place_bet")}
+            label={tableLocked ? t("table_locked") : t("place_bet")}
             holding={holdingSpin}
             disabled={!canSpin}
             loading={revealing}
@@ -252,7 +259,7 @@ const RouletteGame = React.memo(({ address }) => {
               className="RouletteGame_mode"
               dataValue={pickingUp ? "up" : "place"}
               label={pickingUp ? "Pick up" : "Place"}
-              disabled={revealing}
+              disabled={revealing || tableLocked}
               onClick={() => setPickingUp(!pickingUp)}
             >
               <PokerChipIcon size={24} />
@@ -270,7 +277,8 @@ const RouletteGame = React.memo(({ address }) => {
               selected={isCurrent}
               className="RouletteGame_chip"
               dataValue={value}
-              label={`${value} chip`}
+              label={`${value} ETH`}
+              disabled={tableLocked}
               onClick={() => {
                 if (!pickingChip) {
                   setPickingChip(true)
@@ -280,7 +288,7 @@ const RouletteGame = React.memo(({ address }) => {
                 setPickingChip(false)
               }}
             >
-              {value}
+              {chipLabel(value)}
             </AppFab>
           )
         })}

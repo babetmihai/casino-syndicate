@@ -172,11 +172,15 @@ const chipPosition = (spot, chipIndex) => ({
   y: spot.y + spot.h / 2 - chipIndex * 3
 })
 
-const chipHit = (point, bets) => {
-  return _.findLast(_.flatMap(SPOTS, (spot) => {
+const stackChips = (bets) => {
+  return _.sortBy(_.flatMap(SPOTS, (spot) => {
     const chips = toChips(bets[spot.index] || 0).slice(-4)
     return _.map(chips, (value, chipIndex) => ({ spot, value, chipIndex }))
-  }), ({ spot, chipIndex }) => {
+  }), "chipIndex")
+}
+
+const chipHit = (point, bets) => {
+  return _.findLast(stackChips(bets), ({ spot, chipIndex }) => {
     const { x, y } = chipPosition(spot, chipIndex)
     const dx = point.x - x
     const dy = point.y - y
@@ -400,24 +404,21 @@ const RouletteTable = React.memo(({ bets, winningNumber, landingNumber, spinning
           </g>
         )
       })}
-      {SPOTS.map((spot) => {
-        const chips = toChips(bets[spot.index] || 0).slice(-4)
-        return _.map(chips, (value, chipIndex) => {
-          const hiding = dragging && drag.fromIndex === spot.index && chipIndex === drag.chipIndex
-          const pos = chipPosition(spot, chipIndex)
-          let visibility = "visible"
-          if (hiding) visibility = "hidden"
-          return (
-            <g
-              key={`${spot.index}-${chipIndex}-${value}`}
-              className="RouletteTable_chipWrap"
-              transform={`translate(${pos.x}, ${pos.y})`}
-              visibility={visibility}
-            >
-              <ChipMark value={value} />
-            </g>
-          )
-        })
+      {_.map(stackChips(bets), ({ spot, value, chipIndex }) => {
+        const hiding = dragging && drag.fromIndex === spot.index && chipIndex === drag.chipIndex
+        const pos = chipPosition(spot, chipIndex)
+        let visibility = "visible"
+        if (hiding) visibility = "hidden"
+        return (
+          <g
+            key={`${spot.index}-${chipIndex}-${value}`}
+            className="RouletteTable_chipWrap"
+            transform={`translate(${pos.x}, ${pos.y})`}
+            visibility={visibility}
+          >
+            <ChipMark value={value} />
+          </g>
+        )
       })}
       {dragging &&
         <g

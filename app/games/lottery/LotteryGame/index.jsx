@@ -31,13 +31,15 @@ const LotteryGame = React.memo(({ address }) => {
   const { account } = useSelector(() => selectAuth()) || {}
   const lottery = useSelector(() => selectLottery(address)) || {}
   const symbol = useSelector(() => selectNativeSymbol())
-  const { polygonCount, loseCount, ticketPrice, claimedCount, loseLit, prize, myPrize, owners = [], pluses = [], lastTicket, totalBalance } = lottery
-  const { assignedCount = 0, settled, playersWin, roundPrize, takenIds = [], plusIds = [], plusLevel = 0, roundPluses } = lastTicket || {}
+  const { polygonCount, loseCount, ticketPrice, claimedCount, loseLit, prize, myPrize, owners = [], mates = [], pluses = [], matePluses = [], lastTicket, totalBalance } = lottery
+  const { assignedCount = 0, settled, playersWin, roundPrize, takenIds = [], plusIds = [], plusLevel = 0, splitIds = [], roundPluses, roundMates, roundMatePluses } = lastTicket || {}
   const hasPrize = clampEth(myPrize) > 0
   const pending = hasPrize
   const mineCount = _.filter(owners, (owner, index) => {
     if (index >= (polygonCount || 0)) return false
     return owner && account && ethers.getAddress(owner) === ethers.getAddress(account)
+  }).length + _.filter(mates, (mate) => {
+    return mate && account && ethers.getAddress(mate) === ethers.getAddress(account)
   }).length
   const roundOpen = (claimedCount || 0) < (polygonCount || 0) && (loseLit || 0) < (loseCount || 0)
   const totalCells = (polygonCount || 0) + (loseCount || 0)
@@ -46,7 +48,8 @@ const LotteryGame = React.memo(({ address }) => {
   const canCover = bankroll >= coverQuote(lottery, 1)
   const canSpin = account && !buying && roundOpen && canCover && !showBanner && !pending && !revealing
   const isPlus = plusLevel > 0 && !settled
-  const isTaken = takenIds.length > 0 && assignedCount === 0 && !isPlus
+  const isSplit = splitIds.length > 0 && !settled && !isPlus
+  const isTaken = takenIds.length > 0 && assignedCount === 0 && !isPlus && !isSplit
   const houseWon = settled && !playersWin
   const playersWon = settled && playersWin
   let flashIds = []
@@ -55,6 +58,7 @@ const LotteryGame = React.memo(({ address }) => {
   let bannerLabel
   let bannerHero
   if (isTaken) bannerLabel = "Taken"
+  if (isSplit) bannerLabel = "Split"
   if (isPlus) {
     bannerLabel = "Heat"
     bannerHero = `+${plusLevel}`
@@ -68,7 +72,11 @@ const LotteryGame = React.memo(({ address }) => {
   if (playersWon) heroClass = "text-[1.75rem]"
   const redsLeft = (loseCount || 0) - (loseLit || 0)
   let mapPluses = pluses
+  let mapMates = mates
+  let mapMatePluses = matePluses
   if (pending && roundPluses && roundPluses.length) mapPluses = roundPluses
+  if (pending && roundMates && roundMates.length) mapMates = roundMates
+  if (pending && roundMatePluses && roundMatePluses.length) mapMatePluses = roundMatePluses
   let spinLabel = `Hold to spin · ${ethLabel(totalPrice, symbol)}`
   if (buying || revealing) spinLabel = "Spinning"
   if (!roundOpen) spinLabel = "Closed"
@@ -118,8 +126,9 @@ const LotteryGame = React.memo(({ address }) => {
       await fetchLottery(address)
       if (account) fetchBalance(account)
       const charged = (ticket.plusLevel || 0) > 0
-      const taken = (ticket.takenIds || []).length > 0 && (ticket.assignedCount || 0) === 0 && !charged
-      if (charged || taken || ticket.settled) setShowBanner(true)
+      const split = (ticket.splitIds || []).length > 0
+      const taken = (ticket.takenIds || []).length > 0 && (ticket.assignedCount || 0) === 0 && !charged && !split
+      if (charged || taken || split || ticket.settled) setShowBanner(true)
     } finally {
       if (stopFlash.current) stopFlash.current()
       stopFlash.current = undefined
@@ -178,13 +187,16 @@ const LotteryGame = React.memo(({ address }) => {
           <LotteryMap
             address={address}
             owners={owners}
+            mates={mapMates}
             pluses={mapPluses}
+            matePluses={mapMatePluses}
             polygonCount={polygonCount}
             loseCount={loseCount}
             account={account}
             flashIds={flashIds}
             litIds={litIds}
             plusIds={isPlus ? plusIds : []}
+            splitIds={isSplit ? splitIds : []}
             celebrate={pending && !revealing && playersWin !== false}
           />
           {account && hasPrize && !revealing &&
@@ -250,11 +262,13 @@ const LotteryGame = React.memo(({ address }) => {
                 "lottery-banner-card",
                 houseWon && "lottery-banner-house",
                 isTaken && "lottery-banner-taken",
+                isSplit && "lottery-banner-split",
                 isPlus && "lottery-banner-plus",
                 "flex min-w-36 flex-col items-center gap-1 text-center animate-banner",
                 playersWon && "bg-cs-accent text-cs-bg",
                 houseWon && "bg-cs-accent-2 text-white",
                 isPlus && "bg-cs-accent text-cs-bg",
+                isSplit && "bg-cs-accent text-cs-bg",
                 isTaken && "border-cs-border bg-cs-elevated"
               )}
               shadow="md"

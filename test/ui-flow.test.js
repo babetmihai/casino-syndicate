@@ -535,9 +535,14 @@ describe("UI flow: create, view, play lottery", () => {
     return price * lose * 4n * BigInt(polygons)
   }
 
-  const fillPrizeFrom = (price, pluses) => {
+  const fillPrizeFrom = (price, pluses, mates = [], matePluses = []) => {
     let heat = 0n
     for (const plus of pluses) heat += 4n + plus
+    for (let i = 0; i < pluses.length; i++) {
+      const mate = mates[i]
+      if (!mate || mate === ethers.ZeroAddress) continue
+      heat += 4n + BigInt(matePluses[i] || 0)
+    }
     return { heat }
   }
 
@@ -721,7 +726,7 @@ describe("UI flow: create, view, play lottery", () => {
     expect(live.owners.filter((owner) => owner !== ethers.ZeroAddress).length).to.equal(0)
     if (settled.args.playersWin) {
       expect(settled.args.owners.length).to.equal(3)
-      const { heat } = fillPrizeFrom(price, settled.args.pluses)
+      const { heat } = fillPrizeFrom(price, settled.args.pluses, settled.args.mates, settled.args.matePluses)
       expect(heat).to.be.gte(12n)
       expect(settled.args.prize % price).to.equal(0n)
       const reds = settled.args.prize / (price * heat)
@@ -765,9 +770,11 @@ describe("UI flow: create, view, play lottery", () => {
       const ticket = tickets[0]
       if (ticket.assigned) {
         const polygonId = Number(ticket.polygonId)
-        expect(firstOwners[polygonId]).to.equal(undefined)
-        firstOwners[polygonId] = ticket.player
-        assigned += 1
+        if (!ticket.split) {
+          expect(firstOwners[polygonId]).to.equal(undefined)
+          firstOwners[polygonId] = ticket.player
+          assigned += 1
+        }
       }
       settled = parseSettled(lottery, receipt)
       if (settled) break
@@ -782,11 +789,13 @@ describe("UI flow: create, view, play lottery", () => {
       expect(settled.args.prize).to.be.greaterThan(0n)
       expect(assigned).to.be.gte(4)
       expect(settled.args.owners.length).to.equal(4)
-      const { heat } = fillPrizeFrom(price, settled.args.pluses)
+      const { heat } = fillPrizeFrom(price, settled.args.pluses, settled.args.mates, settled.args.matePluses)
       expect(settled.args.prize % (price * heat)).to.equal(0n)
       const winners = {}
       let paidTotal = 0n
-      for (const owner of settled.args.owners) {
+      const payees = [...settled.args.owners, ...(settled.args.mates || [])]
+      for (const owner of payees) {
+        if (!owner || owner === ethers.ZeroAddress) continue
         if (winners[owner]) continue
         winners[owner] = true
         let signer = other
@@ -874,11 +883,48 @@ describe("UI flow: create, view, play lottery", () => {
       expect(charged.won).to.equal(true)
     }
     if (settled && settled.args.playersWin) {
-      const { heat } = fillPrizeFrom(price, settled.args.pluses)
+      const { heat } = fillPrizeFrom(price, settled.args.pluses, settled.args.mates, settled.args.matePluses)
       expect(settled.args.prize).to.equal(price * (settled.args.prize / (price * heat)) * heat)
       const held = await lottery.connect(player).getTable()
       expect(held.myPrize).to.equal(settled.args.prize)
     }
+  })
+
+  it("splits a foreign green and keeps the original pluses", async () => {
+    const [creator, player, other] = await ethers.getSigners()
+    const factory = await deployFactory()
+    const price = ethers.parseEther("0.01")
+    const createTx = await createLottery(factory, creator, "Split Map", 6, price)
+    const lottery = await ethers.getContractAt("Lottery", createdAddress(factory, await createTx.wait()))
+    let split
+    for (let i = 0; i < 120; i++) {
+      const buyer = i % 2 === 0 ? player : other
+      const table = await lottery.connect(buyer).getTable()
+      if (table.myPrize > 0n) {
+        await (await lottery.connect(buyer).withdrawPrize()).wait()
+      }
+      const tx = await lottery.connect(buyer).buyTicket({ value: price })
+      const receipt = await tx.wait()
+      const tickets = parseTicket(lottery, receipt)
+      const hit = tickets.find((ticket) => ticket.split)
+      if (hit) {
+        split = hit
+        break
+      }
+    }
+    expect(split).to.not.equal(undefined)
+    expect(split.assigned).to.equal(true)
+    expect(split.won).to.equal(true)
+    expect(Number(split.plus)).to.equal(0)
+    const cellId = Number(split.polygonId)
+    const hitter = split.player
+    const table = await lottery.connect(player).getTable()
+    expect(table.mates[cellId]).to.equal(ethers.getAddress(hitter))
+    expect(table.owners[cellId]).to.not.equal(ethers.ZeroAddress)
+    expect(table.owners[cellId]).to.not.equal(table.mates[cellId])
+    const ownerBits = Number((table.plusBits >> BigInt(cellId * 2)) & 3n)
+    expect(ownerBits).to.be.lte(3)
+    expect(Number((table.matePlusBits >> BigInt(cellId * 2)) & 3n)).to.equal(0)
   })
 
   it("lets the house deposit and withdraw shares", async () => {

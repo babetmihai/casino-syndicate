@@ -11,15 +11,17 @@ export const MIN_POLYGONS = 3
 export const MAX_POLYGONS = 48
 export const HEAT_BASE = 4
 export const MAX_PLUS = 3
-export const ticketGas = (count) => 400000n + BigInt(count) * 200000n
+export const ticketGas = (count) => 500000n + BigInt(count) * 250000n
 
 export const fillQuote = (lottery) => {
-  const { ticketPrice, loseCount, loseLit, polygonCount, pluses = [] } = lottery || {}
+  const { ticketPrice, loseCount, loseLit, polygonCount, pluses = [], mates = [], matePluses = [] } = lottery || {}
   const redsLeft = (loseCount || 0) - (loseLit || 0)
   if (redsLeft <= 0 || !polygonCount) return 0
   let heat = 0
   _.times(polygonCount, (index) => {
     heat += HEAT_BASE + (pluses[index] || 0)
+    if (!mates[index]) return
+    heat += HEAT_BASE + (matePluses[index] || 0)
   })
   return clampEth(ticketPrice) * redsLeft * heat
 }
@@ -31,10 +33,11 @@ export const coverQuote = (lottery, count = 1) => {
   const redsLeft = (loseCount || 0) - (loseLit || 0)
   if (redsLeft <= 0 || !polygonCount) return 0
   let extra = count - remainWin
-  const cap = MAX_PLUS * polygonCount
-  if (extra > cap) extra = cap
   if (extra < 0) extra = 0
-  return fillQuote(lottery) + clampEth(ticketPrice) * redsLeft * extra
+  let extraHeat = extra * HEAT_BASE
+  const cap = HEAT_BASE * polygonCount + MAX_PLUS * 2 * polygonCount
+  if (extraHeat > cap) extraHeat = cap
+  return fillQuote(lottery) + clampEth(ticketPrice) * redsLeft * extraHeat
 }
 
 
@@ -62,6 +65,10 @@ export const fetchLottery = async (address) => {
     if (!item || item === ethers.ZeroAddress) return null
     return ethers.getAddress(item)
   })
+  const mates = _.map(row.mates || [], (item) => {
+    if (!item || item === ethers.ZeroAddress) return null
+    return ethers.getAddress(item)
+  })
   const ownerRaw = row.owner
   let owner
   if (ownerRaw && ownerRaw !== ethers.ZeroAddress) owner = ethers.getAddress(ownerRaw)
@@ -74,6 +81,8 @@ export const fetchLottery = async (address) => {
     loseLit: Number(row.loseLit),
     prize: formatEth(row.prize),
     pluses: unpackPluses(row.plusBits, Number(row.polygonCount)),
+    mates,
+    matePluses: unpackPluses(row.matePlusBits, Number(row.polygonCount)),
     myPrize: formatEth(row.myPrize),
     memberShares: formatEth(row.memberShares),
     totalBalance: formatEth(row.totalBalance),
@@ -151,6 +160,8 @@ const readTicket = (contract, receipt) => {
   let roundPrize
   let roundOwners
   let roundPluses
+  let roundMates
+  let roundMatePluses
   let refundAmount
   let refundCount
   for (const log of logs) {
@@ -166,6 +177,11 @@ const readTicket = (contract, receipt) => {
           return ethers.getAddress(item)
         })
         roundPluses = _.map(args.pluses || [], (item) => Number(item))
+        roundMates = _.map(args.mates || [], (item) => {
+          if (!item || item === ethers.ZeroAddress) return null
+          return ethers.getAddress(item)
+        })
+        roundMatePluses = _.map(args.matePluses || [], (item) => Number(item))
       }
       if (name === "TicketsRefunded") {
         refundCount = Number(args.count)
@@ -176,7 +192,8 @@ const readTicket = (contract, receipt) => {
         won: args.won,
         polygonId: Number(args.polygonId),
         assigned: args.assigned,
-        plus: Number(args.plus)
+        plus: Number(args.plus),
+        split: Boolean(args.split)
       })
     } catch {
       // ignore logs from other contracts
@@ -186,7 +203,8 @@ const readTicket = (contract, receipt) => {
   const claimed = _.filter(draws, "assigned")
   const last = _.last(claimed) || _.last(draws)
   const plusDraws = _.filter(draws, (draw) => (draw.plus || 0) > 0)
-  const takenIds = _.uniq(_.map(_.filter(draws, (draw) => !draw.assigned && !(draw.plus > 0)), "polygonId"))
+  const splitIds = _.uniq(_.map(_.filter(draws, "split"), "polygonId"))
+  const takenIds = _.uniq(_.map(_.filter(draws, (draw) => !draw.assigned && !draw.split && !(draw.plus > 0)), "polygonId"))
   const plusIds = _.uniq(_.map(plusDraws, "polygonId"))
   const plusLevel = _.max(_.map(plusDraws, "plus")) || 0
   return {
@@ -200,11 +218,14 @@ const readTicket = (contract, receipt) => {
     takenIds,
     plusIds,
     plusLevel,
+    splitIds,
     settled,
     playersWin,
     roundPrize,
     roundOwners,
     roundPluses,
+    roundMates,
+    roundMatePluses,
     refundCount,
     refundAmount
   }

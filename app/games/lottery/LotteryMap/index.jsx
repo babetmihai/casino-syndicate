@@ -121,7 +121,7 @@ const paintPiece = ({
   if (isLit && !isLose && !isOccupied) fill = LIT_WIN_FILL
   let glow = "var(--cs-accent)"
   if (isLose) glow = "var(--cs-accent-2)"
-  const showGlow = isOccupied || isLit
+  const showGlow = isOccupied || isLit || isFlash || isSplitFlash
   return (
     <g
       key={key}

@@ -18,7 +18,7 @@
   --animate-chip-drop: chip-drop 0.16s ease-out;
   --animate-number-flash: number-flash 0.12s ease-out;
   --animate-map-win: map-win 0.9s ease-in-out infinite;
-  --animate-map-taken: map-taken 0.5s ease-in-out;
+  --animate-map-taken: map-taken 0.28s ease-out;
   --animate-map-pass: map-pass 0.2s ease-out;
   --animate-map-plus-1: map-plus-1 0.7s ease-out;
   --animate-map-plus-2: map-plus-2 0.8s ease-out;
@@ -45,8 +45,9 @@
 }
 
 @keyframes map-taken {
-  0%, 100% { filter: brightness(1); }
-  50% { filter: brightness(2.2) saturate(1.5); }
+  0% { filter: brightness(1) saturate(1); }
+  35% { filter: brightness(3.4) saturate(1.8); }
+  100% { filter: brightness(1) saturate(1); }
 }
 
 @keyframes map-pass {

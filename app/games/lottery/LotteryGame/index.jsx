@@ -15,7 +15,9 @@ import { ethers } from "ethers"
 
 const FAST_MS = 16
 const SLOW_MS = 140
-const HOLD_MS = 320
+const HOLD_MS = 120
+const FLASH_MS = 280
+const BANNER_MS = 2500
 
 
 const LotteryGame = React.memo(({ address }) => {
@@ -31,7 +33,7 @@ const LotteryGame = React.memo(({ address }) => {
   const lottery = useSelector(() => selectLottery(address)) || {}
   const symbol = useSelector(() => selectNativeSymbol())
   const { polygonCount, loseCount, ticketPrice, claimedCount, loseLit, prize, myPrize, owners = [], mates = [], bonuses = [], lastTicket, totalBalance } = lottery
-  const { assignedCount = 0, settled, playersWin, roundPrize, takenIds = [], splitIds = [], bonusIds = [], roundMates, roundBonuses } = lastTicket || {}
+  const { assignedCount = 0, settled, playersWin, roundPrize, takenIds = [], loseIds = [], splitIds = [], bonusIds = [], roundMates, roundBonuses } = lastTicket || {}
   const hasPrize = clampEth(myPrize) > 0
   const pending = hasPrize
   const roundOpen = (claimedCount || 0) < (polygonCount || 0) && (loseLit || 0) < (loseCount || 0)
@@ -49,12 +51,13 @@ const LotteryGame = React.memo(({ address }) => {
   const isBonus = bonusIds.length > 0 && !settled
   const houseWon = settled && !playersWin
   const playersWon = settled && playersWin
+  const isLoseHit = loseIds.length > 0 && !houseWon && !playersWon
   let flashIds = []
   if (showBanner && isTaken) flashIds = takenIds
   if (showBanner && isBonus) flashIds = bonusIds
+  if (showBanner && isLoseHit) flashIds = loseIds
   let bannerLabel
   let bannerHero
-  if (isTaken) bannerLabel = "Taken"
   if (isSplit) bannerLabel = "Split"
   if (isBonus) {
     bannerLabel = "Jackpot"
@@ -95,7 +98,9 @@ const LotteryGame = React.memo(({ address }) => {
 
   React.useEffect(() => {
     if (!showBanner) return
-    const timer = _.delay(() => setShowBanner(false), 2500)
+    let wait = BANNER_MS
+    if (!bannerLabel) wait = FLASH_MS
+    const timer = _.delay(() => setShowBanner(false), wait)
     return () => clearTimeout(timer)
   }, [showBanner])
 
@@ -123,11 +128,17 @@ const LotteryGame = React.memo(({ address }) => {
       const draws = ticket.draws || []
       winner = _.last(_.map(draws, "polygonId"))
       if (_.isNumber(winner)) await spinning
-      await fetchLottery(address)
-      if (account) fetchBalance(account)
+      if (stopFlash.current) stopFlash.current()
+      stopFlash.current = undefined
+      setLitIds([])
       const split = (ticket.splitIds || []).length > 0
       const taken = (ticket.takenIds || []).length > 0 && (ticket.assignedCount || 0) === 0 && !split
-      if (taken || split || ticket.settled || (ticket.bonusIds || []).length) setShowBanner(true)
+      const loseHit = (ticket.loseIds || []).length > 0 && !ticket.settled
+      if (taken || split || ticket.settled || (ticket.bonusIds || []).length || loseHit) setShowBanner(true)
+      setRevealing(false)
+      setBuying(false)
+      await fetchLottery(address)
+      if (account) fetchBalance(account)
     } finally {
       if (stopFlash.current) stopFlash.current()
       stopFlash.current = undefined
@@ -263,15 +274,13 @@ const LotteryGame = React.memo(({ address }) => {
               className={cn(
                 "lottery-banner-card",
                 houseWon && "lottery-banner-house",
-                isTaken && "lottery-banner-taken",
                 isSplit && "lottery-banner-split",
                 isBonus && "lottery-banner-jackpot",
                 "flex min-w-36 flex-col items-center gap-1 rounded-[0.75rem] px-6 py-4 text-center animate-banner",
                 playersWon && "border-transparent bg-cs-accent text-cs-bg",
                 houseWon && "border-transparent bg-cs-accent-2 text-white",
                 isSplit && "border-transparent bg-cs-accent text-cs-bg",
-                isBonus && "border-cs-border bg-cs-elevated text-cs-accent",
-                isTaken && "border-cs-border bg-cs-elevated text-cs-muted"
+                isBonus && "border-cs-border bg-cs-elevated text-cs-accent"
               )}
               shadow="md"
               withBorder={false}

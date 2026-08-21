@@ -9,7 +9,7 @@ import _ from "lodash"
 
 export const MIN_POLYGONS = 3
 export const MAX_POLYGONS = 48
-export const ticketGas = 750000n
+export const ticketGas = 3000000n
 
 const unpackBits = (bits, count) => {
   const raw = BigInt(bits || 0)
@@ -194,7 +194,10 @@ const readTicket = (contract, receipt) => {
   const last = _.last(claimed) || _.last(draws)
   const splitIds = _.uniq(_.map(_.filter(draws, "split"), "polygonId"))
   const bonusIds = _.uniq(_.map(_.filter(draws, "bonus"), "polygonId"))
-  const takenIds = _.uniq(_.map(_.filter(draws, (draw) => !draw.assigned && !draw.split && !draw.bonus), "polygonId"))
+  const takenIds = _.uniq(_.map(_.filter(draws, (draw) => {
+    return draw.won && !draw.assigned && !draw.split && !draw.bonus
+  }), "polygonId"))
+  const loseIds = _.uniq(_.map(_.filter(draws, (draw) => !draw.won), "polygonId"))
   return {
     ...last,
     assignedCount: claimed.length,
@@ -204,6 +207,7 @@ const readTicket = (contract, receipt) => {
     drawCount: draws.length,
     draws,
     takenIds,
+    loseIds,
     splitIds,
     bonusIds,
     settled,

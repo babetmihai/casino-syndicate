@@ -107,15 +107,16 @@ const TableCard = React.memo(({ table, index }) => {
   const roulette = useSelector(() => selectRoulette(address)) || {}
   const lottery = useSelector(() => selectLottery(address)) || {}
   const symbol = useSelector(() => selectNativeSymbol())
-  const isLottery = type === TABLE_TYPES.Lottery
+  const isPolygons = type === TABLE_TYPES.Polygons
   const { minBet, maxBet, totalBalance } = roulette
-  const { prize, claimedCount, polygonCount, ticketPrice } = lottery
+  const { prize, claimedCount, polygonCount, ticketPrice, totalBalance: lotteryBalance } = lottery
   const shortAddress = `${address.slice(0, 6)}…${address.slice(-4)}`
   const bankroll = clampEth(totalBalance)
+  const lotteryBankroll = clampEth(lotteryBalance)
   const minBetAmount = clampEth(minBet) || MIN_BET
   const maxBetAmount = tableMaxBet(maxBet)
   let stats = roulette
-  if (isLottery) stats = lottery
+  if (isPolygons) stats = lottery
   const hasStats = !_.isEmpty(stats)
   const order = String(index + 1).padStart(2, "0")
 
@@ -136,17 +137,17 @@ const TableCard = React.memo(({ table, index }) => {
         <h3 className={cn("table-card-name", titleClass, "m-0 truncate text-base")}>{name}</h3>
         <Text className={cn("table-card-address")} size="xs" c="dimmed">{shortAddress}</Text>
       </div>
-      {hasStats && isLottery &&
+      {hasStats && isPolygons &&
         <div className={cn("table-card-stats", "flex shrink-0 flex-col items-end gap-0.5 text-right")}>
           <span className={cn("table-card-bankroll", titleClass, "text-base text-cs-accent")}>
-            {ethLabel(prize, symbol)}
+            {ethLabel(lotteryBankroll, symbol)}
           </span>
           <Text className={cn("table-card-limits")} size="xs" c="dimmed">
-            {claimedCount || 0}/{polygonCount || 0} · {ethLabel(ticketPrice, symbol)}
+            {claimedCount || 0}/{polygonCount || 0} · {ethLabel(prize, symbol)} · {ethLabel(ticketPrice, symbol)}
           </Text>
         </div>
       }
-      {hasStats && !isLottery &&
+      {hasStats && !isPolygons &&
         <div className={cn("table-card-stats", "flex shrink-0 flex-col items-end gap-0.5 text-right")}>
           <span className={cn("table-card-bankroll", titleClass, "text-base", bankrollClass(bankroll, maxBet))}>
             {ethLabel(bankroll, symbol)}

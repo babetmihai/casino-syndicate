@@ -23,7 +23,7 @@ const GameScreen = () => {
       {type === TABLE_TYPES.Roulette &&
         <RouletteGame address={address} />
       }
-      {type === TABLE_TYPES.Lottery &&
+      {type === TABLE_TYPES.Polygons &&
         <LotteryGame address={address} />
       }
     </AppScreen>

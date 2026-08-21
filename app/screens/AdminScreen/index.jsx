@@ -6,7 +6,7 @@ import { useTranslation } from "react-i18next"
 import RouletteAdmin from "app/games/roulette/RouletteAdmin"
 import LotteryAdmin from "app/games/lottery/LotteryAdmin"
 import { buyTableShares, selectRoulette, setRouletteLimits, withdrawTableShares } from "app/games/roulette"
-import { selectLottery } from "app/games/lottery"
+import { depositLotteryShares, selectLottery, withdrawLotteryShares } from "app/games/lottery"
 import { clampEth, MIN_BET, tableMaxBet } from "app/games/roulette/chips"
 import AppScreen from "app/components/AppScreen"
 import history from "app/core/history"
@@ -28,10 +28,14 @@ const AdminScreen = () => {
   const roulette = useSelector(() => selectRoulette(address)) || {}
   const lottery = useSelector(() => selectLottery(address)) || {}
   const { memberShares, minBet, maxBet, lastWithdrawAt, owner } = roulette
+  const lotteryShares = lottery.memberShares
+  const lotteryWithdrawAt = lottery.lastWithdrawAt
   const { name, type, createdBy } = table || {}
   const isRoulette = type === TABLE_TYPES.Roulette
-  const isLottery = type === TABLE_TYPES.Lottery
-  const hasShare = isRoulette && clampEth(memberShares) > 0
+  const isPolygons = type === TABLE_TYPES.Polygons
+  const shareAmount = isPolygons ? lotteryShares : memberShares
+  const withdrawAt = isPolygons ? lotteryWithdrawAt : lastWithdrawAt
+  const hasShare = clampEth(shareAmount) > 0
   const lotteryOwner = lottery.owner
   const tableOwner = owner || lotteryOwner || createdBy
   const isOwner = tableOwner && account && ethers.getAddress(tableOwner) === ethers.getAddress(account)
@@ -65,16 +69,24 @@ const AdminScreen = () => {
 
   const openDeposit = () => showModal(DepositModal, {
     onSubmit: async ({ balance }) => {
-      await buyTableShares({ balance }, address)
+      if (isPolygons) {
+        await depositLotteryShares({ balance }, address)
+      } else {
+        await buyTableShares({ balance }, address)
+      }
       await fetchBalance(account)
     }
   })
 
   const openWithdraw = () => showModal(WithdrawModal, {
-    max: clampEth(memberShares),
-    lastWithdrawAt,
+    max: clampEth(shareAmount),
+    lastWithdrawAt: withdrawAt,
     onSubmit: async ({ balance }) => {
-      await withdrawTableShares({ balance }, address)
+      if (isPolygons) {
+        await withdrawLotteryShares({ balance }, address)
+      } else {
+        await withdrawTableShares({ balance }, address)
+      }
       await fetchBalance(account)
     }
   })
@@ -100,7 +112,7 @@ const AdminScreen = () => {
               {t("edit_table")}
             </Button>
           }
-          {isRoulette && account &&
+          {(isRoulette || isPolygons) && account &&
             <Button
               className={cn("admin-deposit")}
               variant="outline"
@@ -124,7 +136,7 @@ const AdminScreen = () => {
         {address && isRoulette &&
           <RouletteAdmin address={address} />
         }
-        {address && isLottery &&
+        {address && isPolygons &&
           <LotteryAdmin address={address} />
         }
       </div>

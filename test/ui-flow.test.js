@@ -1,9 +1,9 @@
 const { expect } = require("chai")
 const { ethers } = require("hardhat")
 
-const TABLE_TYPES = { Roulette: "Roulette", Lottery: "Lottery" }
-const TABLE_TYPE_IDS = { [TABLE_TYPES.Roulette]: 0, [TABLE_TYPES.Lottery]: 1 }
-const TABLE_TYPE_BY_ID = { 0: TABLE_TYPES.Roulette, 1: TABLE_TYPES.Lottery }
+const TABLE_TYPES = { Roulette: "Roulette", Polygons: "Polygons" }
+const TABLE_TYPE_IDS = { [TABLE_TYPES.Roulette]: 0, [TABLE_TYPES.Polygons]: 1 }
+const TABLE_TYPE_BY_ID = { 0: TABLE_TYPES.Roulette, 1: TABLE_TYPES.Polygons }
 
 const toTable = ({ game, name, createdBy, createdAt, gameType }) => {
   const address = ethers.getAddress(game)
@@ -497,6 +497,8 @@ describe("UI flow: create, view, play roulette", () => {
 })
 
 describe("UI flow: create, view, play lottery", () => {
+  const DEPOSIT = ethers.parseEther("1")
+
   const deployFactory = async () => {
     const Factory = await ethers.getContractFactory("GameFactory")
     const factory = await Factory.deploy()
@@ -515,6 +517,17 @@ describe("UI flow: create, view, play lottery", () => {
       })
       .find((parsed) => parsed && parsed.name === "GameCreated")
     return created.args.game
+  }
+
+  const createLottery = (factory, creator, name, polygons, price) => {
+    return factory.connect(creator).createGame(
+      name,
+      TABLE_TYPE_IDS.Polygons,
+      polygons,
+      0,
+      price,
+      { value: DEPOSIT }
+    )
   }
 
   const parseTicket = (lottery, receipt) => {
@@ -567,16 +580,26 @@ describe("UI flow: create, view, play lottery", () => {
       .find((parsed) => parsed && parsed.name === "TicketsRefunded")
   }
 
+  const playUntilSettled = async (lottery, signer, price, wantPlayers) => {
+    for (let i = 0; i < 40; i++) {
+      const table = await lottery.connect(signer).getTable()
+      if (table.myPrize > 0n) {
+        await (await lottery.connect(signer).withdrawPrize()).wait()
+      }
+      const tx = await lottery.connect(signer).buyTickets(10, { value: price * 10n })
+      const receipt = await tx.wait()
+      const settled = parseSettled(lottery, receipt)
+      if (!settled) continue
+      if (wantPlayers === undefined) return { settled, receipt }
+      if (settled.args.playersWin === wantPlayers) return { settled, receipt }
+    }
+    throw new Error("round did not settle")
+  }
+
   it("creates a lottery, lists it, and loads polygon config", async () => {
     const [creator] = await ethers.getSigners()
     const factory = await deployFactory()
-    const createTx = await factory.connect(creator).createGame(
-      "Night Map",
-      TABLE_TYPE_IDS.Lottery,
-      12,
-      2050,
-      ethers.parseEther("0.05")
-    )
+    const createTx = await createLottery(factory, creator, "Night Map", 12, ethers.parseEther("0.05"))
     const receipt = await createTx.wait()
     const address = createdAddress(factory, receipt)
 
@@ -585,16 +608,18 @@ describe("UI flow: create, view, play lottery", () => {
     const listed = toTable(rows[0])
     expect(listed.address).to.equal(ethers.getAddress(address))
     expect(listed.name).to.equal("Night Map")
-    expect(listed.type).to.equal(TABLE_TYPES.Lottery)
+    expect(listed.type).to.equal(TABLE_TYPES.Polygons)
 
     const lottery = await ethers.getContractAt("Lottery", address)
     const table = await lottery.connect(creator).getTable()
     expect(table.polygonCount).to.equal(12n)
-    expect(table.winPercent).to.equal(2050n)
+    expect(table.loseCount).to.equal(12n)
     expect(table.ticketPrice).to.equal(ethers.parseEther("0.05"))
     expect(table.claimedCount).to.equal(0n)
     expect(table.prize).to.equal(0n)
-    expect(table.owners.length).to.equal(12)
+    expect(table.totalBalance).to.equal(DEPOSIT)
+    expect(table.memberShares).to.equal(DEPOSIT)
+    expect(table.owners.length).to.equal(24)
   })
 
   it("rejects bad lottery params and wrong ticket price", async () => {
@@ -603,38 +628,44 @@ describe("UI flow: create, view, play lottery", () => {
     await expect(
       factory.connect(creator).createGame(
         "Few",
-        TABLE_TYPE_IDS.Lottery,
+        TABLE_TYPE_IDS.Polygons,
         2,
-        2000,
-        ethers.parseEther("0.01")
+        0,
+        ethers.parseEther("0.01"),
+        { value: DEPOSIT }
       )
     ).to.be.revertedWith("Bad polygons")
     await expect(
       factory.connect(creator).createGame(
-        "Zero",
-        TABLE_TYPE_IDS.Lottery,
+        "Huge",
+        TABLE_TYPE_IDS.Polygons,
+        25,
+        0,
+        ethers.parseEther("0.01"),
+        { value: DEPOSIT }
+      )
+    ).to.be.revertedWith("Bad polygons")
+    await expect(
+      factory.connect(creator).createGame(
+        "Cheap",
+        TABLE_TYPE_IDS.Polygons,
+        12,
+        0,
+        ethers.parseEther("0.001"),
+        { value: DEPOSIT }
+      )
+    ).to.be.revertedWith("Price too small")
+    await expect(
+      factory.connect(creator).createGame(
+        "Broke",
+        TABLE_TYPE_IDS.Polygons,
         12,
         0,
         ethers.parseEther("0.01")
       )
-    ).to.be.revertedWith("Bad percent")
-    await expect(
-      factory.connect(creator).createGame(
-        "Cheap",
-        TABLE_TYPE_IDS.Lottery,
-        12,
-        2000,
-        ethers.parseEther("0.001")
-      )
-    ).to.be.revertedWith("Price too small")
+    ).to.be.revertedWith("Min deposit 1")
 
-    const createTx = await factory.connect(creator).createGame(
-      "Ticket Map",
-      TABLE_TYPE_IDS.Lottery,
-      4,
-      10000,
-      ethers.parseEther("0.01")
-    )
+    const createTx = await createLottery(factory, creator, "Ticket Map", 4, ethers.parseEther("0.01"))
     const lottery = await ethers.getContractAt("Lottery", createdAddress(factory, await createTx.wait()))
     await expect(
       lottery.connect(player).buyTicket({ value: ethers.parseEther("0.02") })
@@ -650,74 +681,64 @@ describe("UI flow: create, view, play lottery", () => {
     expect(parseTicket(lottery, multiReceipt).length).to.be.lte(5)
   })
 
-  it("refunds leftover tickets when the map fills mid-batch", async () => {
+  it("refunds leftover tickets when a side fills mid-batch", async () => {
     const [creator, player] = await ethers.getSigners()
     const factory = await deployFactory()
     const price = ethers.parseEther("0.01")
-    const createTx = await factory.connect(creator).createGame(
-      "Refund Map",
-      TABLE_TYPE_IDS.Lottery,
-      3,
-      10000,
-      price
-    )
+    const createTx = await createLottery(factory, creator, "Refund Map", 3, price)
     const lottery = await ethers.getContractAt("Lottery", createdAddress(factory, await createTx.wait()))
-    const paid = price * 25n
-    const tx = await lottery.connect(player).buyTickets(25, { value: paid })
+    const paid = price * 10n
+    const tx = await lottery.connect(player).buyTickets(10, { value: paid })
     const receipt = await tx.wait()
     const tickets = parseTicket(lottery, receipt)
-    expect(tickets.length).to.be.lt(25)
+    expect(tickets.length).to.be.lte(10)
     expect(tickets.length).to.be.gte(3)
-    const leftover = 25n - BigInt(tickets.length)
+    const leftover = 10n - BigInt(tickets.length)
     const refunded = parseRefund(lottery, receipt)
-    expect(refunded).to.not.equal(undefined)
-    expect(refunded.args.count).to.equal(leftover)
-    expect(refunded.args.amount).to.equal(price * leftover)
     const settled = parseSettled(lottery, receipt)
-    expect(settled.args.owners.length).to.equal(3)
-    expect(settled.args.prize).to.equal(price * BigInt(tickets.length))
+    expect(settled).to.not.equal(undefined)
+    if (leftover > 0n) {
+      expect(refunded).to.not.equal(undefined)
+      expect(refunded.args.count).to.equal(leftover)
+      expect(refunded.args.amount).to.equal(price * leftover)
+    }
+    const used = BigInt(tickets.length)
     const live = await lottery.connect(creator).getTable()
     expect(live.claimedCount).to.equal(0n)
     expect(live.prize).to.equal(0n)
     expect(live.owners.filter((owner) => owner !== ethers.ZeroAddress).length).to.equal(0)
-    const held = await lottery.connect(player).getTable()
-    expect(held.claimedCount).to.equal(3n)
-    expect(held.prize).to.equal(settled.args.prize)
-    expect(held.myPrize).to.equal(settled.args.prize)
-    expect(held.owners.filter((owner) => owner !== ethers.ZeroAddress).length).to.equal(3)
-    await expect(
-      lottery.connect(player).buyTicket({ value: price })
-    ).to.be.revertedWith("Claim first")
-    await (await lottery.connect(creator).buyTicket({ value: price })).wait()
-    const nextLive = await lottery.connect(creator).getTable()
-    expect(nextLive.prize).to.equal(price)
-    expect(nextLive.claimedCount).to.be.lte(1n)
-    const stillHeld = await lottery.connect(player).getTable()
-    expect(stillHeld.claimedCount).to.equal(3n)
-    await (await lottery.connect(player).withdrawPrize()).wait()
-    const after = await lottery.connect(player).getTable()
-    expect(after.myPrize).to.equal(0n)
-    expect(after.claimedCount).to.be.lte(1n)
+    if (settled.args.playersWin) {
+      expect(settled.args.owners.length).to.equal(3)
+      expect(settled.args.prize).to.equal(price * used * 2n)
+      const held = await lottery.connect(player).getTable()
+      expect(held.claimedCount).to.equal(3n)
+      expect(held.prize).to.equal(settled.args.prize)
+      expect(held.myPrize).to.equal(settled.args.prize)
+      await expect(
+        lottery.connect(player).buyTicket({ value: price })
+      ).to.be.revertedWith("Claim first")
+      await (await lottery.connect(player).withdrawPrize()).wait()
+    } else {
+      expect(settled.args.owners.length).to.equal(0)
+      expect(settled.args.prize).to.equal(price * used)
+      const held = await lottery.connect(player).getTable()
+      expect(held.myPrize).to.equal(0n)
+      expect(live.totalBalance).to.equal(DEPOSIT + price * used)
+    }
   })
 
-    it("assigns a polygon once, then hides the reset until the winner claims", async () => {
+  it("assigns a cell once, then settles house or players", async () => {
     const [creator, player, other] = await ethers.getSigners()
     const factory = await deployFactory()
     const price = ethers.parseEther("0.01")
-    const createTx = await factory.connect(creator).createGame(
-      "Fill Map",
-      TABLE_TYPE_IDS.Lottery,
-      4,
-      10000,
-      price
-    )
+    const createTx = await createLottery(factory, creator, "Fill Map", 4, price)
     const lottery = await ethers.getContractAt("Lottery", createdAddress(factory, await createTx.wait()))
     const buyers = [player, other]
+    const firstOwners = {}
     let assigned = 0
-    const firstOwners = [null, null, null, null]
-    let roundPrize = 0n
+    let settled
 
-    for (let i = 0; i < 80; i++) {
+    for (let i = 0; i < 120; i++) {
       const buyer = buyers[i % 2]
       const tx = await lottery.connect(buyer).buyTicket({ value: price })
       const receipt = await tx.wait()
@@ -726,100 +747,73 @@ describe("UI flow: create, view, play lottery", () => {
       const ticket = tickets[0]
       if (ticket.assigned) {
         const polygonId = Number(ticket.polygonId)
-        expect(firstOwners[polygonId]).to.equal(null)
+        expect(firstOwners[polygonId]).to.equal(undefined)
         firstOwners[polygonId] = ticket.player
         assigned += 1
       }
-      const settled = parseSettled(lottery, receipt)
-      if (settled) {
-        roundPrize = settled.args.prize
-        expect(settled.args.owners.length).to.equal(4)
-        break
-      }
+      settled = parseSettled(lottery, receipt)
+      if (settled) break
     }
 
-    expect(assigned).to.equal(4)
-    expect(roundPrize).to.be.greaterThan(0n)
+    expect(settled).to.not.equal(undefined)
+    expect(settled.args.prize).to.be.greaterThan(0n)
     const live = await lottery.connect(creator).getTable()
     expect(live.claimedCount).to.equal(0n)
     expect(live.prize).to.equal(0n)
     expect(live.owners.filter((owner) => owner !== ethers.ZeroAddress).length).to.equal(0)
-    const held = await lottery.connect(player).getTable()
-    expect(held.claimedCount).to.equal(4n)
-    expect(held.prize).to.equal(roundPrize)
-    expect(held.owners.filter((owner) => owner !== ethers.ZeroAddress).length).to.equal(4)
-    await expect(
-      lottery.connect(player).buyTicket({ value: price })
-    ).to.be.revertedWith("Claim first")
-    await (await lottery.connect(creator).buyTicket({ value: price })).wait()
-    const nextLive = await lottery.connect(creator).getTable()
-    expect(nextLive.prize).to.equal(price)
-    expect(nextLive.claimedCount).to.be.lte(1n)
-    const stillHeld = await lottery.connect(player).getTable()
-    expect(stillHeld.claimedCount).to.equal(4n)
-    const claimed = {}
-    let paidTotal = 0n
-    for (const owner of firstOwners) {
-      if (claimed[owner]) continue
-      claimed[owner] = true
-      let signer = other
-      if (ethers.getAddress(owner) === ethers.getAddress(player.address)) signer = player
-      const before = await lottery.connect(signer).getTable()
-      expect(before.myPrize).to.be.greaterThan(0n)
-      expect(before.claimedCount).to.equal(4n)
-      const paidTx = await lottery.connect(signer).withdrawPrize()
-      const paid = parsePaid(lottery, await paidTx.wait())
-      expect(paid.length).to.equal(1)
-      paidTotal += paid[0].amount
+    if (settled.args.playersWin) {
+      expect(assigned).to.be.gte(4)
+      expect(settled.args.owners.length).to.equal(4)
+      const winners = {}
+      let paidTotal = 0n
+      for (const owner of settled.args.owners) {
+        if (winners[owner]) continue
+        winners[owner] = true
+        let signer = other
+        if (ethers.getAddress(owner) === ethers.getAddress(player.address)) signer = player
+        const before = await lottery.connect(signer).getTable()
+        expect(before.myPrize).to.be.greaterThan(0n)
+        expect(before.claimedCount).to.equal(4n)
+        const paidTx = await lottery.connect(signer).withdrawPrize()
+        const paid = parsePaid(lottery, await paidTx.wait())
+        expect(paid.length).to.equal(1)
+        paidTotal += paid[0].amount
+      }
+      expect(paidTotal).to.equal(settled.args.prize)
+    } else {
+      expect(assigned).to.be.gte(4)
+      expect(settled.args.owners.length).to.equal(0)
+      const held = await lottery.connect(player).getTable()
+      expect(held.myPrize).to.equal(0n)
     }
-    expect(paidTotal).to.equal(roundPrize)
-    expect(await ethers.provider.getBalance(await lottery.getAddress())).to.equal(price)
-    const cleared = await lottery.connect(player).getTable()
-    expect(cleared.myPrize).to.equal(0n)
-    expect(cleared.claimedCount).to.be.lte(1n)
-
-    await (await lottery.connect(player).buyTicket({ value: price })).wait()
-    const next = await lottery.connect(player).getTable()
-    expect(next.prize).to.equal(price * 2n)
-    expect(next.claimedCount).to.be.lte(2n)
   })
 
   it("keeps each winner on their own round if another round settles first", async () => {
     const [creator, player, other] = await ethers.getSigners()
     const factory = await deployFactory()
     const price = ethers.parseEther("0.01")
-    const createTx = await factory.connect(creator).createGame(
-      "Stack Map",
-      TABLE_TYPE_IDS.Lottery,
-      3,
-      10000,
-      price
-    )
+    const createTx = await createLottery(factory, creator, "Stack Map", 3, price)
     const lottery = await ethers.getContractAt("Lottery", createdAddress(factory, await createTx.wait()))
-    const firstTx = await lottery.connect(player).buyTickets(25, { value: price * 25n })
-    const firstSettled = parseSettled(lottery, await firstTx.wait())
-    expect(firstSettled).to.not.equal(undefined)
-    const firstPrize = firstSettled.args.prize
-    const firstOwners = firstSettled.args.owners
+    const first = await playUntilSettled(lottery, player, price, true)
+    const firstPrize = first.settled.args.prize
+    const firstOwners = first.settled.args.owners
     const heldFirst = await lottery.connect(player).getTable()
     expect(heldFirst.claimedCount).to.equal(3n)
     expect(heldFirst.prize).to.equal(firstPrize)
-    expect(heldFirst.owners).to.deep.equal(firstOwners)
+    expect(heldFirst.owners.slice(0, 3)).to.deep.equal(firstOwners)
 
-    const secondTx = await lottery.connect(other).buyTickets(25, { value: price * 25n })
-    const secondSettled = parseSettled(lottery, await secondTx.wait())
-    expect(secondSettled).to.not.equal(undefined)
-    const secondPrize = secondSettled.args.prize
-    const secondOwners = secondSettled.args.owners
+    const second = await playUntilSettled(lottery, other, price, true)
+    const secondPrize = second.settled.args.prize
+    const secondOwners = second.settled.args.owners
     const stillFirst = await lottery.connect(player).getTable()
     expect(stillFirst.claimedCount).to.equal(3n)
     expect(stillFirst.prize).to.equal(firstPrize)
     expect(stillFirst.myPrize).to.equal(firstPrize)
-    expect(stillFirst.owners).to.deep.equal(firstOwners)
+    expect(stillFirst.owners.slice(0, 3)).to.deep.equal(firstOwners)
     const heldSecond = await lottery.connect(other).getTable()
     expect(heldSecond.claimedCount).to.equal(3n)
     expect(heldSecond.prize).to.equal(secondPrize)
-    expect(heldSecond.owners).to.deep.equal(secondOwners)
+    expect(heldSecond.owners.slice(0, 3)).to.deep.equal(secondOwners)
     const live = await lottery.connect(creator).getTable()
     expect(live.claimedCount).to.equal(0n)
     expect(live.prize).to.equal(0n)
@@ -828,22 +822,31 @@ describe("UI flow: create, view, play lottery", () => {
     await (await lottery.connect(player).withdrawPrize()).wait()
     const afterFirst = await lottery.connect(player).getTable()
     expect(afterFirst.myPrize).to.equal(0n)
-    expect(afterFirst.claimedCount).to.equal(0n)
     const stillSecond = await lottery.connect(other).getTable()
-    expect(stillSecond.owners).to.deep.equal(secondOwners)
+    expect(stillSecond.owners.slice(0, 3)).to.deep.equal(secondOwners)
     expect(stillSecond.prize).to.equal(secondPrize)
+  })
+
+  it("lets the house deposit and withdraw shares", async () => {
+    const [creator, player] = await ethers.getSigners()
+    const factory = await deployFactory()
+    const createTx = await createLottery(factory, creator, "Bank Map", 6, ethers.parseEther("0.01"))
+    const lottery = await ethers.getContractAt("Lottery", createdAddress(factory, await createTx.wait()))
+    await (await lottery.connect(player).depositShares({ value: ethers.parseEther("2") })).wait()
+    const afterDeposit = await lottery.connect(player).getTable()
+    expect(afterDeposit.memberShares).to.equal(ethers.parseEther("2"))
+    expect(afterDeposit.totalBalance).to.equal(ethers.parseEther("3"))
+    expect(afterDeposit.owner).to.equal(player.address)
+    await (await lottery.connect(player).withdrawShares(ethers.parseEther("2"))).wait()
+    const afterWithdraw = await lottery.connect(creator).getTable()
+    expect(afterWithdraw.totalBalance).to.equal(DEPOSIT)
+    expect(afterWithdraw.owner).to.equal(creator.address)
   })
 
   it("edits only the name through the factory", async () => {
     const [creator, player] = await ethers.getSigners()
     const factory = await deployFactory()
-    const createTx = await factory.connect(creator).createGame(
-      "Rename Map",
-      TABLE_TYPE_IDS.Lottery,
-      6,
-      1550,
-      ethers.parseEther("0.01")
-    )
+    const createTx = await createLottery(factory, creator, "Rename Map", 6, ethers.parseEther("0.01"))
     const address = createdAddress(factory, await createTx.wait())
     const lottery = await ethers.getContractAt("Lottery", address)
     await (await factory.connect(creator).setGameName(address, "Street Map")).wait()

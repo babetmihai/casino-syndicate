@@ -6,7 +6,7 @@ import * as Yup from "yup"
 import { useTranslation } from "react-i18next"
 import { TABLE_TYPES } from ".."
 import { LOW_BANKROLL_MULTIPLIER, MIN_BET, MIN_TABLE_DEPOSIT, clampEth } from "app/games/roulette/chips"
-import { MAX_CHANCE, MAX_POLYGONS, MIN_CHANCE, MIN_POLYGONS } from "app/games/lottery"
+import { MAX_POLYGONS, MIN_POLYGONS } from "app/games/lottery"
 import { useSelector } from "react-redux"
 import { selectNativeSymbol } from "app/core/chain"
 import { cn } from "app/core"
@@ -24,16 +24,11 @@ const TableModal = ({ onSubmit }) => {
       minBet: MIN_BET,
       maxBet: 0.05,
       polygonCount: 12,
-      winPercent: 20,
       ticketPrice: MIN_BET
     },
     validationSchema: Yup.object({
       name: Yup.string().required(t("name_required")),
-      balance: Yup.number().when("type", {
-        is: TABLE_TYPES.Roulette,
-        then: (schema) => schema.min(MIN_TABLE_DEPOSIT, t("balance_required")),
-        otherwise: (schema) => schema.notRequired()
-      }),
+      balance: Yup.number().min(MIN_TABLE_DEPOSIT, t("balance_required")),
       minBet: Yup.number().when("type", {
         is: TABLE_TYPES.Roulette,
         then: (schema) => schema.min(MIN_BET, t("balance_required")),
@@ -45,17 +40,12 @@ const TableModal = ({ onSubmit }) => {
         otherwise: (schema) => schema.notRequired()
       }),
       polygonCount: Yup.number().when("type", {
-        is: TABLE_TYPES.Lottery,
+        is: TABLE_TYPES.Polygons,
         then: (schema) => schema.min(MIN_POLYGONS).max(MAX_POLYGONS),
         otherwise: (schema) => schema.notRequired()
       }),
-      winPercent: Yup.number().when("type", {
-        is: TABLE_TYPES.Lottery,
-        then: (schema) => schema.min(MIN_CHANCE).max(MAX_CHANCE),
-        otherwise: (schema) => schema.notRequired()
-      }),
       ticketPrice: Yup.number().when("type", {
-        is: TABLE_TYPES.Lottery,
+        is: TABLE_TYPES.Polygons,
         then: (schema) => schema.min(MIN_BET, t("balance_required")),
         otherwise: (schema) => schema.notRequired()
       })
@@ -63,13 +53,13 @@ const TableModal = ({ onSubmit }) => {
     onSubmit: async (values, form) => {
       form.setSubmitting(true)
       try {
+        const polygonCount = _.clamp(_.round(Number(values.polygonCount) || 0), MIN_POLYGONS, MAX_POLYGONS)
         await onSubmit({
           ...values,
           balance: clampEth(values.balance),
           minBet: clampEth(values.minBet),
           maxBet: clampEth(values.maxBet),
-          polygonCount: _.clamp(_.round(Number(values.polygonCount) || 0), MIN_POLYGONS, MAX_POLYGONS),
-          winPercent: _.clamp(_.round(Number(values.winPercent) || 0, 2), MIN_CHANCE, MAX_CHANCE),
+          polygonCount,
           ticketPrice: clampEth(values.ticketPrice)
         })
         hideModal()
@@ -79,7 +69,7 @@ const TableModal = ({ onSubmit }) => {
     }
   })
 
-  const isLottery = formik.values.type === TABLE_TYPES.Lottery
+  const isPolygons = formik.values.type === TABLE_TYPES.Polygons
 
   return (
     <Modal
@@ -109,27 +99,25 @@ const TableModal = ({ onSubmit }) => {
         }}
         data={[
           { label: "Roulette", value: TABLE_TYPES.Roulette },
-          { label: "Lottery", value: TABLE_TYPES.Lottery }
+          { label: "Polygons", value: TABLE_TYPES.Polygons }
         ]}
       />
-      {!isLottery &&
-        <NumberInput
-          className={cn("table-modal-amount")}
-          label={`Amount (${symbol})`}
-          min={MIN_TABLE_DEPOSIT}
-          step={0.01}
-          decimalScale={2}
-          allowDecimal
-          allowNegative={false}
-          clampBehavior="strict"
-          mt="md"
-          value={formik.values.balance}
-          onChange={(value) => {
-            formik.setFieldValue("balance", value)
-          }}
-        />
-      }
-      {!isLottery &&
+      <NumberInput
+        className={cn("table-modal-amount")}
+        label={`Amount (${symbol})`}
+        min={MIN_TABLE_DEPOSIT}
+        step={0.01}
+        decimalScale={2}
+        allowDecimal
+        allowNegative={false}
+        clampBehavior="strict"
+        mt="md"
+        value={formik.values.balance}
+        onChange={(value) => {
+          formik.setFieldValue("balance", value)
+        }}
+      />
+      {!isPolygons &&
         <Group className={cn("table-modal-limits")} grow align="flex-start" mt="md">
           <NumberInput
             className={cn("table-modal-min")}
@@ -161,8 +149,8 @@ const TableModal = ({ onSubmit }) => {
           />
         </Group>
       }
-      {isLottery &&
-        <>
+      {isPolygons &&
+        <Group className={cn("table-modal-lottery")} grow align="flex-start" mt="md">
           <NumberInput
             className={cn("table-modal-polygons")}
             label="Polygons"
@@ -171,53 +159,35 @@ const TableModal = ({ onSubmit }) => {
             step={1}
             allowDecimal={false}
             allowNegative={false}
-            mt="md"
             value={formik.values.polygonCount}
             onChange={(value) => {
               formik.setFieldValue("polygonCount", value)
             }}
           />
-          <Group className={cn("table-modal-lottery")} grow align="flex-start" mt="md">
-            <NumberInput
-              className={cn("table-modal-chance")}
-              label="Chance"
-              min={MIN_CHANCE}
-              max={MAX_CHANCE}
-              step={0.01}
-              decimalScale={2}
-              suffix="%"
-              allowDecimal
-              allowNegative={false}
-              value={formik.values.winPercent}
-              onChange={(value) => {
-                formik.setFieldValue("winPercent", value)
-              }}
-            />
-            <NumberInput
-              className={cn("table-modal-ticket")}
-              label="Ticket"
-              min={MIN_BET}
-              step={0.01}
-              decimalScale={2}
-              allowDecimal
-              allowNegative={false}
-              clampBehavior="strict"
-              value={formik.values.ticketPrice}
-              onChange={(value) => {
-                formik.setFieldValue("ticketPrice", value)
-              }}
-            />
-          </Group>
-        </>
+          <NumberInput
+            className={cn("table-modal-ticket")}
+            label="Ticket"
+            min={MIN_BET}
+            step={0.01}
+            decimalScale={2}
+            allowDecimal
+            allowNegative={false}
+            clampBehavior="strict"
+            value={formik.values.ticketPrice}
+            onChange={(value) => {
+              formik.setFieldValue("ticketPrice", value)
+            }}
+          />
+        </Group>
       }
-      {!isLottery &&
+      {!isPolygons &&
         <Text className={cn("table-modal-hint")} size="sm" c="dimmed" mt="xs">
           Minimum {MIN_TABLE_DEPOSIT} {symbol}. Bankroll under {LOW_BANKROLL_MULTIPLIER}× max is shown as low.
         </Text>
       }
-      {isLottery &&
+      {isPolygons &&
         <Text className={cn("table-modal-hint")} size="sm" c="dimmed" mt="xs">
-          A winning ticket reveals one polygon.
+          Minimum {MIN_TABLE_DEPOSIT} {symbol}. Win and lose cells are numbered 1–n. House matches the lose sum; winners split by number.
         </Text>
       }
       <Group className={cn("table-modal-actions")} justify="flex-end" gap="sm" mt="md">

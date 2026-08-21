@@ -12,7 +12,7 @@ interface INamedGame {
 contract GameFactory {
 	enum GameType {
 		Roulette,
-		Lottery
+		Polygons
 	}
 
 	struct GameInfo {
@@ -40,8 +40,9 @@ contract GameFactory {
 		if (gameType == GameType.Roulette) {
 			require(msg.value >= 1 ether, "Min deposit 1");
 			game = address(new Roulette{value: msg.value}(name, msg.sender, a, b));
-		} else if (gameType == GameType.Lottery) {
-			game = address(new Lottery{value: msg.value}(name, msg.sender, a, b, c));
+		} else if (gameType == GameType.Polygons) {
+			require(msg.value >= 1 ether, "Min deposit 1");
+			game = address(new Lottery{value: msg.value}(name, msg.sender, a, c));
 		} else {
 			revert("Unsupported game type");
 		}

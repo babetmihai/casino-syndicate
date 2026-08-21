@@ -3,25 +3,13 @@ import { actions } from "app/core/store"
 import { EMPTY_OBJECT } from "app/core"
 import { generateContract, getContract, sendTx } from "app/core/contracts"
 import { selectAuth } from "app/core/auth"
-import { formatEth } from "app/games/roulette/chips"
+import { formatEth, parseEth } from "app/games/roulette/chips"
 import LotteryArtifact from "artifacts/contracts/Lottery.sol/Lottery.json"
 import _ from "lodash"
 
 export const MIN_POLYGONS = 3
-export const MAX_POLYGONS = 48
-export const MIN_CHANCE = 0.01
-export const MAX_CHANCE = 100
-export const CHANCE_SCALE = 100
-
-export const parseChance = (percent) => {
-  const bps = _.round((Number(percent) || 0) * CHANCE_SCALE)
-  return _.clamp(bps, 1, MAX_CHANCE * CHANCE_SCALE)
-}
-
-export const formatChance = (bps) => _.round(Number(bps || 0) / CHANCE_SCALE, 2)
-
-export const chanceLabel = (percent) => `${_.round(Number(percent) || 0, 2)}%`
-export const TICKET_MULTIPLIERS = [1, 5, 10, 25]
+export const MAX_POLYGONS = 24
+export const TICKET_MULTIPLIERS = [1, 5, 10]
 export const ticketGas = (count) => 400000n + BigInt(count) * 200000n
 
 
@@ -50,11 +38,15 @@ export const fetchLottery = async (address) => {
   const tableAddress = ethers.getAddress(address)
   actions.update(lotteryPath(address), {
     polygonCount: Number(row.polygonCount),
-    winPercent: formatChance(row.winPercent),
+    loseCount: Number(row.loseCount),
     ticketPrice: formatEth(await contract.ticketPrice()),
     claimedCount: Number(row.claimedCount),
+    loseLit: Number(row.loseLit),
     prize: formatEth(row.prize),
     myPrize: formatEth(row.myPrize),
+    memberShares: formatEth(row.memberShares),
+    totalBalance: formatEth(row.totalBalance),
+    lastWithdrawAt: Number(row.lastWithdrawAt),
     owner,
     owners
   })
@@ -95,7 +87,6 @@ export const buyLotteryTicket = async (address, count = 1) => {
   })
   const lastTicket = readTicket(contract, receipt)
   if (lastTicket) actions.update(lotteryPath(address), { lastTicket })
-  await fetchLottery(address)
   return lastTicket
 }
 
@@ -106,11 +97,26 @@ export const withdrawLotteryPrize = async (address) => {
   await fetchLottery(address)
 }
 
+export const depositLotteryShares = async ({ balance }, address) => {
+  const contract = await generateContract(address, LotteryArtifact.abi)
+  await sendTx(contract.depositShares, [], {
+    value: parseEth(balance)
+  })
+  await fetchLottery(address)
+}
+
+export const withdrawLotteryShares = async ({ balance }, address) => {
+  const contract = await generateContract(address, LotteryArtifact.abi)
+  await sendTx(contract.withdrawShares, [parseEth(balance)])
+  await fetchLottery(address)
+}
+
 
 const readTicket = (contract, receipt) => {
   const { logs = [] } = receipt || {}
   const draws = []
   let settled = false
+  let playersWin
   let roundPrize
   let roundOwners
   let refundAmount
@@ -122,6 +128,7 @@ const readTicket = (contract, receipt) => {
       if (name === "Settled") {
         settled = true
         roundPrize = formatEth(args.prize)
+        playersWin = args.playersWin
         roundOwners = _.map(args.owners || [], (item) => {
           if (!item || item === ethers.ZeroAddress) return null
           return ethers.getAddress(item)
@@ -144,14 +151,18 @@ const readTicket = (contract, receipt) => {
   if (draws.length === 0) return
   const claimed = _.filter(draws, "assigned")
   const last = _.last(claimed) || _.last(draws)
-  const takenIds = _.uniq(_.map(_.filter(draws, (draw) => draw.won && !draw.assigned), "polygonId"))
+  const takenIds = _.uniq(_.map(_.filter(draws, (draw) => !draw.assigned), "polygonId"))
   return {
     ...last,
     assignedCount: claimed.length,
     wonCount: _.filter(draws, "won").length,
+    loseAssignedCount: _.filter(draws, (draw) => draw.assigned && !draw.won).length,
+    winAssignedCount: _.filter(draws, (draw) => draw.assigned && draw.won).length,
     drawCount: draws.length,
+    draws,
     takenIds,
     settled,
+    playersWin,
     roundPrize,
     roundOwners,
     refundCount,

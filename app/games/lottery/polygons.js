@@ -8,18 +8,24 @@ export const seedFromAddress = (address) => {
   return parseInt(String(address).replace("0x", "").slice(0, 8), 16)
 }
 
-export const buildPolygons = (seed, count) => {
+export const buildPolygons = (seed, count, winCount) => {
   const rng = mulberry32(seed >>> 0)
-  let sites = jitteredSites(count, rng)
+  let wins = count
+  if (winCount) wins = winCount
+  const loses = count - wins
+  const outer = ringSites(loses, rng)
+  let inner = diskSites(wins, rng)
   _.times(LLOYD_STEPS, () => {
-    const cells = _.map(sites, (site, index) => voronoiCell(site, index, sites))
-    sites = _.map(cells, (points, index) => {
-      if (points.length < 3) return sites[index]
-      return centroid(points)
+    const sites = inner.concat(outer)
+    inner = _.map(inner, (site, index) => {
+      const points = voronoiCell(site, index, sites)
+      if (points.length < 3) return site
+      return polygonCentroid(points)
     })
   })
+  const sites = inner.concat(outer)
   return _.map(sites, (site, index) => {
-    const points = voronoiCell(site, index, sites)
+    const points = insetPoints(voronoiCell(site, index, sites))
     return {
       id: index,
       points,
@@ -29,18 +35,25 @@ export const buildPolygons = (seed, count) => {
 }
 
 export const ownerFill = (address, isMine) => {
-  if (!address) return "var(--color-cs-elevated)"
-  if (isMine) return "rgb(45 212 191 / 0.42)"
+  if (!address) return "var(--cs-bg)"
+  if (isMine) return "var(--cs-accent-dim)"
   const hue = ownerHue(address)
-  return `hsl(${hue} 42% 36% / 0.78)`
+  return `hsl(${hue} 42% 28%)`
 }
 
 export const ownerStroke = (address, isMine) => {
   if (!address) return "var(--color-cs-border)"
-  if (isMine) return "var(--color-cs-accent)"
+  if (isMine) return "var(--cs-accent)"
   const hue = ownerHue(address)
-  return `hsl(${hue} 48% 62%)`
+  return `hsl(${hue} 48% 52%)`
 }
+
+export const LOSE_FILL = "rgb(22 12 14)"
+export const LOSE_STROKE = "rgb(90 40 48 / 0.7)"
+export const LIT_WIN_FILL = "var(--cs-accent-dim)"
+export const LIT_WIN_STROKE = "var(--cs-accent)"
+export const LIT_LOSE_FILL = "rgb(180 50 60 / 0.42)"
+export const LIT_LOSE_STROKE = "rgb(248 113 113)"
 
 
 const ownerHue = (address) => parseInt(String(address).slice(2, 8), 16) % 360
@@ -56,21 +69,62 @@ const mulberry32 = (seed) => {
   }
 }
 
-const jitteredSites = (count, rng) => {
-  const cols = Math.ceil(Math.sqrt(count))
-  const rows = Math.ceil(count / cols)
-  return _.map(_.range(count), (index) => {
-    const row = Math.floor(index / cols)
-    const col = index % cols
-    let colsInRow = cols
-    if (row === rows - 1) colsInRow = count - row * cols
-    const x = (col + 0.5) / colsInRow
-    const y = (row + 0.5) / rows
-    const jx = (rng() - 0.5) * 0.55 / colsInRow
-    const jy = (rng() - 0.5) * 0.55 / rows
+const CELL_INSET = 0.006
+
+const insetPoints = (points) => {
+  const c = polygonCentroid(points)
+  return _.map(points, (point) => {
+    const dx = c[0] - point[0]
+    const dy = c[1] - point[1]
+    const len = Math.hypot(dx, dy)
+    if (len < 1e-9) return point
+    let move = CELL_INSET
+    if (move > len * 0.35) move = len * 0.35
+    return [point[0] + (dx / len) * move, point[1] + (dy / len) * move]
+  })
+}
+
+const GOLDEN = Math.PI * (3 - Math.sqrt(5))
+const INNER_R = 0.3
+const RING_INSET = 0.07
+
+const diskSites = (count, rng) => {
+  return _.map(_.range(count), (i) => {
+    const r = INNER_R * Math.sqrt((i + 0.5) / count)
+    const theta = i * GOLDEN + (rng() - 0.5) * 0.35
     return [
-      _.clamp(x + jx, 0.04, 0.96),
-      _.clamp(y + jy, 0.04, 0.96)
+      _.clamp(0.5 + r * Math.cos(theta), 0.18, 0.82),
+      _.clamp(0.5 + r * Math.sin(theta), 0.18, 0.82)
+    ]
+  })
+}
+
+const ringSites = (count, rng) => {
+  const side = 1 - 2 * RING_INSET
+  const perim = 4 * side
+  return _.map(_.range(count), (i) => {
+    const jitter = (rng() - 0.5) * 0.4
+    let u = (i + 0.5 + jitter) / count
+    u = (u % 1 + 1) % 1
+    const d = u * perim
+    let x = RING_INSET
+    let y = RING_INSET
+    if (d < side) {
+      x = RING_INSET + d
+      y = RING_INSET
+    } else if (d < 2 * side) {
+      x = 1 - RING_INSET
+      y = RING_INSET + (d - side)
+    } else if (d < 3 * side) {
+      x = 1 - RING_INSET - (d - 2 * side)
+      y = 1 - RING_INSET
+    } else {
+      x = RING_INSET
+      y = 1 - RING_INSET - (d - 3 * side)
+    }
+    return [
+      _.clamp(x, 0.04, 0.96),
+      _.clamp(y, 0.04, 0.96)
     ]
   })
 }
@@ -112,7 +166,12 @@ const clipHalfPlane = (poly, nx, ny, px, py) => {
   return out
 }
 
-const centroid = (points) => {
+export const cellNumber = (id, winCount) => {
+  if (id >= winCount) return -(id - winCount + 1)
+  return id + 1
+}
+
+export const polygonCentroid = (points) => {
   let area = 0
   let x = 0
   let y = 0

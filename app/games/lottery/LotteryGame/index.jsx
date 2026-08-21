@@ -2,7 +2,7 @@ import React from "react"
 import { createPortal } from "react-dom"
 import _ from "lodash"
 import { Button, Card, Text } from "@mantine/core"
-import { buyLotteryTicket, chanceLabel, fetchLottery, selectLottery, TICKET_MULTIPLIERS, withdrawLotteryPrize } from ".."
+import { buyLotteryTicket, chanceLabel, fetchLottery, selectLottery, TICKET_MULTIPLIERS, unwatchLottery, watchLottery, withdrawLotteryPrize } from ".."
 import { useSelector } from "react-redux"
 import { fetchBalance, selectAuth } from "app/core/auth"
 import { showModal } from "app/core/modals"
@@ -61,6 +61,8 @@ const LotteryGame = React.memo(({ address }) => {
 
   React.useEffect(() => {
     fetchLottery(address)
+    watchLottery(address)
+    return () => unwatchLottery(address)
   }, [address, account])
 
   React.useEffect(() => {

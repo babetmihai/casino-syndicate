@@ -784,6 +784,56 @@ describe("UI flow: create, view, play lottery", () => {
     expect(next.claimedCount).to.be.lte(2n)
   })
 
+  it("keeps each winner on their own round if another round settles first", async () => {
+    const [creator, player, other] = await ethers.getSigners()
+    const factory = await deployFactory()
+    const price = ethers.parseEther("0.01")
+    const createTx = await factory.connect(creator).createGame(
+      "Stack Map",
+      TABLE_TYPE_IDS.Lottery,
+      3,
+      10000,
+      price
+    )
+    const lottery = await ethers.getContractAt("Lottery", createdAddress(factory, await createTx.wait()))
+    const firstTx = await lottery.connect(player).buyTickets(25, { value: price * 25n })
+    const firstSettled = parseSettled(lottery, await firstTx.wait())
+    expect(firstSettled).to.not.equal(undefined)
+    const firstPrize = firstSettled.args.prize
+    const firstOwners = firstSettled.args.owners
+    const heldFirst = await lottery.connect(player).getTable()
+    expect(heldFirst.claimedCount).to.equal(3n)
+    expect(heldFirst.prize).to.equal(firstPrize)
+    expect(heldFirst.owners).to.deep.equal(firstOwners)
+
+    const secondTx = await lottery.connect(other).buyTickets(25, { value: price * 25n })
+    const secondSettled = parseSettled(lottery, await secondTx.wait())
+    expect(secondSettled).to.not.equal(undefined)
+    const secondPrize = secondSettled.args.prize
+    const secondOwners = secondSettled.args.owners
+    const stillFirst = await lottery.connect(player).getTable()
+    expect(stillFirst.claimedCount).to.equal(3n)
+    expect(stillFirst.prize).to.equal(firstPrize)
+    expect(stillFirst.myPrize).to.equal(firstPrize)
+    expect(stillFirst.owners).to.deep.equal(firstOwners)
+    const heldSecond = await lottery.connect(other).getTable()
+    expect(heldSecond.claimedCount).to.equal(3n)
+    expect(heldSecond.prize).to.equal(secondPrize)
+    expect(heldSecond.owners).to.deep.equal(secondOwners)
+    const live = await lottery.connect(creator).getTable()
+    expect(live.claimedCount).to.equal(0n)
+    expect(live.prize).to.equal(0n)
+    expect(live.owners.filter((owner) => owner !== ethers.ZeroAddress).length).to.equal(0)
+
+    await (await lottery.connect(player).withdrawPrize()).wait()
+    const afterFirst = await lottery.connect(player).getTable()
+    expect(afterFirst.myPrize).to.equal(0n)
+    expect(afterFirst.claimedCount).to.equal(0n)
+    const stillSecond = await lottery.connect(other).getTable()
+    expect(stillSecond.owners).to.deep.equal(secondOwners)
+    expect(stillSecond.prize).to.equal(secondPrize)
+  })
+
   it("edits only the name through the factory", async () => {
     const [creator, player] = await ethers.getSigners()
     const factory = await deployFactory()

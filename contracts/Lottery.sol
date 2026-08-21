@@ -16,8 +16,11 @@ contract Lottery {
 
 	mapping(uint256 => address) public polygonOwner;
 	mapping(address => uint256) public prizes;
-	address[] private lastOwners;
-	uint256 private lastPrize;
+	uint256 private settleCount;
+	mapping(uint256 => address[]) private settledOwners;
+	mapping(uint256 => uint256) private settledPrize;
+	mapping(uint256 => uint256) private heldCount;
+	mapping(address => uint256) private heldSettle;
 
 	uint256 public constant MIN_POLYGONS = 3;
 	uint256 public constant MAX_POLYGONS = 48;
@@ -63,20 +66,21 @@ contract Lottery {
 	}
 
 	function getTable() public view returns (TableDTO memory) {
-		bool holding = prizes[msg.sender] > 0 && lastOwners.length == polygonCount;
+		uint256 held = heldSettle[msg.sender];
+		bool holding = prizes[msg.sender] > 0 && held != 0;
 		address[] memory owners = new address[](polygonCount);
 		uint256 shownClaimed = claimedCount;
 		uint256 pot = address(this).balance - reserved;
 		for (uint256 i = 0; i < polygonCount; i++) {
 			if (holding) {
-				owners[i] = lastOwners[i];
+				owners[i] = settledOwners[held][i];
 			} else {
 				owners[i] = polygonOwner[i];
 			}
 		}
 		if (holding) {
 			shownClaimed = polygonCount;
-			pot = lastPrize;
+			pot = settledPrize[held];
 		}
 		return TableDTO({
 			polygonCount: polygonCount,
@@ -101,6 +105,18 @@ contract Lottery {
 		require(amount > 0, "No prize");
 		prizes[msg.sender] = 0;
 		reserved -= amount;
+		uint256 id = heldSettle[msg.sender];
+		delete heldSettle[msg.sender];
+		if (id != 0) {
+			uint256 left = heldCount[id] - 1;
+			if (left == 0) {
+				delete heldCount[id];
+				delete settledPrize[id];
+				delete settledOwners[id];
+			} else {
+				heldCount[id] = left;
+			}
+		}
 		emit PrizePaid(msg.sender, amount);
 		payable(msg.sender).transfer(amount);
 	}
@@ -172,8 +188,22 @@ contract Lottery {
 		prizes[last] += remainder;
 		reserved += pot;
 		claimedCount = 0;
-		lastOwners = roundOwners;
-		lastPrize = pot;
+		settleCount++;
+		uint256 id = settleCount;
+		uint256 holders = 0;
+		for (uint256 i = 0; i < polygonCount; i++) {
+			address owner = roundOwners[i];
+			if (heldSettle[owner] != 0) {
+				continue;
+			}
+			heldSettle[owner] = id;
+			holders++;
+		}
+		if (holders > 0) {
+			settledOwners[id] = roundOwners;
+			settledPrize[id] = pot;
+			heldCount[id] = holders;
+		}
 		emit Settled(pot, roundOwners);
 	}
 }

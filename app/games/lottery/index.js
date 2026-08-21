@@ -1,7 +1,7 @@
 import { ethers } from "ethers"
 import { actions } from "app/core/store"
 import { EMPTY_OBJECT } from "app/core"
-import { generateContract, sendTx } from "app/core/contracts"
+import { generateContract, getContract, sendTx } from "app/core/contracts"
 import { selectAuth } from "app/core/auth"
 import { formatEth } from "app/games/roulette/chips"
 import LotteryArtifact from "artifacts/contracts/Lottery.sol/Lottery.json"
@@ -34,7 +34,8 @@ export const selectLottery = (address) => {
 }
 
 export const fetchLottery = async (address) => {
-  const contract = await generateContract(address, LotteryArtifact.abi)
+  let contract = getContract(address)
+  if (!contract) contract = await generateContract(address, LotteryArtifact.abi)
   const { account } = selectAuth() || {}
   let overrides = {}
   if (account) overrides = { from: account }
@@ -60,6 +61,28 @@ export const fetchLottery = async (address) => {
   if (owner) {
     actions.update(`tables.${tableAddress}`, { createdBy: owner })
   }
+}
+
+
+const lotteryWatches = {}
+
+export const watchLottery = (address) => {
+  if (!address || !ethers.isAddress(address)) return
+  const key = ethers.getAddress(address)
+  if (lotteryWatches[key]) return
+  const refresh = _.debounce(() => fetchLottery(address), 200)
+  lotteryWatches[key] = { refresh, timer: setInterval(refresh, 1500) }
+}
+
+export const unwatchLottery = (address) => {
+  if (!address || !ethers.isAddress(address)) return
+  const key = ethers.getAddress(address)
+  const watch = lotteryWatches[key]
+  if (!watch) return
+  const { refresh, timer } = watch || {}
+  clearInterval(timer)
+  refresh.cancel()
+  delete lotteryWatches[key]
 }
 
 export const buyLotteryTicket = async (address, count = 1) => {

@@ -1,7 +1,7 @@
 import React from "react"
 import { Button, Card, CopyButton, Text } from "@mantine/core"
 import { useSelector } from "react-redux"
-import { chanceLabel, fetchLottery, selectLottery } from ".."
+import { chanceLabel, fetchLottery, selectLottery, unwatchLottery, watchLottery } from ".."
 import { selectAuth } from "app/core/auth"
 import { cn } from "app/core"
 import { ethLabel } from "app/games/roulette/chips"
@@ -18,6 +18,8 @@ const LotteryAdmin = ({ address }) => {
 
   React.useEffect(() => {
     fetchLottery(address)
+    watchLottery(address)
+    return () => unwatchLottery(address)
   }, [address, account])
 
   return (

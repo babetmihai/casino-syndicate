@@ -5,6 +5,7 @@ import { chainFromId, isLocalChain, LOCAL_CHAIN_ID, setChain, targetChainId } fr
 
 const contracts = {}
 let provider
+const LOCAL_HEAD_KEY = "casino-syndicate.localHead"
 
 const { VITE_FACTORY_ADDRESS } = import.meta.env
 const { rpcUrl: LOCAL_RPC_URL } = chainFromId(LOCAL_CHAIN_ID)
@@ -17,16 +18,72 @@ const getLocalRpc = () => {
   return localRpc
 }
 
+const isWalletMethod = (method) => {
+  if (!method) return true
+  if (method.startsWith("wallet_")) return true
+  if (method.startsWith("metamask_")) return true
+  if (method.startsWith("eth_signTypedData")) return true
+  if (method === "eth_sendTransaction") return true
+  if (method === "eth_signTransaction") return true
+  if (method === "eth_sign") return true
+  if (method === "personal_sign") return true
+  if (method === "eth_accounts") return true
+  if (method === "eth_requestAccounts") return true
+  if (method === "eth_chainId") return true
+  if (method === "net_version") return true
+  return false
+}
+
+const localWallet = () => ({
+  request: async ({ method, params }) => {
+    if (isWalletMethod(method)) return window.ethereum.request({ method, params })
+    return getLocalRpc().send(method, params || [])
+  },
+  on: (...args) => window.ethereum.on(...args),
+  removeListener: (...args) => window.ethereum.removeListener(...args)
+})
+
+const createBrowserProvider = () => {
+  if (isLocalChain(targetChainId()) && window.ethereum) {
+    return new ethers.BrowserProvider(localWallet())
+  }
+  return new ethers.BrowserProvider(window.ethereum)
+}
+
+const readHead = () => Number(window.localStorage.getItem(LOCAL_HEAD_KEY) || 0)
+
+const writeHead = (block) => {
+  window.localStorage.setItem(LOCAL_HEAD_KEY, String(block))
+}
+
+const syncLocalHead = async () => {
+  const rpc = getLocalRpc()
+  const nodeBlock = await rpc.getBlockNumber()
+  let saved = readHead()
+  if (saved === 0) saved = 256
+  let target = nodeBlock
+  if (saved > target) target = saved
+  if (target <= nodeBlock) {
+    writeHead(nodeBlock)
+    return
+  }
+  await rpc.send("hardhat_mine", [ethers.toQuantity(target - nodeBlock)])
+  writeHead(await rpc.getBlockNumber())
+}
+
 
 export const resetProvider = () => {
   provider = undefined
 }
 
 const getProvider = () => {
-  if (!provider) {
-    provider = new ethers.BrowserProvider(window.ethereum)
-  }
+  if (!provider) provider = createBrowserProvider()
   return provider
+}
+
+const getReadProvider = () => {
+  if (isLocalChain(targetChainId())) return getLocalRpc()
+  return getProvider()
 }
 
 export const syncWalletChain = async () => {
@@ -61,7 +118,7 @@ const ensureNetwork = async () => {
     })
   }
 
-  provider = new ethers.BrowserProvider(window.ethereum)
+  resetProvider()
 }
 
 
@@ -69,12 +126,12 @@ export const getSigner = async () => {
   if (!window.ethereum) throw new Error("Please install MetaMask!")
   await window.ethereum.request({ method: "eth_requestAccounts" })
   await ensureNetwork()
-  provider = new ethers.BrowserProvider(window.ethereum)
-  const signer = await provider.getSigner()
-  const network = await provider.getNetwork()
+  const signer = await getProvider().getSigner()
+  const network = await getProvider().getNetwork()
   setChain(network.chainId)
   if (isLocalChain(network.chainId)) {
     await fundAccount(await signer.getAddress())
+    await syncLocalHead()
   }
   return signer
 }
@@ -92,7 +149,7 @@ export const fundAccount = async (address) => {
 }
 
 export const getBalance = async (address) => {
-  return getProvider().getBalance(ethers.getAddress(address))
+  return getReadProvider().getBalance(ethers.getAddress(address))
 }
 
 
@@ -106,12 +163,14 @@ export const generateContract = async (address, abi = RouletteArtifact.abi) => {
   const checksummed = ethers.getAddress(address)
   const signer = await getSigner()
   let retries = 5
+  let code = "0x"
   while (retries > 0) {
-    const code = await getProvider().getCode(checksummed)
+    code = await getReadProvider().getCode(checksummed)
     if (code !== "0x") break
     await new Promise((resolve) => setTimeout(resolve, 1000))
     retries -= 1
   }
+  if (code === "0x") throw new Error("Contract is not deployed")
   const contract = new ethers.Contract(checksummed, abi, signer)
   contracts[checksummed] = contract
   return contract
@@ -121,7 +180,7 @@ export const generateContract = async (address, abi = RouletteArtifact.abi) => {
 export const getFactory = async () => {
   if (!VITE_FACTORY_ADDRESS) throw new Error("Missing VITE_FACTORY_ADDRESS")
   const signer = await getSigner()
-  const code = await getProvider().getCode(VITE_FACTORY_ADDRESS)
+  const code = await getReadProvider().getCode(VITE_FACTORY_ADDRESS)
   if (code === "0x") {
     const { name } = chainFromId(targetChainId())
     throw new Error(`Factory is not deployed on ${name}`)
@@ -131,12 +190,21 @@ export const getFactory = async () => {
 
 export const sendTx = async (method, args, overrides) => {
   const params = args || []
-  const extra = overrides || {}
+  const extra = { ...(overrides || {}) }
+  if (isLocalChain(targetChainId())) {
+    await syncLocalHead()
+    const signer = await getSigner()
+    extra.nonce = await getLocalRpc().getTransactionCount(await signer.getAddress(), "latest")
+  }
   let { gasLimit } = extra
   if (!gasLimit) {
     const gas = await method.estimateGas(...params, extra)
     gasLimit = gas * 15n / 10n
   }
   const tx = await method(...params, { ...extra, gasLimit })
-  return tx.wait()
+  const receipt = await tx.wait()
+  if (isLocalChain(targetChainId())) {
+    writeHead(await getLocalRpc().getBlockNumber())
+  }
+  return receipt
 }

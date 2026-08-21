@@ -50,11 +50,6 @@ const LotteryMap = ({ address, owners = [], polygonCount, loseCount = 0, account
           stroke = LIT_WIN_STROKE
         }
         const points = _.map(polygon.points, (point) => point.join(",")).join(" ")
-        const center = polygonCentroid(polygon.points)
-        let numberFill = "var(--cs-accent)"
-        if (isMine && !isLose) numberFill = "var(--cs-bg)"
-        if (isLit && !isLose && !isOccupied) numberFill = "var(--cs-bg)"
-        if (isOccupied && !isMine && !isLose) numberFill = "var(--cs-text)"
         let glow = "var(--cs-accent)"
         if (isLose) glow = "var(--cs-accent-2)"
         const showGlow = isOccupied || isLit
@@ -101,21 +96,31 @@ const LotteryMap = ({ address, owners = [], polygonCount, loseCount = 0, account
                 <title>{owner}</title>
               }
             </polygon>
-            {!isLose &&
-              <text
-                className={cn("lottery-map-number", "pointer-events-none select-none")}
-                x={center[0]}
-                y={center[1]}
-                textAnchor="middle"
-                dominantBaseline="central"
-                fontSize={_.clamp(0.22 / Math.sqrt(count), 0.02, 0.045)}
-                fontFamily="JetBrains Mono, ui-monospace, monospace"
-                fill={numberFill}
-              >
-                {cellNumber(polygon.id)}
-              </text>
-            }
           </g>
+        )
+      })}
+      {_.map(polygons, (polygon) => {
+        if (polygon.id >= winCount) return null
+        const owner = owners[polygon.id]
+        if (!owner) return null
+        const isMine = account && ethers.getAddress(owner) === ethers.getAddress(account)
+        const center = polygonCentroid(polygon.points)
+        let numberFill = "#eef2f6"
+        if (isMine) numberFill = "#0a0e14"
+        return (
+          <text
+            key={`n-${polygon.id}`}
+            className={cn("lottery-map-number", "pointer-events-none select-none")}
+            x={center[0]}
+            y={center[1]}
+            textAnchor="middle"
+            dominantBaseline="central"
+            fontSize={_.clamp(0.22 / Math.sqrt(count), 0.02, 0.045)}
+            fontFamily="JetBrains Mono, ui-monospace, monospace"
+            fill={numberFill}
+          >
+            {cellNumber(polygon.id)}
+          </text>
         )
       })}
     </svg>

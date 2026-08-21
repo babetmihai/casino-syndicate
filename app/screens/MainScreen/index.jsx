@@ -139,7 +139,7 @@ const TableCard = React.memo(({ table, index }) => {
       </div>
       {hasStats && isPolygons &&
         <div className={cn("table-card-stats", "flex shrink-0 flex-col items-end gap-0.5 text-right")}>
-          <span className={cn("table-card-bankroll", titleClass, "text-base text-cs-accent")}>
+          <span className={cn("table-card-bankroll", titleClass, "text-base", bankrollClass(lotteryBankroll, ticketPrice))}>
             {ethLabel(lotteryBankroll, symbol)}
           </span>
           <Text className={cn("table-card-limits")} size="xs" c="dimmed">

@@ -2,7 +2,7 @@ import React from "react"
 import { createPortal } from "react-dom"
 import _ from "lodash"
 import { Button, Card, Text } from "@mantine/core"
-import { buyLotteryTicket, fetchLottery, selectLottery, TICKET_MULTIPLIERS, unwatchLottery, watchLottery, withdrawLotteryPrize } from ".."
+import { buyLotteryTicket, coverQuote, fetchLottery, selectLottery, unwatchLottery, watchLottery, withdrawLotteryPrize } from ".."
 import { useSelector } from "react-redux"
 import { fetchBalance, selectAuth } from "app/core/auth"
 import { showModal } from "app/core/modals"
@@ -10,13 +10,13 @@ import { cn } from "app/core"
 import AuthModal from "app/core/auth/AuthModal"
 import LotteryMap from "../LotteryMap"
 import { cellSpinOrder, seedFromAddress } from "../polygons"
-import { clampEth, ethLabel } from "app/games/roulette/chips"
+import { bankrollClass, clampEth, ethLabel } from "app/games/roulette/chips"
 import { selectNativeSymbol } from "app/core/chain"
 import { ethers } from "ethers"
 
-const SPIN_MS = 45
-const SLOW_STEPS = 22
-const HOLD_MS = 700
+const SPIN_MS = 28
+const SLOW_STEPS = 14
+const HOLD_MS = 420
 
 
 const LotteryGame = React.memo(({ address }) => {
@@ -25,15 +25,14 @@ const LotteryGame = React.memo(({ address }) => {
   const [revealing, setRevealing] = React.useState(false)
   const [litIds, setLitIds] = React.useState([])
   const [showBanner, setShowBanner] = React.useState(false)
-  const [multiplier, setMultiplier] = React.useState(1)
   const [holdingSpin, setHoldingSpin] = React.useState(false)
   const stopFlash = React.useRef()
   const holdTimer = React.useRef()
   const { account } = useSelector(() => selectAuth()) || {}
   const lottery = useSelector(() => selectLottery(address)) || {}
   const symbol = useSelector(() => selectNativeSymbol())
-  const { polygonCount, loseCount, ticketPrice, claimedCount, loseLit, prize, myPrize, owners = [], lastTicket, totalBalance } = lottery
-  const { assignedCount = 0, settled, playersWin, roundPrize, takenIds = [] } = lastTicket || {}
+  const { polygonCount, loseCount, ticketPrice, claimedCount, loseLit, prize, myPrize, owners = [], pluses = [], lastTicket, totalBalance } = lottery
+  const { assignedCount = 0, settled, playersWin, roundPrize, takenIds = [], plusIds = [], plusLevel = 0, roundPluses } = lastTicket || {}
   const hasPrize = clampEth(myPrize) > 0
   const pending = hasPrize
   const mineCount = _.filter(owners, (owner, index) => {
@@ -42,27 +41,34 @@ const LotteryGame = React.memo(({ address }) => {
   }).length
   const roundOpen = (claimedCount || 0) < (polygonCount || 0) && (loseLit || 0) < (loseCount || 0)
   const totalCells = (polygonCount || 0) + (loseCount || 0)
-  const totalPrice = clampEth(ticketPrice) * multiplier
-  const canCover = clampEth(totalBalance) >= clampEth(prize) + totalPrice
+  const totalPrice = clampEth(ticketPrice)
+  const bankroll = clampEth(totalBalance)
+  const canCover = bankroll >= coverQuote(lottery, 1)
   const canSpin = account && !buying && roundOpen && canCover && !showBanner && !pending && !revealing
-  const isTaken = takenIds.length > 0 && assignedCount === 0
+  const isPlus = plusLevel > 0 && !settled
+  const isTaken = takenIds.length > 0 && assignedCount === 0 && !isPlus
   const houseWon = settled && !playersWin
   const playersWon = settled && playersWin
   let flashIds = []
-  if (showBanner) flashIds = takenIds
+  if (showBanner && isTaken) flashIds = takenIds
+  if (showBanner && isPlus) flashIds = plusIds
   let bannerLabel
   let bannerHero
   if (isTaken) bannerLabel = "Taken"
-  if (houseWon) {
-    bannerLabel = "House"
-    bannerHero = ethLabel(roundPrize, symbol)
+  if (isPlus) {
+    bannerLabel = "Heat"
+    bannerHero = `+${plusLevel}`
   }
+  if (houseWon) bannerLabel = "House"
   if (playersWon) {
     bannerLabel = "Players"
     bannerHero = ethLabel(roundPrize, symbol)
   }
   let heroClass = "text-[3.5rem]"
-  if (houseWon || playersWon) heroClass = "text-[1.75rem]"
+  if (playersWon) heroClass = "text-[1.75rem]"
+  const redsLeft = (loseCount || 0) - (loseLit || 0)
+  let mapPluses = pluses
+  if (pending && roundPluses && roundPluses.length) mapPluses = roundPluses
   let spinLabel = `Hold to spin · ${ethLabel(totalPrice, symbol)}`
   if (buying || revealing) spinLabel = "Spinning"
   if (!roundOpen) spinLabel = "Closed"
@@ -101,7 +107,7 @@ const LotteryGame = React.memo(({ address }) => {
     setBuying(true)
     unwatchLottery(address)
     try {
-      const ticket = await buyLotteryTicket(address, multiplier)
+      const ticket = await buyLotteryTicket(address)
       if (!ticket) return
       const draws = ticket.draws || []
       const winners = _.map(draws, "polygonId")
@@ -111,8 +117,9 @@ const LotteryGame = React.memo(({ address }) => {
       }
       await fetchLottery(address)
       if (account) fetchBalance(account)
-      const taken = (ticket.takenIds || []).length > 0 && (ticket.assignedCount || 0) === 0
-      if (taken || ticket.settled) setShowBanner(true)
+      const charged = (ticket.plusLevel || 0) > 0
+      const taken = (ticket.takenIds || []).length > 0 && (ticket.assignedCount || 0) === 0 && !charged
+      if (charged || taken || ticket.settled) setShowBanner(true)
     } finally {
       if (stopFlash.current) stopFlash.current()
       stopFlash.current = undefined
@@ -157,10 +164,13 @@ const LotteryGame = React.memo(({ address }) => {
           {account && ` · you ${mineCount}`}
         </Text>
         <Text className={cn("lottery-lose", "shrink-0 whitespace-nowrap")} size="xs" c="dimmed">
-          {loseLit || 0}/{loseCount || 0} lose
+          {redsLeft} reds
         </Text>
-        <Text className={cn("lottery-prize", "shrink-0 whitespace-nowrap text-cs-accent")} size="xs">
+        <Text className={cn("lottery-prize", "shrink-0 whitespace-nowrap")} size="xs" c="dimmed">
           {ethLabel(prize, symbol)}
+        </Text>
+        <Text className={cn("lottery-bankroll", "shrink-0 whitespace-nowrap", bankrollClass(bankroll, ticketPrice))} size="xs">
+          {ethLabel(bankroll, symbol)}
         </Text>
       </div>
       <Card className={cn("lottery-map-card", "flex min-h-0 w-full flex-1 flex-col overflow-hidden")} padding={0}>
@@ -168,11 +178,13 @@ const LotteryGame = React.memo(({ address }) => {
           <LotteryMap
             address={address}
             owners={owners}
+            pluses={mapPluses}
             polygonCount={polygonCount}
             loseCount={loseCount}
             account={account}
             flashIds={flashIds}
             litIds={litIds}
+            plusIds={isPlus ? plusIds : []}
             celebrate={pending && !revealing && playersWin !== false}
           />
           {account && hasPrize && !revealing &&
@@ -193,32 +205,6 @@ const LotteryGame = React.memo(({ address }) => {
           <Button className={cn("lottery-connect", "flex-1")} onClick={() => showModal(AuthModal)}>
             Connect
           </Button>
-        }
-        {account && !pending &&
-          <div className={cn("lottery-multipliers", "flex shrink-0 flex-row gap-1.5")}>
-            {TICKET_MULTIPLIERS.map((value) => {
-              const isCurrent = value === multiplier
-              return (
-                <button
-                  key={value}
-                  type="button"
-                  className={cn(
-                    "lottery-multiplier",
-                    isCurrent && "lottery-multiplier-selected",
-                    "size-8 appearance-none rounded-[0.75rem] border-2 border-transparent font-sans text-[0.75rem] font-medium",
-                    "bg-cs-elevated text-cs-text outline outline-cs-border",
-                    isCurrent && "border-cs-accent text-cs-accent shadow-[0_0_0.75rem_var(--color-cs-accent-glow)]",
-                    "cursor-pointer disabled:cursor-default disabled:opacity-40"
-                  )}
-                  aria-pressed={isCurrent}
-                  disabled={!canSpin}
-                  onClick={() => setMultiplier(value)}
-                >
-                  x{value}
-                </button>
-              )
-            })}
-          </div>
         }
         {account && !pending &&
           <button
@@ -264,9 +250,11 @@ const LotteryGame = React.memo(({ address }) => {
                 "lottery-banner-card",
                 houseWon && "lottery-banner-house",
                 isTaken && "lottery-banner-taken",
+                isPlus && "lottery-banner-plus",
                 "flex min-w-36 flex-col items-center gap-1 text-center animate-banner",
                 playersWon && "bg-cs-accent text-cs-bg",
                 houseWon && "bg-cs-accent-2 text-white",
+                isPlus && "bg-cs-accent text-cs-bg",
                 isTaken && "border-cs-border bg-cs-elevated"
               )}
               shadow="md"
@@ -349,7 +337,7 @@ const runPolygonFlash = ({ from, wheel, getWinner, onTick, onDone }) => {
     if (_.isNumber(winner)) {
       const winnerIndex = _.indexOf(wheel, winner)
       const distance = (winnerIndex - startIndex + n) % n
-      const minSteps = n * 3 + distance
+      const minSteps = n * 2 + distance
       if (steps >= minSteps && index === winnerIndex) {
         onTick(wheel[index])
         onDone(winner)
@@ -359,7 +347,7 @@ const runPolygonFlash = ({ from, wheel, getWinner, onTick, onDone }) => {
       if (steps >= minSteps) remaining = (winnerIndex - index + n) % n
       if (remaining <= SLOW_STEPS) {
         const t = 1 - remaining / SLOW_STEPS
-        delay = SPIN_MS + t * t * t * 560
+        delay = SPIN_MS + t * t * t * 320
       }
     }
 

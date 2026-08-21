@@ -17,7 +17,6 @@ contract Lottery {
 	uint256 public ticketPrice;
 	uint256 public winLit;
 	uint256 public loseLit;
-	uint256 public pot;
 	uint256 public reserved;
 
 	uint256 public totalShares;
@@ -27,6 +26,7 @@ contract Lottery {
 	mapping(address => uint256) private holderIndex;
 
 	mapping(uint256 => address) public cellOwner;
+	mapping(uint256 => uint256) private cellPlus;
 	mapping(address => uint256) public prizes;
 	uint256 private settleCount;
 	mapping(uint256 => address[]) private settledOwners;
@@ -39,6 +39,8 @@ contract Lottery {
 	uint256 public constant CHIP = 0.01 ether;
 	uint256 public constant MIN_DEPOSIT = 1 ether;
 	uint256 public constant WITHDRAW_INTERVAL = 1 days;
+	uint256 private constant HEAT_BASE = 4;
+	uint256 private constant MAX_PLUS = 3;
 
 	uint256 private nonce;
 
@@ -55,12 +57,13 @@ contract Lottery {
 		uint256 lastWithdrawAt;
 		address owner;
 		address[] owners;
+		uint256 plusBits;
 	}
 
-	event TicketBought(address indexed player, bool won, uint256 polygonId, bool assigned);
+	event TicketBought(address indexed player, bool won, uint256 polygonId, bool assigned, uint8 plus);
 	event TicketsRefunded(address indexed player, uint256 count, uint256 amount);
 	event PrizePaid(address indexed player, uint256 amount);
-	event Settled(uint256 prize, address[] owners, bool playersWin);
+	event Settled(uint256 prize, address[] owners, bool playersWin, uint256[] pluses);
 	event Deposited(address indexed user, uint256 amount);
 
 	constructor(
@@ -91,20 +94,23 @@ contract Lottery {
 		uint256 held = heldSettle[msg.sender];
 		bool holding = prizes[msg.sender] > 0 && held != 0;
 		address[] memory owners = new address[](total);
+		uint256 plusBits = 0;
 		uint256 shownWin = winLit;
 		uint256 shownLose = loseLit;
-		uint256 shownPot = pot;
+		uint256 shownPrize = quote();
 		for (uint256 i = 0; i < total; i++) {
 			if (holding && i < polygonCount) {
 				owners[i] = settledOwners[held][i];
 			} else if (!holding) {
 				owners[i] = cellOwner[i];
+				if (i < polygonCount) {
+					plusBits |= cellPlus[i] << (i * 2);
+				}
 			}
 		}
 		if (holding) {
 			shownWin = polygonCount;
-			shownLose = 0;
-			shownPot = settledPrize[held];
+			shownPrize = settledPrize[held];
 		}
 		uint256 bankroll = houseBankroll();
 		uint256 owned = 0;
@@ -117,13 +123,14 @@ contract Lottery {
 			ticketPrice: ticketPrice,
 			claimedCount: shownWin,
 			loseLit: shownLose,
-			prize: shownPot,
+			prize: shownPrize,
 			myPrize: prizes[msg.sender],
 			memberShares: owned,
 			totalBalance: bankroll,
 			lastWithdrawAt: lastWithdrawAt[msg.sender],
 			owner: createdBy,
-			owners: owners
+			owners: owners,
+			plusBits: plusBits
 		});
 	}
 
@@ -134,7 +141,7 @@ contract Lottery {
 	}
 
 	function depositShares() public payable {
-		require(msg.value > 0, "Must send some Ether");
+		require(msg.value > 0, "Send ETH");
 		uint256 previousBalance = houseBankroll() - msg.value;
 		uint256 memberShares = msg.value;
 		bool ownsAll = totalShares > 0 && shares[msg.sender] == totalShares;
@@ -214,9 +221,8 @@ contract Lottery {
 		require(prizes[msg.sender] == 0, "Claim first");
 		require(count == 1 || count == 5 || count == 10, "Bad count");
 		require(msg.value == ticketPrice * count, "Wrong price");
-		uint256 incoming = msg.value;
-		uint256 house = address(this).balance - reserved - pot - incoming;
-		require(house >= pot + incoming, "Table cannot cover this bet");
+		uint256 house = address(this).balance - reserved;
+		require(house >= coverAmount(count), "No cover");
 		uint256 used = 0;
 		uint8 outcome = 0;
 		for (; used < count; used++) {
@@ -243,24 +249,33 @@ contract Lottery {
 		uint256 seed = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender, nonce)));
 		nonce++;
 		uint256 cellId = seed % (polygonCount + loseCount);
-		pot += ticketPrice;
-		if (cellOwner[cellId] != address(0)) {
+		address owner = cellOwner[cellId];
+		if (owner != address(0)) {
 			bool won = cellId < polygonCount;
-			emit TicketBought(msg.sender, won, cellId, false);
+			uint8 plus = 0;
+			if (won && owner == msg.sender) {
+				uint256 nextPlus = cellPlus[cellId];
+				if (nextPlus < MAX_PLUS) {
+					nextPlus++;
+					cellPlus[cellId] = nextPlus;
+				}
+				plus = uint8(nextPlus);
+			}
+			emit TicketBought(msg.sender, won, cellId, false, plus);
 			return 0;
 		}
 
 		cellOwner[cellId] = msg.sender;
 		if (cellId < polygonCount) {
 			winLit++;
-			emit TicketBought(msg.sender, true, cellId, true);
+			emit TicketBought(msg.sender, true, cellId, true, 0);
 			if (winLit == polygonCount) {
 				return 1;
 			}
 			return 0;
 		}
 		loseLit++;
-		emit TicketBought(msg.sender, false, cellId, true);
+		emit TicketBought(msg.sender, false, cellId, true, 0);
 		if (loseLit == loseCount) {
 			return 2;
 		}
@@ -268,25 +283,20 @@ contract Lottery {
 	}
 
 	function settlePlayers() private {
-		uint256 roundPot = pot;
-		uint256 payout = roundPot * 2;
-		uint256 unit = payout / polygonCount;
-		uint256 remainder = payout % polygonCount;
-		address last = cellOwner[polygonCount - 1];
+		uint256 redsLeft = loseCount - loseLit;
+		uint256 payout = 0;
 		address[] memory roundOwners = new address[](polygonCount);
-		uint256 total = polygonCount + loseCount;
+		uint256[] memory roundPluses = new uint256[](polygonCount);
 		for (uint256 i = 0; i < polygonCount; i++) {
 			roundOwners[i] = cellOwner[i];
-			prizes[cellOwner[i]] += unit;
+			uint256 plus = cellPlus[i];
+			roundPluses[i] = plus;
+			uint256 share = ticketPrice * redsLeft * (HEAT_BASE + plus);
+			prizes[cellOwner[i]] += share;
+			payout += share;
 		}
-		prizes[last] += remainder;
-		for (uint256 i = 0; i < total; i++) {
-			delete cellOwner[i];
-		}
+		resetBoard();
 		reserved += payout;
-		pot = 0;
-		winLit = 0;
-		loseLit = 0;
 		settleCount++;
 		uint256 id = settleCount;
 		uint256 holdersCount = 0;
@@ -303,29 +313,58 @@ contract Lottery {
 			settledPrize[id] = payout;
 			heldCount[id] = holdersCount;
 		}
-		emit Settled(payout, roundOwners, true);
+		emit Settled(payout, roundOwners, true, roundPluses);
 	}
 
 	function settleHouse() private {
-		uint256 taken = pot;
+		resetBoard();
+		emit Settled(0, new address[](0), false, new uint256[](0));
+	}
+
+	function resetBoard() private {
 		uint256 total = polygonCount + loseCount;
 		for (uint256 i = 0; i < total; i++) {
 			delete cellOwner[i];
+			if (i < polygonCount) {
+				delete cellPlus[i];
+			}
 		}
-		pot = 0;
 		winLit = 0;
 		loseLit = 0;
-		address[] memory none = new address[](0);
-		emit Settled(taken, none, false);
+	}
+
+	function coverAmount(uint256 count) private view returns (uint256) {
+		uint256 remainWin = polygonCount - winLit;
+		if (remainWin > count) {
+			return 0;
+		}
+		uint256 extra = count - remainWin;
+		uint256 cap = MAX_PLUS * polygonCount;
+		if (extra > cap) {
+			extra = cap;
+		}
+		uint256 redsLeft = loseCount - loseLit;
+		return quote() + ticketPrice * redsLeft * extra;
+	}
+
+	function quote() private view returns (uint256) {
+		uint256 redsLeft = loseCount - loseLit;
+		if (redsLeft == 0) {
+			return 0;
+		}
+		uint256 heat = 0;
+		for (uint256 i = 0; i < polygonCount; i++) {
+			heat += HEAT_BASE + cellPlus[i];
+		}
+		return ticketPrice * redsLeft * heat;
 	}
 
 	function houseBankroll() private view returns (uint256) {
-		uint256 locked = reserved + pot;
 		uint256 bal = address(this).balance;
-		if (bal <= locked) {
+		if (bal <= reserved) {
 			return 0;
 		}
-		return bal - locked;
+		return bal - reserved;
 	}
 
 	function addHolder(address account) private {

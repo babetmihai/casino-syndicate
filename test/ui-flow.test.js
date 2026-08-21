@@ -530,6 +530,17 @@ describe("UI flow: create, view, play lottery", () => {
     )
   }
 
+  const freshQuote = (price, polygons) => {
+    const lose = BigInt(polygons - 1)
+    return price * lose * 4n * BigInt(polygons)
+  }
+
+  const fillPrizeFrom = (price, pluses) => {
+    let heat = 0n
+    for (const plus of pluses) heat += 4n + plus
+    return { heat }
+  }
+
   const parseTicket = (lottery, receipt) => {
     return receipt.logs
       .map((log) => {
@@ -616,7 +627,8 @@ describe("UI flow: create, view, play lottery", () => {
     expect(table.loseCount).to.equal(11n)
     expect(table.ticketPrice).to.equal(ethers.parseEther("0.05"))
     expect(table.claimedCount).to.equal(0n)
-    expect(table.prize).to.equal(0n)
+    expect(table.prize).to.equal(freshQuote(ethers.parseEther("0.05"), 12))
+    expect(table.plusBits).to.equal(0n)
     expect(table.totalBalance).to.equal(DEPOSIT)
     expect(table.memberShares).to.equal(DEPOSIT)
     expect(table.owners.length).to.equal(23)
@@ -705,11 +717,17 @@ describe("UI flow: create, view, play lottery", () => {
     const used = BigInt(tickets.length)
     const live = await lottery.connect(creator).getTable()
     expect(live.claimedCount).to.equal(0n)
-    expect(live.prize).to.equal(0n)
+    expect(live.prize).to.equal(freshQuote(price, 3))
     expect(live.owners.filter((owner) => owner !== ethers.ZeroAddress).length).to.equal(0)
     if (settled.args.playersWin) {
       expect(settled.args.owners.length).to.equal(3)
-      expect(settled.args.prize).to.equal(price * used * 2n)
+      const { heat } = fillPrizeFrom(price, settled.args.pluses)
+      expect(heat).to.be.gte(12n)
+      expect(settled.args.prize % price).to.equal(0n)
+      const reds = settled.args.prize / (price * heat)
+      expect(reds).to.be.gte(1n)
+      expect(reds).to.be.lte(2n)
+      expect(settled.args.prize).to.equal(price * reds * heat)
       const held = await lottery.connect(player).getTable()
       expect(held.claimedCount).to.equal(3n)
       expect(held.prize).to.equal(settled.args.prize)
@@ -720,7 +738,7 @@ describe("UI flow: create, view, play lottery", () => {
       await (await lottery.connect(player).withdrawPrize()).wait()
     } else {
       expect(settled.args.owners.length).to.equal(0)
-      expect(settled.args.prize).to.equal(price * used)
+      expect(settled.args.prize).to.equal(0n)
       const held = await lottery.connect(player).getTable()
       expect(held.myPrize).to.equal(0n)
       expect(live.totalBalance).to.equal(DEPOSIT + price * used)
@@ -756,14 +774,16 @@ describe("UI flow: create, view, play lottery", () => {
     }
 
     expect(settled).to.not.equal(undefined)
-    expect(settled.args.prize).to.be.greaterThan(0n)
     const live = await lottery.connect(creator).getTable()
     expect(live.claimedCount).to.equal(0n)
-    expect(live.prize).to.equal(0n)
+    expect(live.prize).to.equal(freshQuote(price, 4))
     expect(live.owners.filter((owner) => owner !== ethers.ZeroAddress).length).to.equal(0)
     if (settled.args.playersWin) {
+      expect(settled.args.prize).to.be.greaterThan(0n)
       expect(assigned).to.be.gte(4)
       expect(settled.args.owners.length).to.equal(4)
+      const { heat } = fillPrizeFrom(price, settled.args.pluses)
+      expect(settled.args.prize % (price * heat)).to.equal(0n)
       const winners = {}
       let paidTotal = 0n
       for (const owner of settled.args.owners) {
@@ -781,6 +801,7 @@ describe("UI flow: create, view, play lottery", () => {
       }
       expect(paidTotal).to.equal(settled.args.prize)
     } else {
+      expect(settled.args.prize).to.equal(0n)
       expect(assigned).to.be.gte(3)
       expect(settled.args.owners.length).to.equal(0)
       const held = await lottery.connect(player).getTable()
@@ -816,7 +837,7 @@ describe("UI flow: create, view, play lottery", () => {
     expect(heldSecond.owners.slice(0, 3)).to.deep.equal(secondOwners)
     const live = await lottery.connect(creator).getTable()
     expect(live.claimedCount).to.equal(0n)
-    expect(live.prize).to.equal(0n)
+    expect(live.prize).to.equal(freshQuote(price, 3))
     expect(live.owners.filter((owner) => owner !== ethers.ZeroAddress).length).to.equal(0)
 
     await (await lottery.connect(player).withdrawPrize()).wait()
@@ -825,6 +846,39 @@ describe("UI flow: create, view, play lottery", () => {
     const stillSecond = await lottery.connect(other).getTable()
     expect(stillSecond.owners.slice(0, 3)).to.deep.equal(secondOwners)
     expect(stillSecond.prize).to.equal(secondPrize)
+  })
+
+  it("charges plus on a duplicate own green and pays fill from reds and heat", async () => {
+    const [creator, player] = await ethers.getSigners()
+    const factory = await deployFactory()
+    const price = ethers.parseEther("0.01")
+    const createTx = await createLottery(factory, creator, "Heat Map", 4, price)
+    const lottery = await ethers.getContractAt("Lottery", createdAddress(factory, await createTx.wait()))
+    let charged
+    let settled
+    for (let i = 0; i < 80; i++) {
+      const table = await lottery.connect(player).getTable()
+      if (table.myPrize > 0n) break
+      const tx = await lottery.connect(player).buyTicket({ value: price })
+      const receipt = await tx.wait()
+      const tickets = parseTicket(lottery, receipt)
+      const plusHit = tickets.find((ticket) => Number(ticket.plus) > 0)
+      if (plusHit) charged = plusHit
+      settled = parseSettled(lottery, receipt)
+      if (settled) break
+    }
+    if (charged) {
+      expect(Number(charged.plus)).to.be.gte(1)
+      expect(Number(charged.plus)).to.be.lte(3)
+      expect(charged.assigned).to.equal(false)
+      expect(charged.won).to.equal(true)
+    }
+    if (settled && settled.args.playersWin) {
+      const { heat } = fillPrizeFrom(price, settled.args.pluses)
+      expect(settled.args.prize).to.equal(price * (settled.args.prize / (price * heat)) * heat)
+      const held = await lottery.connect(player).getTable()
+      expect(held.myPrize).to.equal(settled.args.prize)
+    }
   })
 
   it("lets the house deposit and withdraw shares", async () => {

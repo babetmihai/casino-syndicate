@@ -4,7 +4,7 @@ import { useSelector } from "react-redux"
 import { fetchLottery, selectLottery, unwatchLottery, watchLottery } from ".."
 import { selectAuth } from "app/core/auth"
 import { cn } from "app/core"
-import { ethLabel } from "app/games/roulette/chips"
+import { bankrollClass, ethLabel } from "app/games/roulette/chips"
 import { selectNativeSymbol } from "app/core/chain"
 
 
@@ -30,7 +30,7 @@ const LotteryAdmin = ({ address }) => {
           <span className={cn("lottery-admin-stat-label", "mt-0.5 block text-[0.75rem] text-cs-muted")}>You</span>
         </div>
         <div className={cn("lottery-admin-stat", "lottery-admin-stat-bankroll", "rounded-[0.75rem] border border-cs-border bg-cs-surface px-3 py-2")}>
-          <span className={numberClass}>{ethLabel(totalBalance, symbol)}</span>
+          <span className={cn(numberClass, bankrollClass(totalBalance, ticketPrice))}>{ethLabel(totalBalance, symbol)}</span>
           <span className={cn("lottery-admin-stat-label", "mt-0.5 block text-[0.75rem] text-cs-muted")}>Bankroll</span>
         </div>
         <div className={cn("lottery-admin-stat", "lottery-admin-stat-polygons", "rounded-[0.75rem] border border-cs-border bg-cs-surface px-3 py-2")}>
@@ -47,7 +47,7 @@ const LotteryAdmin = ({ address }) => {
         </div>
         <div className={cn("lottery-admin-stat", "lottery-admin-stat-prize", "rounded-[0.75rem] border border-cs-border bg-cs-surface px-3 py-2")}>
           <span className={numberClass}>{ethLabel(prize, symbol)}</span>
-          <span className={cn("lottery-admin-stat-label", "mt-0.5 block text-[0.75rem] text-cs-muted")}>Pot</span>
+          <span className={cn("lottery-admin-stat-label", "mt-0.5 block text-[0.75rem] text-cs-muted")}>Fill</span>
         </div>
       </div>
       <Card className={cn("lottery-admin-link", "flex shrink-0 flex-row items-center justify-between gap-2 overflow-visible py-2")}>

@@ -3,15 +3,45 @@ import { actions } from "app/core/store"
 import { EMPTY_OBJECT } from "app/core"
 import { generateContract, getContract, sendTx } from "app/core/contracts"
 import { selectAuth } from "app/core/auth"
-import { formatEth, parseEth } from "app/games/roulette/chips"
+import { clampEth, formatEth, parseEth } from "app/games/roulette/chips"
 import LotteryArtifact from "artifacts/contracts/Lottery.sol/Lottery.json"
 import _ from "lodash"
 
 export const MIN_POLYGONS = 3
 export const MAX_POLYGONS = 48
-export const TICKET_MULTIPLIERS = [1, 5, 10]
+export const HEAT_BASE = 4
+export const MAX_PLUS = 3
 export const ticketGas = (count) => 400000n + BigInt(count) * 200000n
 
+export const fillQuote = (lottery) => {
+  const { ticketPrice, loseCount, loseLit, polygonCount, pluses = [] } = lottery || {}
+  const redsLeft = (loseCount || 0) - (loseLit || 0)
+  if (redsLeft <= 0 || !polygonCount) return 0
+  let heat = 0
+  _.times(polygonCount, (index) => {
+    heat += HEAT_BASE + (pluses[index] || 0)
+  })
+  return clampEth(ticketPrice) * redsLeft * heat
+}
+
+export const coverQuote = (lottery, count = 1) => {
+  const { ticketPrice, loseCount, loseLit, polygonCount, claimedCount } = lottery || {}
+  const remainWin = (polygonCount || 0) - (claimedCount || 0)
+  if (remainWin > count) return 0
+  const redsLeft = (loseCount || 0) - (loseLit || 0)
+  if (redsLeft <= 0 || !polygonCount) return 0
+  let extra = count - remainWin
+  const cap = MAX_PLUS * polygonCount
+  if (extra > cap) extra = cap
+  if (extra < 0) extra = 0
+  return fillQuote(lottery) + clampEth(ticketPrice) * redsLeft * extra
+}
+
+
+const unpackPluses = (plusBits, count) => {
+  const bits = BigInt(plusBits || 0)
+  return _.times(count || 0, (index) => Number((bits >> BigInt(index * 2)) & 3n))
+}
 
 const lotteryPath = (address) => `games.lottery.${ethers.getAddress(address)}`
 
@@ -43,6 +73,7 @@ export const fetchLottery = async (address) => {
     claimedCount: Number(row.claimedCount),
     loseLit: Number(row.loseLit),
     prize: formatEth(row.prize),
+    pluses: unpackPluses(row.plusBits, Number(row.polygonCount)),
     myPrize: formatEth(row.myPrize),
     memberShares: formatEth(row.memberShares),
     totalBalance: formatEth(row.totalBalance),
@@ -119,6 +150,7 @@ const readTicket = (contract, receipt) => {
   let playersWin
   let roundPrize
   let roundOwners
+  let roundPluses
   let refundAmount
   let refundCount
   for (const log of logs) {
@@ -133,6 +165,7 @@ const readTicket = (contract, receipt) => {
           if (!item || item === ethers.ZeroAddress) return null
           return ethers.getAddress(item)
         })
+        roundPluses = _.map(args.pluses || [], (item) => Number(item))
       }
       if (name === "TicketsRefunded") {
         refundCount = Number(args.count)
@@ -142,7 +175,8 @@ const readTicket = (contract, receipt) => {
       draws.push({
         won: args.won,
         polygonId: Number(args.polygonId),
-        assigned: args.assigned
+        assigned: args.assigned,
+        plus: Number(args.plus)
       })
     } catch {
       // ignore logs from other contracts
@@ -151,7 +185,10 @@ const readTicket = (contract, receipt) => {
   if (draws.length === 0) return
   const claimed = _.filter(draws, "assigned")
   const last = _.last(claimed) || _.last(draws)
-  const takenIds = _.uniq(_.map(_.filter(draws, (draw) => !draw.assigned), "polygonId"))
+  const plusDraws = _.filter(draws, (draw) => (draw.plus || 0) > 0)
+  const takenIds = _.uniq(_.map(_.filter(draws, (draw) => !draw.assigned && !(draw.plus > 0)), "polygonId"))
+  const plusIds = _.uniq(_.map(plusDraws, "polygonId"))
+  const plusLevel = _.max(_.map(plusDraws, "plus")) || 0
   return {
     ...last,
     assignedCount: claimed.length,
@@ -161,10 +198,13 @@ const readTicket = (contract, receipt) => {
     drawCount: draws.length,
     draws,
     takenIds,
+    plusIds,
+    plusLevel,
     settled,
     playersWin,
     roundPrize,
     roundOwners,
+    roundPluses,
     refundCount,
     refundAmount
   }

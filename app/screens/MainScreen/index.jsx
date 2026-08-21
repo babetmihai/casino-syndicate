@@ -127,8 +127,8 @@ const TableCard = React.memo(({ table, index }) => {
         "table-card",
         "group relative flex w-full shrink-0 appearance-none items-center gap-3 rounded-[0.75rem]",
         "border border-cs-border bg-cs-surface px-3 py-2.5 text-left font-sans text-inherit",
-        "cursor-pointer transition-[border-color] duration-[250ms]",
-        "hover:border-cs-border-hover"
+        "cursor-pointer transition-[border-color,transform] duration-[250ms]",
+        "hover:border-cs-border-hover active:scale-[0.99]"
       )}
       onClick={() => history.push(`/tables/${address}/admin`)}
     >

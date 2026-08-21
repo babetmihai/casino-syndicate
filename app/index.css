@@ -15,14 +15,21 @@
   --color-cs-accent-2: #818cf8;
   --animate-banner: banner-in-out 2.5s ease forwards;
   --animate-banner-long: banner-in-out-long 4.5s ease forwards;
-  --animate-chip-drop: chip-drop 0.16s ease-out;
+  --animate-banner-card: banner-card 2.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  --animate-banner-card-long: banner-card-long 4.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+  --animate-chip-drop: chip-drop 0.2s cubic-bezier(0.22, 1, 0.36, 1);
   --animate-number-flash: number-flash 0.12s ease-out;
-  --animate-map-win: map-win 0.9s ease-in-out infinite;
-  --animate-map-taken: map-taken 0.28s ease-out;
-  --animate-map-pass: map-pass 0.2s ease-out;
-  --animate-map-plus-1: map-plus-1 0.7s ease-out;
-  --animate-map-plus-2: map-plus-2 0.8s ease-out;
-  --animate-map-plus-3: map-plus-3 1s ease-out;
+  --animate-map-win: map-win 1.15s ease-in-out infinite;
+  --animate-map-taken: map-taken 0.5s cubic-bezier(0.2, 0.9, 0.32, 1);
+  --animate-map-pass: map-pass 0.22s ease-out;
+  --animate-map-glow-flash: map-glow-flash 0.5s ease-out forwards;
+  --animate-map-glow-win: map-glow-win 1.15s ease-in-out infinite;
+  --animate-nucleus: nucleus-pulse 1.8s ease-in-out infinite;
+  --animate-nucleus-in: nucleus-in 0.62s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-nucleus-glow-in: nucleus-glow-in 0.7s ease-out both;
+  --animate-jackpot-in: jackpot-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-claim: claim-pulse 1.8s ease-in-out infinite;
+  --animate-overlay-in: overlay-in 0.32s ease-out;
 }
 
 @keyframes banner-in-out {
@@ -39,38 +46,79 @@
   100% { opacity: 0; }
 }
 
+@keyframes banner-card {
+  0% { opacity: 0; transform: translateY(0.7rem) scale(0.84); }
+  12% { opacity: 1; transform: translateY(0) scale(1.05); }
+  20% { transform: translateY(0) scale(1); }
+  78% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-0.2rem) scale(0.96); }
+}
+
+@keyframes banner-card-long {
+  0% { opacity: 0; transform: translateY(0.7rem) scale(0.84); }
+  8% { opacity: 1; transform: translateY(0) scale(1.05); }
+  14% { transform: translateY(0) scale(1); }
+  86% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-0.2rem) scale(0.96); }
+}
+
 @keyframes map-win {
-  0%, 100% { filter: brightness(1); }
-  50% { filter: brightness(1.45); }
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.04); }
 }
 
 @keyframes map-taken {
-  0% { filter: brightness(1) saturate(1); }
-  35% { filter: brightness(3.4) saturate(1.8); }
-  100% { filter: brightness(1) saturate(1); }
+  0% { transform: scale(1); }
+  32% { transform: scale(1.08); }
+  100% { transform: scale(1); }
 }
 
 @keyframes map-pass {
-  from { filter: brightness(1.28); }
-  to { filter: brightness(1.1); }
+  0% { transform: scale(1.035); }
+  100% { transform: scale(1); }
 }
 
-@keyframes map-plus-1 {
-  0% { filter: brightness(1); }
-  40% { filter: brightness(1.55) saturate(1.2); }
-  100% { filter: brightness(1.15); }
+@keyframes map-glow-flash {
+  0% { opacity: 0.62; transform: scale(1.28); }
+  100% { opacity: 0.32; transform: scale(1.16); }
 }
 
-@keyframes map-plus-2 {
-  0% { filter: brightness(1); }
-  35% { filter: brightness(1.85) saturate(1.35); }
-  100% { filter: brightness(1.25); }
+@keyframes map-glow-win {
+  0%, 100% { opacity: 0.2; transform: scale(1.1); }
+  50% { opacity: 0.42; transform: scale(1.2); }
 }
 
-@keyframes map-plus-3 {
-  0% { filter: brightness(1) saturate(1); }
-  30% { filter: brightness(2.3) saturate(1.6); }
-  100% { filter: brightness(1.35) saturate(1.25); }
+@keyframes nucleus-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(0.84); opacity: 0.78; }
+}
+
+@keyframes nucleus-in {
+  0% { transform: scale(0); opacity: 0; }
+  58% { transform: scale(1.28); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes nucleus-glow-in {
+  0% { transform: scale(0.2); opacity: 0; }
+  42% { transform: scale(2.35); opacity: 0.5; }
+  100% { transform: scale(1.7); opacity: 0.22; }
+}
+
+@keyframes jackpot-in {
+  0% { opacity: 0; transform: translateY(0.35rem) scale(0.72); }
+  68% { opacity: 1; transform: translateY(-0.08rem) scale(1.08); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes claim-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 rgb(45 212 191 / 0.42); }
+  70% { box-shadow: 0 0 0 0.55rem rgb(45 212 191 / 0); }
+}
+
+@keyframes overlay-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 @keyframes chip-drop {
@@ -156,5 +204,110 @@
   .mantine-Menu-dropdown {
     background: var(--color-cs-elevated);
     border-color: var(--color-cs-border);
+  }
+
+  .lottery-map-cell,
+  .lottery-map-cell-glow,
+  .lottery-map-nucleus,
+  .lottery-map-nucleus-glow {
+    transform-box: fill-box;
+    transform-origin: center;
+  }
+
+  .lottery-map-cell {
+    transition: fill 0.14s ease-out;
+  }
+
+  .lottery-map-spinning .lottery-map-cell {
+    transition: fill 0.06s linear;
+  }
+
+  .lottery-map-cell-glow {
+    transform: scale(1.14);
+    opacity: 0.2;
+    transition: opacity 0.1s linear, transform 0.1s linear;
+  }
+
+  .lottery-map-cell-glow-flash,
+  .lottery-map-cell-glow-win {
+    transition: none;
+  }
+
+  .lottery-map-cell-glow-on {
+    opacity: 0.4;
+    transform: scale(1.2);
+  }
+
+  .lottery-map-cell-glow-1 {
+    opacity: 0.26;
+    transform: scale(1.16);
+  }
+
+  .lottery-map-cell-glow-2 {
+    opacity: 0.15;
+    transform: scale(1.12);
+  }
+
+  .lottery-map-cell-glow-3 {
+    opacity: 0.08;
+    transform: scale(1.08);
+  }
+
+  .lottery-map-nucleus-fresh {
+    animation: nucleus-in 0.62s cubic-bezier(0.22, 1, 0.36, 1) both, nucleus-pulse 1.8s ease-in-out 0.62s infinite;
+  }
+
+  .lottery-map-nucleus-glow-fresh {
+    animation: nucleus-glow-in 0.7s ease-out both;
+  }
+
+  .lottery-map-card {
+    transition: border-color 0.35s ease;
+  }
+
+  .lottery-map-card-spinning {
+    border-color: rgb(45 212 191 / 35%);
+  }
+
+  .lottery-banner-card,
+  .roulette-banner-card {
+    box-shadow: 0 0 2.5rem rgb(45 212 191 / 0.22);
+  }
+
+  .lottery-banner-house,
+  .roulette-banner-black {
+    box-shadow: 0 0 2.5rem rgb(129 140 248 / 0.24);
+  }
+
+  .roulette-spot-rect {
+    transition: fill 0.06s linear, stroke 0.06s linear, stroke-width 0.06s linear;
+  }
+
+  .lottery-spin,
+  .roulette-spin {
+    transition: border-color 0.2s ease, color 0.2s ease, transform 0.15s ease;
+  }
+
+  .lottery-spin[data-holding="true"],
+  .roulette-spin[data-holding="true"] {
+    transform: scale(0.985);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .lottery-map-cell,
+    .lottery-map-cell-glow,
+    .lottery-map-nucleus,
+    .lottery-map-nucleus-glow,
+    .lottery-banner,
+    .lottery-banner-card,
+    .roulette-banner,
+    .roulette-banner-card,
+    .lottery-claim,
+    .lottery-claim-wrap,
+    .lottery-prize-jackpot,
+    .roulette-spot-rect {
+      animation: none !important;
+      transition: none !important;
+    }
   }
 }

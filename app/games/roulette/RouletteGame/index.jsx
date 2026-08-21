@@ -129,7 +129,7 @@ const RouletteGame = React.memo(({ address }) => {
     <div
       className={cn(
         "roulette-game",
-        "flex min-h-0 w-full flex-1 flex-col overflow-hidden px-3 pt-2",
+        "flex min-h-0 w-full flex-1 flex-col overflow-hidden px-3 pt-2 select-none",
         "pb-[max(0.5rem,env(safe-area-inset-bottom))] gap-2"
       )}
     >
@@ -166,7 +166,7 @@ const RouletteGame = React.memo(({ address }) => {
                   color === "green" && "bg-teal-600",
                   color === "red" && "bg-red-600",
                   color === "black" && "bg-gray-700",
-                  index === 0 && "border-cs-accent"
+                  index === 0 && "border-cs-accent animate-chip-drop"
                 )}
               >
                 {number}
@@ -228,7 +228,8 @@ const RouletteGame = React.memo(({ address }) => {
                       "roulette-chip",
                       isCurrent && "roulette-chip-selected",
                       "size-8 appearance-none rounded-full border-2 border-transparent font-sans text-[0.75rem] font-medium",
-                      isCurrent && "border-cs-accent shadow-[0_0_0.75rem_var(--color-cs-accent-glow)]",
+                      "transition-[border-color,box-shadow,transform] duration-200",
+                      isCurrent && "border-cs-accent shadow-[0_0_0.75rem_var(--color-cs-accent-glow)] scale-[1.06]",
                       value === 0.01 && "bg-gray-50 text-dark-900 outline outline-gray-500",
                       value === 0.05 && "bg-red-600 text-white",
                       value === 0.25 && "bg-teal-600 text-white",
@@ -251,12 +252,15 @@ const RouletteGame = React.memo(({ address }) => {
                 "group relative inline-flex min-h-8 min-w-0 flex-1 appearance-none items-center justify-center overflow-hidden",
                 "rounded-[0.75rem] border border-cs-border bg-transparent px-3 py-2 font-sans text-[0.75rem]",
                 "leading-normal tracking-[0.06em] uppercase text-cs-text",
-                "cursor-pointer touch-none select-none transition-[border-color,color] [-webkit-touch-callout:none]",
+                "cursor-pointer touch-manipulation touch-none select-none [-webkit-touch-callout:none]",
                 "enabled:hover:border-cs-border-hover enabled:hover:text-cs-accent",
-                "disabled:cursor-default disabled:opacity-40",
-                "data-[holding=true]:border-cs-accent data-[holding=true]:text-cs-bg"
+                "disabled:cursor-default",
+                !revealing && "disabled:opacity-40",
+                "data-[holding=true]:border-cs-accent data-[holding=true]:text-cs-bg",
+                "data-[spinning=true]:border-cs-accent data-[spinning=true]:text-cs-bg"
               )}
               data-holding={holdingSpin}
+              data-spinning={revealing}
               disabled={!canSpin}
               onPointerDown={startSpinHold}
               onPointerUp={cancelSpinHold}
@@ -269,7 +273,8 @@ const RouletteGame = React.memo(({ address }) => {
                   "roulette-spin-fill",
                   "absolute inset-0 w-0 bg-cs-accent transition-[width] duration-150",
                   "group-data-[holding=true]:w-full group-data-[holding=true]:duration-1000",
-                  "group-data-[holding=true]:ease-linear"
+                  "group-data-[holding=true]:ease-linear",
+                  "group-data-[spinning=true]:w-full group-data-[spinning=true]:duration-200"
                 )}
               />
               <span className={cn("roulette-spin-label", "relative z-[1] truncate")}>{spinLabel}</span>
@@ -284,7 +289,7 @@ const RouletteGame = React.memo(({ address }) => {
               className={cn(
                 "roulette-banner-card",
                 `roulette-banner-${bannerColor}`,
-                "flex min-w-36 flex-col items-center gap-1 text-center text-white animate-banner",
+                "flex min-w-36 flex-col items-center gap-1 text-center text-white animate-banner-card",
                 bannerColor === "green" && "bg-teal-600",
                 bannerColor === "red" && "bg-red-600",
                 bannerColor === "black" && "border-cs-border bg-cs-elevated"

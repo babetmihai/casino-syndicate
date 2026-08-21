@@ -91,16 +91,6 @@ export const ownerStroke = (address, isMine) => {
   return "var(--cs-accent-2)"
 }
 
-export const plusFill = (plus, isMine) => {
-  if (plus === 3) return "#fbbf24"
-  if (plus === 2) {
-    if (isMine) return "#5eead4"
-    return "color-mix(in srgb, #5eead4 55%, var(--cs-elevated))"
-  }
-  if (isMine) return "var(--cs-accent)"
-  return "color-mix(in srgb, var(--cs-accent) 48%, var(--cs-elevated))"
-}
-
 export const LOSE_FILL = "color-mix(in srgb, var(--cs-accent-2) 10%, var(--cs-bg))"
 export const LOSE_STROKE = "color-mix(in srgb, var(--cs-accent-2) 28%, transparent)"
 export const LIT_WIN_FILL = "var(--cs-accent)"

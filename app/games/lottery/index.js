@@ -9,41 +9,41 @@ import _ from "lodash"
 
 export const MIN_POLYGONS = 3
 export const MAX_POLYGONS = 48
-export const HEAT_BASE = 4
-export const MAX_PLUS = 3
-export const ticketGas = (count) => 500000n + BigInt(count) * 250000n
+export const ticketGas = 750000n
 
-export const fillQuote = (lottery) => {
-  const { ticketPrice, loseCount, loseLit, polygonCount, pluses = [], mates = [], matePluses = [] } = lottery || {}
-  const redsLeft = (loseCount || 0) - (loseLit || 0)
-  if (redsLeft <= 0 || !polygonCount) return 0
-  let heat = 0
-  _.times(polygonCount, (index) => {
-    heat += HEAT_BASE + (pluses[index] || 0)
-    if (!mates[index]) return
-    heat += HEAT_BASE + (matePluses[index] || 0)
+const unpackBits = (bits, count) => {
+  const raw = BigInt(bits || 0)
+  return _.times(count || 0, (index) => ((raw >> BigInt(index)) & 1n) === 1n)
+}
+
+export const jackpotByPlayer = (lottery) => {
+  const { ticketPrice, polygonCount, loseCount, owners = [], mates = [], bonuses = [] } = lottery || {}
+  const extra = clampEth(ticketPrice) * ((polygonCount || 0) + (loseCount || 0))
+  const amounts = {}
+  _.forEach(_.take(owners, polygonCount || 0), (owner, index) => {
+    if (!owner) return
+    if (!amounts[owner]) amounts[owner] = 0
+    const mate = mates[index]
+    if (mate && !amounts[mate]) amounts[mate] = 0
+    if (!bonuses[index]) return
+    if (!mate) {
+      amounts[owner] += extra
+      return
+    }
+    amounts[owner] += extra / 2
+    amounts[mate] += extra / 2
   })
-  return clampEth(ticketPrice) * redsLeft * heat
+  return amounts
 }
 
-export const coverQuote = (lottery, count = 1) => {
-  const { ticketPrice, loseCount, loseLit, polygonCount, claimedCount } = lottery || {}
-  const remainWin = (polygonCount || 0) - (claimedCount || 0)
-  if (remainWin > count) return 0
-  const redsLeft = (loseCount || 0) - (loseLit || 0)
-  if (redsLeft <= 0 || !polygonCount) return 0
-  let extra = count - remainWin
-  if (extra < 0) extra = 0
-  let extraHeat = extra * HEAT_BASE
-  const cap = HEAT_BASE * polygonCount + MAX_PLUS * 2 * polygonCount
-  if (extraHeat > cap) extraHeat = cap
-  return fillQuote(lottery) + clampEth(ticketPrice) * redsLeft * extraHeat
-}
-
-
-const unpackPluses = (plusBits, count) => {
-  const bits = BigInt(plusBits || 0)
-  return _.times(count || 0, (index) => Number((bits >> BigInt(index * 2)) & 3n))
+export const jackpotQuote = (lottery, account) => {
+  const amounts = jackpotByPlayer(lottery) || {}
+  if (account) {
+    const mine = amounts[ethers.getAddress(account)]
+    if (mine) return mine
+    return 0
+  }
+  return _.sum(_.values(amounts))
 }
 
 const lotteryPath = (address) => `games.lottery.${ethers.getAddress(address)}`
@@ -80,9 +80,8 @@ export const fetchLottery = async (address) => {
     claimedCount: Number(row.claimedCount),
     loseLit: Number(row.loseLit),
     prize: formatEth(row.prize),
-    pluses: unpackPluses(row.plusBits, Number(row.polygonCount)),
     mates,
-    matePluses: unpackPluses(row.matePlusBits, Number(row.polygonCount)),
+    bonuses: unpackBits(row.bonusBits, Number(row.polygonCount) + Number(row.loseCount)),
     myPrize: formatEth(row.myPrize),
     memberShares: formatEth(row.memberShares),
     totalBalance: formatEth(row.totalBalance),
@@ -117,13 +116,12 @@ export const unwatchLottery = (address) => {
   delete lotteryWatches[key]
 }
 
-export const buyLotteryTicket = async (address, count = 1) => {
+export const buyLotteryTicket = async (address) => {
   const contract = await generateContract(address, LotteryArtifact.abi)
-  const tickets = Number(count) || 1
   const price = await contract.ticketPrice()
-  const receipt = await sendTx(contract.buyTickets, [tickets], {
-    value: price * BigInt(tickets),
-    gasLimit: ticketGas(tickets)
+  const receipt = await sendTx(contract.buyTicket, [], {
+    value: price,
+    gasLimit: ticketGas
   })
   const lastTicket = readTicket(contract, receipt)
   if (lastTicket) actions.update(lotteryPath(address), { lastTicket })
@@ -159,11 +157,8 @@ const readTicket = (contract, receipt) => {
   let playersWin
   let roundPrize
   let roundOwners
-  let roundPluses
   let roundMates
-  let roundMatePluses
-  let refundAmount
-  let refundCount
+  let roundBonuses
   for (const log of logs) {
     try {
       const parsed = contract.interface.parseLog(log)
@@ -176,24 +171,19 @@ const readTicket = (contract, receipt) => {
           if (!item || item === ethers.ZeroAddress) return null
           return ethers.getAddress(item)
         })
-        roundPluses = _.map(args.pluses || [], (item) => Number(item))
         roundMates = _.map(args.mates || [], (item) => {
           if (!item || item === ethers.ZeroAddress) return null
           return ethers.getAddress(item)
         })
-        roundMatePluses = _.map(args.matePluses || [], (item) => Number(item))
-      }
-      if (name === "TicketsRefunded") {
-        refundCount = Number(args.count)
-        refundAmount = formatEth(args.amount)
+        roundBonuses = unpackBits(args.bonusBits, roundOwners.length)
       }
       if (name !== "TicketBought") continue
       draws.push({
         won: args.won,
         polygonId: Number(args.polygonId),
         assigned: args.assigned,
-        plus: Number(args.plus),
-        split: Boolean(args.split)
+        split: Boolean(args.split),
+        bonus: Boolean(args.bonus)
       })
     } catch {
       // ignore logs from other contracts
@@ -202,11 +192,9 @@ const readTicket = (contract, receipt) => {
   if (draws.length === 0) return
   const claimed = _.filter(draws, "assigned")
   const last = _.last(claimed) || _.last(draws)
-  const plusDraws = _.filter(draws, (draw) => (draw.plus || 0) > 0)
   const splitIds = _.uniq(_.map(_.filter(draws, "split"), "polygonId"))
-  const takenIds = _.uniq(_.map(_.filter(draws, (draw) => !draw.assigned && !draw.split && !(draw.plus > 0)), "polygonId"))
-  const plusIds = _.uniq(_.map(plusDraws, "polygonId"))
-  const plusLevel = _.max(_.map(plusDraws, "plus")) || 0
+  const bonusIds = _.uniq(_.map(_.filter(draws, "bonus"), "polygonId"))
+  const takenIds = _.uniq(_.map(_.filter(draws, (draw) => !draw.assigned && !draw.split && !draw.bonus), "polygonId"))
   return {
     ...last,
     assignedCount: claimed.length,
@@ -216,17 +204,13 @@ const readTicket = (contract, receipt) => {
     drawCount: draws.length,
     draws,
     takenIds,
-    plusIds,
-    plusLevel,
     splitIds,
+    bonusIds,
     settled,
     playersWin,
     roundPrize,
     roundOwners,
-    roundPluses,
     roundMates,
-    roundMatePluses,
-    refundCount,
-    refundAmount
+    roundBonuses
   }
 }

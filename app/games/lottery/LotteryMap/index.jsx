@@ -9,7 +9,6 @@ import {
   LIT_WIN_FILL,
   LOSE_FILL,
   ownerFill,
-  plusFill,
   seedFromAddress,
   SPIN_LOSE_FILL,
   splitLobes
@@ -21,15 +20,13 @@ const LotteryMap = ({
   address,
   owners = [],
   mates = [],
-  pluses = [],
-  matePluses = [],
+  bonuses = [],
   polygonCount,
   loseCount = 0,
   account,
   focusId,
   flashIds = [],
   litIds = [],
-  plusIds = [],
   splitIds = [],
   celebrate
 }) => {
@@ -50,71 +47,38 @@ const LotteryMap = ({
         const isLose = polygon.id >= winCount
         const owner = owners[polygon.id]
         const mate = mates[polygon.id]
+        const isBonus = Boolean(bonuses[polygon.id])
         const split = Boolean(mate) && !isLose
-        let pieces = [{ owner, plus: pluses[polygon.id] || 0, path: polygon.path, center: [polygon.x, polygon.y] }]
+        let pieces = [{ owner, path: polygon.path }]
         if (split) {
           const lobes = splitLobes(polygon)
           if (lobes.length === 2) {
             pieces = [
-              { owner, plus: pluses[polygon.id] || 0, path: lobes[0].path, center: lobes[0].center },
-              { owner: mate, plus: matePluses[polygon.id] || 0, path: lobes[1].path, center: lobes[1].center }
+              { owner, path: lobes[0].path },
+              { owner: mate, path: lobes[1].path }
             ]
           }
         }
-        return _.map(pieces, (piece, pieceIndex) => paintPiece({
-          key: `${polygon.id}-${pieceIndex}`,
-          path: piece.path,
-          owner: piece.owner,
-          plus: piece.plus,
-          isLose,
-          account,
-          isFocus: focusId === polygon.id,
-          isFlash: _.includes(flashIds, polygon.id),
-          isPlusFlash: _.includes(plusIds, polygon.id),
-          isLit: _.includes(litIds, polygon.id),
-          isSplitFlash: _.includes(splitIds, polygon.id),
-          celebrate
-        }))
-      })}
-      {_.map(polygons, (polygon) => {
-        if (polygon.id >= winCount) return null
-        const owner = owners[polygon.id]
-        const mate = mates[polygon.id]
-        const labels = [{ owner, plus: pluses[polygon.id] || 0, center: [polygon.x, polygon.y] }]
-        if (mate) {
-          const lobes = splitLobes(polygon)
-          if (lobes.length === 2) {
-            labels[0].center = lobes[0].center
-            labels.push({ owner: mate, plus: matePluses[polygon.id] || 0, center: lobes[1].center })
-          }
-        }
-        return _.map(labels, (label, labelIndex) => {
-          if (!label.owner || !account || !label.plus) return null
-          const isMine = ethers.getAddress(label.owner) === ethers.getAddress(account)
-          if (!isMine) return null
-          const isPlusFlash = _.includes(plusIds, polygon.id)
-          return (
-            <text
-              key={`n-${polygon.id}-${labelIndex}`}
-              className={cn(
-                "lottery-map-plus",
-                `lottery-map-plus-${label.plus}`,
-                isPlusFlash && "lottery-map-plus-flash",
-                "pointer-events-none select-none"
-              )}
-              x={label.center[0]}
-              y={label.center[1]}
-              textAnchor="middle"
-              dominantBaseline="central"
-              fontSize={_.clamp(0.22 / Math.sqrt(count), 0.02, 0.055)}
-              fontFamily="JetBrains Mono, ui-monospace, monospace"
-              fontWeight={700}
-              fill="#0a0e14"
-            >
-              {`+${label.plus}`}
-            </text>
-          )
-        })
+        return (
+          <g
+            key={polygon.id}
+            className={cn("lottery-map-cell-group", isBonus && "lottery-map-cell-group-bonus")}
+          >
+            {_.map(pieces, (piece, pieceIndex) => paintPiece({
+              key: `${polygon.id}-${pieceIndex}`,
+              path: piece.path,
+              owner: piece.owner,
+              isLose,
+              account,
+              isFocus: focusId === polygon.id,
+              isFlash: _.includes(flashIds, polygon.id),
+              isLit: _.includes(litIds, polygon.id),
+              isSplitFlash: _.includes(splitIds, polygon.id),
+              celebrate
+            }))}
+            {isBonus && paintNucleus(polygon)}
+          </g>
+        )
       })}
     </svg>
   )
@@ -127,21 +91,17 @@ const paintPiece = ({
   key,
   path,
   owner,
-  plus,
   isLose,
   account,
   isFocus,
   isFlash,
-  isPlusFlash,
   isLit,
   isSplitFlash,
   celebrate
 }) => {
   const isMine = owner && account && ethers.getAddress(owner) === ethers.getAddress(account)
-  const shownPlus = isMine ? plus : 0
   const isOccupied = Boolean(owner)
   let fill = ownerFill(owner, isMine)
-  if (shownPlus) fill = plusFill(shownPlus, isMine)
   if (isLose) {
     fill = LOSE_FILL
     if (owner) fill = LIT_LOSE_FILL
@@ -150,28 +110,18 @@ const paintPiece = ({
   if (isLit && !isLose && !isOccupied) fill = LIT_WIN_FILL
   let glow = "var(--cs-accent)"
   if (isLose) glow = "var(--cs-accent-2)"
-  if (shownPlus === 2) glow = "#5eead4"
-  if (shownPlus === 3) glow = "#fbbf24"
   const showGlow = isOccupied || isLit
-  let glowOpacity = 0.35
-  if (shownPlus === 1) glowOpacity = 0.42
-  if (shownPlus === 2) glowOpacity = 0.55
-  if (shownPlus === 3) glowOpacity = 0.72
-  let plusAnim
-  if (isPlusFlash && shownPlus === 1) plusAnim = "lottery-map-cell-plus-1 animate-map-plus-1"
-  if (isPlusFlash && shownPlus === 2) plusAnim = "lottery-map-cell-plus-2 animate-map-plus-2"
-  if (isPlusFlash && shownPlus === 3) plusAnim = "lottery-map-cell-plus-3 animate-map-plus-3"
   return (
     <g
       key={key}
-      className={cn("lottery-map-sector", isLose && "lottery-map-sector-lose", shownPlus && `lottery-map-sector-plus-${shownPlus}`)}
+      className={cn("lottery-map-sector", isLose && "lottery-map-sector-lose")}
     >
       {showGlow &&
         <path
           className={cn("lottery-map-cell-glow", "pointer-events-none blur-[0.6rem]")}
           d={path}
           fill={glow}
-          opacity={glowOpacity}
+          opacity={0.35}
         />
       }
       {showGlow &&
@@ -179,7 +129,7 @@ const paintPiece = ({
           className={cn("lottery-map-cell-glow-core", "pointer-events-none blur-[0.2rem]")}
           d={path}
           fill={glow}
-          opacity={shownPlus ? 0.65 : 0.5}
+          opacity={0.5}
         />
       }
       <path
@@ -188,13 +138,11 @@ const paintPiece = ({
           isLose && "lottery-map-cell-lose",
           isMine && "lottery-map-cell-mine",
           owner && "lottery-map-cell-claimed",
-          shownPlus && `lottery-map-cell-plus lottery-map-cell-plus-${shownPlus}`,
           isFocus && "lottery-map-cell-focus",
           isLit && "lottery-map-cell-lit",
           isLit && isOccupied && "lottery-map-cell-occupied animate-map-pass",
           isFlash && "lottery-map-cell-taken animate-map-taken",
           isSplitFlash && "lottery-map-cell-split animate-map-taken",
-          plusAnim,
           celebrate && owner && !isLose && "lottery-map-cell-win animate-map-win"
         )}
         d={path}
@@ -208,6 +156,39 @@ const paintPiece = ({
           <title>{owner}</title>
         }
       </path>
+    </g>
+  )
+}
+
+const paintNucleus = (polygon) => {
+  const { id, x, y, r, path } = polygon || {}
+  let radius = (r || 0) * 0.16
+  if (radius < 0.011) radius = 0.011
+  const clipId = `lottery-nucleus-${id}`
+  return (
+    <g className={cn("lottery-map-nucleus-wrap", "pointer-events-none")}>
+      <clipPath id={clipId}>
+        <path d={path} />
+      </clipPath>
+      <g clipPath={`url(#${clipId})`}>
+        <circle
+          className={cn("lottery-map-nucleus-glow", "blur-[0.35rem]")}
+          cx={x}
+          cy={y}
+          r={radius}
+          fill="var(--cs-text)"
+          opacity={0.28}
+        />
+        <circle
+          className={cn("lottery-map-nucleus")}
+          cx={x}
+          cy={y}
+          r={radius}
+          fill="var(--cs-text)"
+          stroke="var(--cs-bg)"
+          strokeWidth={0.008}
+        />
+      </g>
     </g>
   )
 }

@@ -1,7 +1,7 @@
 import React from "react"
 import _ from "lodash"
 import { cn } from "app/core"
-import { buildPolygons, cellNumber, LIT_LOSE_FILL, LIT_LOSE_STROKE, LIT_WIN_FILL, LIT_WIN_STROKE, LOSE_FILL, LOSE_STROKE, ownerFill, ownerStroke, polygonCentroid, seedFromAddress } from "../polygons"
+import { buildPolygons, cellNumber, LIT_LOSE_FILL, LIT_LOSE_STROKE, LIT_WIN_FILL, LIT_WIN_STROKE, LOSE_FILL, LOSE_STROKE, ownerFill, ownerStroke, polygonCentroid, seedFromAddress, SPIN_LOSE_FILL, SPIN_LOSE_STROKE } from "../polygons"
 import { ethers } from "ethers"
 
 
@@ -26,11 +26,11 @@ const LotteryMap = ({ address, owners = [], polygonCount, loseCount = 0, account
         const isFocus = focusId === polygon.id
         const isFlash = _.includes(flashIds, polygon.id)
         const isLit = _.includes(litIds, polygon.id)
+        const isOccupied = Boolean(owner)
         let strokeWidth = 2
-        if (isFocus) strokeWidth = 2.5
-        if (isFlash) strokeWidth = 2.5
-        if (isLit) strokeWidth = 2.5
-        if (celebrate && owner) strokeWidth = 2.5
+        if (isOccupied || isLit) strokeWidth = 2.5
+        if (isLit && !isOccupied) strokeWidth = 3
+        if (isFocus || isFlash) strokeWidth = 2.5
         let fill = ownerFill(owner, isMine)
         let stroke = ownerStroke(owner, isMine)
         if (isLose) {
@@ -41,24 +41,44 @@ const LotteryMap = ({ address, owners = [], polygonCount, loseCount = 0, account
             stroke = LIT_LOSE_STROKE
           }
         }
-        if (isLit && isLose) {
-          fill = LIT_LOSE_FILL
-          stroke = LIT_LOSE_STROKE
+        if (isLit && isLose && !isOccupied) {
+          fill = SPIN_LOSE_FILL
+          stroke = SPIN_LOSE_STROKE
         }
-        if (isLit && !isLose) {
+        if (isLit && !isLose && !isOccupied) {
           fill = LIT_WIN_FILL
           stroke = LIT_WIN_STROKE
         }
         const points = _.map(polygon.points, (point) => point.join(",")).join(" ")
         const center = polygonCentroid(polygon.points)
-        let numberFill = "var(--cs-text)"
-        if (isLose) numberFill = "rgb(248 113 113 / 0.72)"
-        if ((isMine || isLit) && !isLose) numberFill = "var(--cs-bg)"
+        let numberFill = "var(--cs-accent)"
+        if (isMine && !isLose) numberFill = "var(--cs-bg)"
+        if (isLit && !isLose && !isOccupied) numberFill = "var(--cs-bg)"
+        if (isOccupied && !isMine && !isLose) numberFill = "var(--cs-text)"
+        let glow = "var(--cs-accent)"
+        if (isLose) glow = "var(--cs-accent-2)"
+        const showGlow = isOccupied || isLit
         return (
           <g
             key={polygon.id}
             className={cn("lottery-map-sector", isLose && "lottery-map-sector-lose")}
           >
+            {showGlow &&
+              <polygon
+                className={cn("lottery-map-cell-glow", "pointer-events-none blur-[0.6rem]")}
+                points={points}
+                fill={glow}
+                opacity={0.35}
+              />
+            }
+            {showGlow &&
+              <polygon
+                className={cn("lottery-map-cell-glow-core", "pointer-events-none blur-[0.2rem]")}
+                points={points}
+                fill={glow}
+                opacity={0.5}
+              />
+            }
             <polygon
               className={cn(
                 "lottery-map-cell",
@@ -67,6 +87,7 @@ const LotteryMap = ({ address, owners = [], polygonCount, loseCount = 0, account
                 owner && "lottery-map-cell-claimed",
                 isFocus && "lottery-map-cell-focus",
                 isLit && "lottery-map-cell-lit",
+                isLit && isOccupied && "lottery-map-cell-occupied animate-map-pass",
                 isFlash && "lottery-map-cell-taken animate-map-taken",
                 celebrate && owner && !isLose && "lottery-map-cell-win animate-map-win"
               )}
@@ -80,18 +101,20 @@ const LotteryMap = ({ address, owners = [], polygonCount, loseCount = 0, account
                 <title>{owner}</title>
               }
             </polygon>
-            <text
-              className={cn("lottery-map-number", isLose && "lottery-map-number-lose", "pointer-events-none select-none")}
-              x={center[0]}
-              y={center[1]}
-              textAnchor="middle"
-              dominantBaseline="central"
-              fontSize="0.038"
-              fontFamily="JetBrains Mono, ui-monospace, monospace"
-              fill={numberFill}
-            >
-              {cellNumber(polygon.id, winCount)}
-            </text>
+            {!isLose &&
+              <text
+                className={cn("lottery-map-number", "pointer-events-none select-none")}
+                x={center[0]}
+                y={center[1]}
+                textAnchor="middle"
+                dominantBaseline="central"
+                fontSize={_.clamp(0.22 / Math.sqrt(count), 0.02, 0.045)}
+                fontFamily="JetBrains Mono, ui-monospace, monospace"
+                fill={numberFill}
+              >
+                {cellNumber(polygon.id)}
+              </text>
+            }
           </g>
         )
       })}

@@ -34,29 +34,35 @@ export const buildPolygons = (seed, count, winCount) => {
   })
 }
 
+export const cellSpinOrder = (seed, count, winCount) => {
+  const polygons = buildPolygons(seed, count, winCount)
+  return _.map(_.sortBy(polygons, (polygon) => {
+    const center = polygonCentroid(polygon.points)
+    return Math.atan2(center[1] - 0.5, center[0] - 0.5)
+  }), "id")
+}
+
 export const ownerFill = (address, isMine) => {
-  if (!address) return "var(--cs-bg)"
-  if (isMine) return "var(--cs-accent-dim)"
-  const hue = ownerHue(address)
-  return `hsl(${hue} 42% 28%)`
+  if (!address) return "color-mix(in srgb, var(--cs-accent) 10%, var(--cs-bg))"
+  if (isMine) return "var(--cs-accent)"
+  return "color-mix(in srgb, var(--cs-accent-2) 42%, var(--cs-elevated))"
 }
 
 export const ownerStroke = (address, isMine) => {
-  if (!address) return "var(--color-cs-border)"
+  if (!address) return "var(--cs-border)"
   if (isMine) return "var(--cs-accent)"
-  const hue = ownerHue(address)
-  return `hsl(${hue} 48% 52%)`
+  return "var(--cs-accent-2)"
 }
 
-export const LOSE_FILL = "rgb(22 12 14)"
-export const LOSE_STROKE = "rgb(90 40 48 / 0.7)"
-export const LIT_WIN_FILL = "var(--cs-accent-dim)"
+export const LOSE_FILL = "color-mix(in srgb, var(--cs-accent-2) 10%, var(--cs-bg))"
+export const LOSE_STROKE = "color-mix(in srgb, var(--cs-accent-2) 28%, transparent)"
+export const LIT_WIN_FILL = "var(--cs-accent)"
 export const LIT_WIN_STROKE = "var(--cs-accent)"
-export const LIT_LOSE_FILL = "rgb(180 50 60 / 0.42)"
-export const LIT_LOSE_STROKE = "rgb(248 113 113)"
+export const LIT_LOSE_FILL = "var(--cs-accent-2)"
+export const LIT_LOSE_STROKE = "var(--cs-accent-2)"
+export const SPIN_LOSE_FILL = "var(--cs-accent-2)"
+export const SPIN_LOSE_STROKE = "var(--cs-accent-2)"
 
-
-const ownerHue = (address) => parseInt(String(address).slice(2, 8), 16) % 360
 
 const mulberry32 = (seed) => {
   let a = seed >>> 0
@@ -166,10 +172,7 @@ const clipHalfPlane = (poly, nx, ny, px, py) => {
   return out
 }
 
-export const cellNumber = (id, winCount) => {
-  if (id >= winCount) return -(id - winCount + 1)
-  return id + 1
-}
+export const cellNumber = (id) => id + 1
 
 export const polygonCentroid = (points) => {
   let area = 0

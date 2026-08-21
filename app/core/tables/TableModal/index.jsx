@@ -187,7 +187,7 @@ const TableModal = ({ onSubmit }) => {
       }
       {isPolygons &&
         <Text className={cn("table-modal-hint")} size="sm" c="dimmed" mt="xs">
-          Minimum {MIN_TABLE_DEPOSIT} {symbol}. Win and lose cells are numbered 1–n. House matches the lose sum; winners split by number.
+          Minimum {MIN_TABLE_DEPOSIT} {symbol}. Lose cells are n−1. House matches the pot 1:1; green cells split the prize.
         </Text>
       }
       <Group className={cn("table-modal-actions")} justify="flex-end" gap="sm" mt="md">

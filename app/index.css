@@ -19,6 +19,7 @@
   --animate-number-flash: number-flash 0.12s ease-out;
   --animate-map-win: map-win 0.9s ease-in-out infinite;
   --animate-map-taken: map-taken 0.5s ease-in-out;
+  --animate-map-pass: map-pass 0.2s ease-out;
 }
 
 @keyframes banner-in-out {
@@ -43,6 +44,11 @@
 @keyframes map-taken {
   0%, 100% { filter: brightness(1); }
   50% { filter: brightness(2.2) saturate(1.5); }
+}
+
+@keyframes map-pass {
+  from { filter: brightness(1.28); }
+  to { filter: brightness(1.1); }
 }
 
 @keyframes chip-drop {

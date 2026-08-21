@@ -613,13 +613,13 @@ describe("UI flow: create, view, play lottery", () => {
     const lottery = await ethers.getContractAt("Lottery", address)
     const table = await lottery.connect(creator).getTable()
     expect(table.polygonCount).to.equal(12n)
-    expect(table.loseCount).to.equal(12n)
+    expect(table.loseCount).to.equal(11n)
     expect(table.ticketPrice).to.equal(ethers.parseEther("0.05"))
     expect(table.claimedCount).to.equal(0n)
     expect(table.prize).to.equal(0n)
     expect(table.totalBalance).to.equal(DEPOSIT)
     expect(table.memberShares).to.equal(DEPOSIT)
-    expect(table.owners.length).to.equal(24)
+    expect(table.owners.length).to.equal(23)
   })
 
   it("rejects bad lottery params and wrong ticket price", async () => {
@@ -639,7 +639,7 @@ describe("UI flow: create, view, play lottery", () => {
       factory.connect(creator).createGame(
         "Huge",
         TABLE_TYPE_IDS.Polygons,
-        25,
+        49,
         0,
         ethers.parseEther("0.01"),
         { value: DEPOSIT }
@@ -781,7 +781,7 @@ describe("UI flow: create, view, play lottery", () => {
       }
       expect(paidTotal).to.equal(settled.args.prize)
     } else {
-      expect(assigned).to.be.gte(4)
+      expect(assigned).to.be.gte(3)
       expect(settled.args.owners.length).to.equal(0)
       const held = await lottery.connect(player).getTable()
       expect(held.myPrize).to.equal(0n)

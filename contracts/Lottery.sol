@@ -35,7 +35,7 @@ contract Lottery {
 	mapping(address => uint256) private heldSettle;
 
 	uint256 public constant MIN_POLYGONS = 3;
-	uint256 public constant MAX_POLYGONS = 24;
+	uint256 public constant MAX_POLYGONS = 48;
 	uint256 public constant CHIP = 0.01 ether;
 	uint256 public constant MIN_DEPOSIT = 1 ether;
 	uint256 public constant WITHDRAW_INTERVAL = 1 days;
@@ -78,7 +78,7 @@ contract Lottery {
 		factory = msg.sender;
 		createdAt = block.timestamp;
 		polygonCount = _polygonCount;
-		loseCount = _polygonCount;
+		loseCount = _polygonCount - 1;
 		ticketPrice = _ticketPrice;
 		totalShares = msg.value;
 		shares[_createdBy] = msg.value;
@@ -216,10 +216,7 @@ contract Lottery {
 		require(msg.value == ticketPrice * count, "Wrong price");
 		uint256 incoming = msg.value;
 		uint256 house = address(this).balance - reserved - pot - incoming;
-		uint256 nextPot = pot + incoming;
-		uint256 winSum = triangle(polygonCount);
-		uint256 loseSum = triangle(loseCount);
-		require(house * winSum >= nextPot * loseSum, "Table cannot cover this bet");
+		require(house >= pot + incoming, "Table cannot cover this bet");
 		uint256 used = 0;
 		uint8 outcome = 0;
 		for (; used < count; used++) {
@@ -272,21 +269,17 @@ contract Lottery {
 
 	function settlePlayers() private {
 		uint256 roundPot = pot;
-		uint256 winSum = triangle(polygonCount);
-		uint256 loseSum = triangle(loseCount);
-		uint256 payout = (roundPot * (winSum + loseSum)) / winSum;
+		uint256 payout = roundPot * 2;
+		uint256 unit = payout / polygonCount;
+		uint256 remainder = payout % polygonCount;
+		address last = cellOwner[polygonCount - 1];
 		address[] memory roundOwners = new address[](polygonCount);
-		uint256 paid = 0;
 		uint256 total = polygonCount + loseCount;
 		for (uint256 i = 0; i < polygonCount; i++) {
 			roundOwners[i] = cellOwner[i];
-			uint256 share = (payout * (i + 1)) / winSum;
-			if (i + 1 == polygonCount) {
-				share = payout - paid;
-			}
-			prizes[cellOwner[i]] += share;
-			paid += share;
+			prizes[cellOwner[i]] += unit;
 		}
+		prizes[last] += remainder;
 		for (uint256 i = 0; i < total; i++) {
 			delete cellOwner[i];
 		}
@@ -324,10 +317,6 @@ contract Lottery {
 		loseLit = 0;
 		address[] memory none = new address[](0);
 		emit Settled(taken, none, false);
-	}
-
-	function triangle(uint256 n) private pure returns (uint256) {
-		return (n * (n + 1)) / 2;
 	}
 
 	function houseBankroll() private view returns (uint256) {

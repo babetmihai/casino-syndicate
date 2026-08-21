@@ -8,7 +8,7 @@ import LotteryArtifact from "artifacts/contracts/Lottery.sol/Lottery.json"
 import _ from "lodash"
 
 export const MIN_POLYGONS = 3
-export const MAX_POLYGONS = 24
+export const MAX_POLYGONS = 48
 export const TICKET_MULTIPLIERS = [1, 5, 10]
 export const ticketGas = (count) => 400000n + BigInt(count) * 200000n
 

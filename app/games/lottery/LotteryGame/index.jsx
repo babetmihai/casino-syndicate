@@ -9,14 +9,13 @@ import { showModal } from "app/core/modals"
 import { cn } from "app/core"
 import AuthModal from "app/core/auth/AuthModal"
 import LotteryMap from "../LotteryMap"
-import { cellSpinOrder, seedFromAddress } from "../polygons"
 import { bankrollClass, clampEth, ethLabel } from "app/games/roulette/chips"
 import { selectNativeSymbol } from "app/core/chain"
 import { ethers } from "ethers"
 
-const SPIN_MS = 28
-const SLOW_STEPS = 14
-const HOLD_MS = 420
+const FAST_MS = 16
+const SLOW_MS = 140
+const HOLD_MS = 320
 
 
 const LotteryGame = React.memo(({ address }) => {
@@ -114,16 +113,16 @@ const LotteryGame = React.memo(({ address }) => {
   const onBuy = async () => {
     if (!canSpin) return
     setBuying(true)
+    setRevealing(true)
     unwatchLottery(address)
+    let winner
+    const spinning = flashAll(totalCells, setLitIds, stopFlash, () => winner)
     try {
       const ticket = await buyLotteryTicket(address)
       if (!ticket) return
       const draws = ticket.draws || []
-      const winners = _.map(draws, "polygonId")
-      setRevealing(true)
-      if (winners.length > 0) {
-        await flashAll(totalCells, winners, setLitIds, stopFlash, cellSpinOrder(seedFromAddress(address), totalCells, polygonCount))
-      }
+      winner = _.last(_.map(draws, "polygonId"))
+      if (_.isNumber(winner)) await spinning
       await fetchLottery(address)
       if (account) fetchBalance(account)
       const split = (ticket.splitIds || []).length > 0
@@ -180,7 +179,7 @@ const LotteryGame = React.memo(({ address }) => {
         <Text className={cn("lottery-prize", "shrink-0 whitespace-nowrap text-cs-muted")} size="xs">
           {ethLabel(pot, symbol)}
           {myJackpot > 0 &&
-            <span className={cn("lottery-prize-jackpot", "text-cs-accent")}> (+{ethLabel(myJackpot, symbol)})</span>
+            <span className={cn("lottery-prize-jackpot")}> (+{ethLabel(myJackpot, symbol)})</span>
           }
         </Text>
         <Text className={cn("lottery-bankroll", "shrink-0 whitespace-nowrap", bankrollClass(bankroll, ticketPrice))} size="xs">
@@ -296,41 +295,30 @@ const LotteryGame = React.memo(({ address }) => {
 export default LotteryGame
 
 
-const flashAll = (count, winners, setLitIds, stopFlash, order) => {
+const flashAll = (count, setLitIds, stopFlash, getWinner) => {
   return new Promise((resolve) => {
-    if (!count || winners.length === 0) {
+    if (!count) {
       resolve()
       return
     }
-    let wheel = order
-    if (!wheel || wheel.length !== count) wheel = _.range(count)
-    const n = winners.length
-    const positions = _.map(winners, () => _.random(0, count - 1))
-    const publish = () => setLitIds(_.uniq(positions))
-    const stops = []
-    let finished = 0
-    _.forEach(winners, (winner, i) => {
-      const stop = runPolygonFlash({
-        from: positions[i],
-        wheel,
-        getWinner: () => winner,
-        onTick: (id) => {
-          positions[i] = id
-          publish()
-        },
-        onDone: () => {
-          positions[i] = winner
-          publish()
-          finished += 1
-          if (finished !== n) return
-          _.delay(resolve, HOLD_MS)
-        }
-      })
-      stops.push(stop)
+    const wheel = _.shuffle(_.range(count))
+    let position = wheel[_.random(0, count - 1)]
+    const publish = () => setLitIds([position])
+    const stop = runPolygonFlash({
+      from: position,
+      wheel,
+      getWinner,
+      onTick: (id) => {
+        position = id
+        publish()
+      },
+      onDone: (winner) => {
+        position = winner
+        publish()
+        _.delay(resolve, HOLD_MS)
+      }
     })
-    stopFlash.current = () => {
-      _.forEach(stops, (fn) => fn())
-    }
+    stopFlash.current = stop
   })
 }
 
@@ -338,6 +326,9 @@ const runPolygonFlash = ({ from, wheel, getWinner, onTick, onDone }) => {
   let timer
   let stopped = false
   let steps = 0
+  let extraLaps
+  let endStep
+  let landSpan
   const n = wheel.length
   let startIndex = _.indexOf(wheel, from)
   if (startIndex < 0) startIndex = 0
@@ -350,29 +341,33 @@ const runPolygonFlash = ({ from, wheel, getWinner, onTick, onDone }) => {
     steps += 1
 
     const winner = getWinner()
-    let delay = SPIN_MS
+    let delay = FAST_MS + _.random(-4, 6)
     if (_.isNumber(winner)) {
+      if (!_.isNumber(extraLaps)) extraLaps = _.random(1, 2)
       const winnerIndex = _.indexOf(wheel, winner)
-      const distance = (winnerIndex - startIndex + n) % n
-      const minSteps = n * 2 + distance
-      if (steps >= minSteps && index === winnerIndex) {
+      if (!_.isNumber(endStep)) {
+        const distance = (winnerIndex - index + n) % n
+        let more = n * extraLaps + distance
+        if (more < 1) more = n
+        endStep = steps + more
+        landSpan = more
+      }
+      if (steps >= endStep && index === winnerIndex) {
         onTick(wheel[index])
         onDone(winner)
         return
       }
-      let remaining = minSteps - steps
-      if (steps >= minSteps) remaining = (winnerIndex - index + n) % n
-      if (remaining <= SLOW_STEPS) {
-        const t = 1 - remaining / SLOW_STEPS
-        delay = SPIN_MS + t * t * t * 320
-      }
+      let remaining = endStep - steps
+      if (remaining < 0) remaining = 0
+      const t = 1 - remaining / landSpan
+      delay = FAST_MS + t * t * (SLOW_MS - FAST_MS)
     }
 
     onTick(wheel[index])
     timer = _.delay(tick, delay)
   }
 
-  timer = _.delay(tick, SPIN_MS)
+  timer = _.delay(tick, FAST_MS)
 
   return () => {
     stopped = true

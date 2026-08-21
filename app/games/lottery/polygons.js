@@ -69,13 +69,6 @@ export const splitLobes = (cell) => {
   ]
 }
 
-export const cellSpinOrder = (seed, count, winCount) => {
-  const polygons = buildPolygons(seed, count, winCount)
-  return _.map(_.sortBy(polygons, (polygon) => {
-    return Math.atan2(polygon.y - 0.5, polygon.x - 0.5)
-  }), "id")
-}
-
 export const BORDER_STROKE = "var(--cs-elevated)"
 export const BORDER_WIDTH = 0.012
 

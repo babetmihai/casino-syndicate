@@ -50,13 +50,24 @@ const LotteryMap = ({
         const isBonus = Boolean(bonuses[polygon.id])
         const split = Boolean(mate) && !isLose
         let pieces = [{ owner, path: polygon.path }]
+        let nucleus = polygon
         if (split) {
           const lobes = splitLobes(polygon)
           if (lobes.length === 2) {
+            const ownerLobe = lobes[0] || {}
+            const center = ownerLobe.center || []
             pieces = [
-              { owner, path: lobes[0].path },
+              { owner, path: ownerLobe.path },
               { owner: mate, path: lobes[1].path }
             ]
+            nucleus = {
+              ...polygon,
+              path: ownerLobe.path,
+              points: ownerLobe.points,
+              raw: ownerLobe.points,
+              x: center[0],
+              y: center[1]
+            }
           }
         }
         return (
@@ -76,7 +87,7 @@ const LotteryMap = ({
               isSplitFlash: _.includes(splitIds, polygon.id),
               celebrate
             }))}
-            {isBonus && paintNucleus(polygon)}
+            {isBonus && paintNucleus(nucleus)}
           </g>
         )
       })}
@@ -161,9 +172,23 @@ const paintPiece = ({
 }
 
 const paintNucleus = (polygon) => {
-  const { id, x, y, r, path } = polygon || {}
-  let radius = (r || 0) * 0.16
-  if (radius < 0.011) radius = 0.011
+  const { id, x, y, path, points, raw } = polygon || {}
+  const source = raw || points || []
+  let inner
+  _.forEach(source, (cur, i) => {
+    const next = source[(i + 1) % source.length]
+    const dx = next[0] - cur[0]
+    const dy = next[1] - cur[1]
+    const len = Math.hypot(dx, dy)
+    if (len < 1e-12) return
+    const d = Math.abs((x - cur[0]) * dy - (y - cur[1]) * dx) / len
+    if (!_.isNumber(inner) || d < inner) inner = d
+  })
+  if (!inner) return
+  const pad = BORDER_WIDTH / 2 + 0.006
+  let radius = inner * 0.4
+  if (radius > inner - pad) radius = inner - pad
+  if (radius <= 0) return
   const clipId = `lottery-nucleus-${id}`
   return (
     <g className={cn("lottery-map-nucleus-wrap", "pointer-events-none")}>

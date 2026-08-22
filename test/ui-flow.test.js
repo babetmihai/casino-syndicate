@@ -5,11 +5,10 @@ const TABLE_TYPES = { Roulette: "Roulette", Polygons: "Polygons" }
 const TABLE_TYPE_IDS = { [TABLE_TYPES.Roulette]: 0, [TABLE_TYPES.Polygons]: 1 }
 const TABLE_TYPE_BY_ID = { 0: TABLE_TYPES.Roulette, 1: TABLE_TYPES.Polygons }
 
-const toTable = ({ game, name, createdBy, createdAt, gameType }) => {
+const toTable = ({ game, createdBy, createdAt, gameType }) => {
   const address = ethers.getAddress(game)
   return {
     address,
-    name,
     createdBy: ethers.getAddress(createdBy),
     createdAt: Number(createdAt),
     type: TABLE_TYPE_BY_ID[Number(gameType)]
@@ -25,7 +24,6 @@ describe("UI flow: create, view, play roulette", () => {
     await factory.waitForDeployment()
 
     const createTx = await factory.connect(creator).createGame(
-      "Test Table",
       TABLE_TYPE_IDS.Roulette,
       ethers.parseEther("0.01"),
       ethers.parseEther("1"),
@@ -55,14 +53,12 @@ describe("UI flow: create, view, play roulette", () => {
     expect(rows.length).to.equal(1)
     const listed = toTable(rows[0])
     expect(listed.address).to.equal(ethers.getAddress(createdAddress))
-    expect(listed.name).to.equal("Test Table")
     expect(listed.createdBy).to.equal(creator.address)
     expect(listed.type).to.equal(TABLE_TYPES.Roulette)
 
     const loaded = toTable(await factory.getGame(createdAddress))
     expect(loaded).to.deep.include({
       address: listed.address,
-      name: "Test Table",
       createdBy: creator.address,
       type: TABLE_TYPES.Roulette
     })
@@ -114,7 +110,6 @@ describe("UI flow: create, view, play roulette", () => {
     await factory.waitForDeployment()
 
     const createTx = await factory.connect(creator).createGame(
-      "Bankroll Table",
       TABLE_TYPE_IDS.Roulette,
       ethers.parseEther("0.01"),
       ethers.parseEther("1"),
@@ -156,7 +151,6 @@ describe("UI flow: create, view, play roulette", () => {
     const factory = await Factory.deploy()
     await factory.waitForDeployment()
     const createTx = await factory.connect(creator).createGame(
-      "Outside Table",
       TABLE_TYPE_IDS.Roulette,
       ethers.parseEther("0.01"),
       ethers.parseEther("1"),
@@ -209,7 +203,6 @@ describe("UI flow: create, view, play roulette", () => {
     const factory = await Factory.deploy()
     await factory.waitForDeployment()
     const createTx = await factory.connect(creator).createGame(
-      "Inside Table",
       TABLE_TYPE_IDS.Roulette,
       ethers.parseEther("0.01"),
       ethers.parseEther("1"),
@@ -263,12 +256,11 @@ describe("UI flow: create, view, play roulette", () => {
   })
 
   it("sets min and max when the table is created", async () => {
-    const [creator, player] = await ethers.getSigners()
+    const [creator] = await ethers.getSigners()
     const Factory = await ethers.getContractFactory("GameFactory")
     const factory = await Factory.deploy()
     await factory.waitForDeployment()
     const createTx = await factory.connect(creator).createGame(
-      "Limits Table",
       TABLE_TYPE_IDS.Roulette,
       ethers.parseEther("0.05"),
       ethers.parseEther("0.5"),
@@ -293,25 +285,8 @@ describe("UI flow: create, view, play roulette", () => {
     expect(afterCreate.minBet).to.equal(ethers.parseEther("0.05"))
     expect(afterCreate.maxBet).to.equal(ethers.parseEther("0.5"))
 
-    await (await roulette.connect(creator).setLimits(
-      ethers.parseEther("0.01"),
-      ethers.parseEther("1")
-    )).wait()
-    const afterSet = await roulette.connect(creator).getTable()
-    expect(afterSet.minBet).to.equal(ethers.parseEther("0.01"))
-    expect(afterSet.maxBet).to.equal(ethers.parseEther("1"))
-
-    await expect(
-      roulette.connect(player).setLimits(ethers.parseEther("0.01"), ethers.parseEther("1"))
-    ).to.be.revertedWith("Only owner")
-
-    await expect(
-      roulette.connect(creator).setLimits(ethers.parseEther("0.05"), ethers.parseEther("0.01"))
-    ).to.be.revertedWith("Max below min")
-
     await expect(
       factory.connect(creator).createGame(
-        "Bad Max",
         TABLE_TYPE_IDS.Roulette,
         ethers.parseEther("0.05"),
         ethers.parseEther("0.01"),
@@ -319,14 +294,6 @@ describe("UI flow: create, view, play roulette", () => {
         { value: ethers.parseEther("1") }
       )
     ).to.be.revertedWith("Max below min")
-
-    await (await factory.connect(creator).setGameName(created.args.game, "Night Table")).wait()
-    expect((await factory.getGame(created.args.game)).name).to.equal("Night Table")
-    expect(await roulette.name()).to.equal("Night Table")
-
-    await expect(
-      factory.connect(player).setGameName(created.args.game, "Stolen")
-    ).to.be.revertedWith("Only owner")
   })
 
   it("rejects bets outside table limits", async () => {
@@ -335,7 +302,6 @@ describe("UI flow: create, view, play roulette", () => {
     const factory = await Factory.deploy()
     await factory.waitForDeployment()
     const createTx = await factory.connect(creator).createGame(
-      "Cover Table",
       TABLE_TYPE_IDS.Roulette,
       ethers.parseEther("0.01"),
       ethers.parseEther("0.01"),
@@ -377,7 +343,6 @@ describe("UI flow: create, view, play roulette", () => {
 
     await expect(
       factory.connect(creator).createGame(
-        "Thin Table",
         TABLE_TYPE_IDS.Roulette,
         ethers.parseEther("0.01"),
         ethers.parseEther("0.01"),
@@ -389,7 +354,6 @@ describe("UI flow: create, view, play roulette", () => {
     ).to.be.revertedWith("Min deposit 1")
 
     const createTx = await factory.connect(creator).createGame(
-      "Bank Table",
       TABLE_TYPE_IDS.Roulette,
       ethers.parseEther("0.01"),
       ethers.parseEther("0.01"),
@@ -432,13 +396,12 @@ describe("UI flow: create, view, play roulette", () => {
     await (await roulette.connect(creator).withdrawShares(ethers.parseEther("0.01"))).wait()
   })
 
-  it("transfers ownership to the largest shareholder on deposit and withdraw", async () => {
+  it("keeps the creator as owner after another player deposits and withdraws", async () => {
     const [creator, player] = await ethers.getSigners()
     const Factory = await ethers.getContractFactory("GameFactory")
     const factory = await Factory.deploy()
     await factory.waitForDeployment()
     const createTx = await factory.connect(creator).createGame(
-      "Share Table",
       TABLE_TYPE_IDS.Roulette,
       ethers.parseEther("0.01"),
       ethers.parseEther("0.05"),
@@ -464,24 +427,11 @@ describe("UI flow: create, view, play roulette", () => {
     expect((await factory.getGame(game)).createdBy).to.equal(creator.address)
 
     await (await roulette.connect(player).depositShares({ value: ethers.parseEther("2") })).wait()
-    expect(await roulette.createdBy()).to.equal(player.address)
-    expect((await factory.getGame(game)).createdBy).to.equal(player.address)
-    expect((await factory.getGamesByCreator(player.address)).length).to.equal(1)
-    expect((await factory.getGamesByCreator(creator.address)).length).to.equal(0)
-    expect((await roulette.connect(player).getTable()).owner).to.equal(player.address)
-
-    await (await roulette.connect(player).setLimits(
-      ethers.parseEther("0.01"),
-      ethers.parseEther("0.1")
-    )).wait()
-    await expect(
-      roulette.connect(creator).setLimits(ethers.parseEther("0.01"), ethers.parseEther("0.1"))
-    ).to.be.revertedWith("Only owner")
-    await expect(
-      factory.connect(creator).setGameName(game, "Stolen")
-    ).to.be.revertedWith("Only owner")
-    await (await factory.connect(player).setGameName(game, "House Table")).wait()
-    expect(await roulette.name()).to.equal("House Table")
+    expect(await roulette.createdBy()).to.equal(creator.address)
+    expect((await factory.getGame(game)).createdBy).to.equal(creator.address)
+    expect((await factory.getGamesByCreator(creator.address)).length).to.equal(1)
+    expect((await factory.getGamesByCreator(player.address)).length).to.equal(0)
+    expect((await roulette.connect(player).getTable()).owner).to.equal(creator.address)
 
     await (await roulette.connect(creator).depositShares({ value: ethers.parseEther("3") })).wait()
     expect(await roulette.createdBy()).to.equal(creator.address)
@@ -489,10 +439,10 @@ describe("UI flow: create, view, play roulette", () => {
     expect((await factory.getGamesByCreator(player.address)).length).to.equal(0)
 
     await (await roulette.connect(creator).withdrawShares(ethers.parseEther("3.5"))).wait()
-    expect(await roulette.createdBy()).to.equal(player.address)
-    expect((await factory.getGame(game)).createdBy).to.equal(player.address)
-    expect((await factory.getGamesByCreator(player.address)).length).to.equal(1)
-    expect((await factory.getGamesByCreator(creator.address)).length).to.equal(0)
+    expect(await roulette.createdBy()).to.equal(creator.address)
+    expect((await factory.getGame(game)).createdBy).to.equal(creator.address)
+    expect((await factory.getGamesByCreator(creator.address)).length).to.equal(1)
+    expect((await factory.getGamesByCreator(player.address)).length).to.equal(0)
   })
 })
 
@@ -519,9 +469,8 @@ describe("UI flow: create, view, play lottery", () => {
     return created.args.game
   }
 
-  const createLottery = (factory, creator, name, polygons, price) => {
+  const createLottery = (factory, creator, polygons, price) => {
     return factory.connect(creator).createGame(
-      name,
       TABLE_TYPE_IDS.Polygons,
       polygons,
       0,
@@ -603,7 +552,7 @@ describe("UI flow: create, view, play lottery", () => {
   it("creates a lottery, lists it, and loads polygon config", async () => {
     const [creator] = await ethers.getSigners()
     const factory = await deployFactory()
-    const createTx = await createLottery(factory, creator, "Night Map", 12, ethers.parseEther("0.05"))
+    const createTx = await createLottery(factory, creator, 12, ethers.parseEther("0.05"))
     const receipt = await createTx.wait()
     const address = createdAddress(factory, receipt)
 
@@ -611,7 +560,7 @@ describe("UI flow: create, view, play lottery", () => {
     expect(rows.length).to.equal(1)
     const listed = toTable(rows[0])
     expect(listed.address).to.equal(ethers.getAddress(address))
-    expect(listed.name).to.equal("Night Map")
+    expect(listed.createdBy).to.equal(creator.address)
     expect(listed.type).to.equal(TABLE_TYPES.Polygons)
 
     const lottery = await ethers.getContractAt("Lottery", address)
@@ -631,7 +580,6 @@ describe("UI flow: create, view, play lottery", () => {
     const factory = await deployFactory()
     await expect(
       factory.connect(creator).createGame(
-        "Few",
         TABLE_TYPE_IDS.Polygons,
         2,
         0,
@@ -641,7 +589,6 @@ describe("UI flow: create, view, play lottery", () => {
     ).to.be.revertedWith("Bad polygons")
     await expect(
       factory.connect(creator).createGame(
-        "Huge",
         TABLE_TYPE_IDS.Polygons,
         49,
         0,
@@ -651,7 +598,6 @@ describe("UI flow: create, view, play lottery", () => {
     ).to.be.revertedWith("Bad polygons")
     await expect(
       factory.connect(creator).createGame(
-        "Cheap",
         TABLE_TYPE_IDS.Polygons,
         12,
         0,
@@ -661,7 +607,6 @@ describe("UI flow: create, view, play lottery", () => {
     ).to.be.revertedWith("Price too small")
     await expect(
       factory.connect(creator).createGame(
-        "Broke",
         TABLE_TYPE_IDS.Polygons,
         12,
         0,
@@ -669,7 +614,7 @@ describe("UI flow: create, view, play lottery", () => {
       )
     ).to.be.revertedWith("Min deposit 1")
 
-    const createTx = await createLottery(factory, creator, "Ticket Map", 4, ethers.parseEther("0.01"))
+    const createTx = await createLottery(factory, creator, 4, ethers.parseEther("0.01"))
     const lottery = await ethers.getContractAt("Lottery", createdAddress(factory, await createTx.wait()))
     await expect(
       lottery.connect(player).buyTicket({ value: ethers.parseEther("0.02") })
@@ -683,7 +628,7 @@ describe("UI flow: create, view, play lottery", () => {
     const [creator, player] = await ethers.getSigners()
     const factory = await deployFactory()
     const price = ethers.parseEther("0.01")
-    const createTx = await createLottery(factory, creator, "Pot Map", 3, price)
+    const createTx = await createLottery(factory, creator, 3, price)
     const lottery = await ethers.getContractAt("Lottery", createdAddress(factory, await createTx.wait()))
     let used = 0n
     let settled
@@ -726,7 +671,7 @@ describe("UI flow: create, view, play lottery", () => {
     const factory = await deployFactory()
     const price = ethers.parseEther("0.01")
     const polygons = 3
-    const createTx = await createLottery(factory, creator, "Jackpot Map", polygons, price)
+    const createTx = await createLottery(factory, creator, polygons, price)
     const lottery = await ethers.getContractAt("Lottery", createdAddress(factory, await createTx.wait()))
     const found = { 1: false, 2: false, 3: false }
     let bonus
@@ -788,7 +733,7 @@ describe("UI flow: create, view, play lottery", () => {
     const [creator, player, other] = await ethers.getSigners()
     const factory = await deployFactory()
     const price = ethers.parseEther("0.01")
-    const createTx = await createLottery(factory, creator, "Fill Map", 4, price)
+    const createTx = await createLottery(factory, creator, 4, price)
     const lottery = await ethers.getContractAt("Lottery", createdAddress(factory, await createTx.wait()))
     const buyers = [player, other]
     const firstOwners = {}
@@ -852,7 +797,7 @@ describe("UI flow: create, view, play lottery", () => {
     const [creator, player, other] = await ethers.getSigners()
     const factory = await deployFactory()
     const price = ethers.parseEther("0.01")
-    const createTx = await createLottery(factory, creator, "Stack Map", 3, price)
+    const createTx = await createLottery(factory, creator, 3, price)
     const lottery = await ethers.getContractAt("Lottery", createdAddress(factory, await createTx.wait()))
     const first = await playUntilSettled(lottery, player, price, true)
     const firstPrize = first.settled.args.prize
@@ -891,7 +836,7 @@ describe("UI flow: create, view, play lottery", () => {
     const [creator, player] = await ethers.getSigners()
     const factory = await deployFactory()
     const price = ethers.parseEther("0.01")
-    const createTx = await createLottery(factory, creator, "Taken Map", 4, price)
+    const createTx = await createLottery(factory, creator, 4, price)
     const lottery = await ethers.getContractAt("Lottery", createdAddress(factory, await createTx.wait()))
     let taken
     let settled
@@ -921,7 +866,7 @@ describe("UI flow: create, view, play lottery", () => {
     const [creator, player, other] = await ethers.getSigners()
     const factory = await deployFactory()
     const price = ethers.parseEther("0.01")
-    const createTx = await createLottery(factory, creator, "Split Map", 6, price)
+    const createTx = await createLottery(factory, creator, 6, price)
     const lottery = await ethers.getContractAt("Lottery", createdAddress(factory, await createTx.wait()))
     let split
     for (let i = 0; i < 120; i++) {
@@ -953,31 +898,17 @@ describe("UI flow: create, view, play lottery", () => {
   it("lets the house deposit and withdraw shares", async () => {
     const [creator, player] = await ethers.getSigners()
     const factory = await deployFactory()
-    const createTx = await createLottery(factory, creator, "Bank Map", 6, ethers.parseEther("0.01"))
+    const createTx = await createLottery(factory, creator, 6, ethers.parseEther("0.01"))
     const lottery = await ethers.getContractAt("Lottery", createdAddress(factory, await createTx.wait()))
     await (await lottery.connect(player).depositShares({ value: ethers.parseEther("2") })).wait()
     const afterDeposit = await lottery.connect(player).getTable()
     expect(afterDeposit.memberShares).to.equal(ethers.parseEther("2"))
     expect(afterDeposit.totalBalance).to.equal(ethers.parseEther("3"))
-    expect(afterDeposit.owner).to.equal(player.address)
+    expect(afterDeposit.owner).to.equal(creator.address)
     await (await lottery.connect(player).withdrawShares(ethers.parseEther("2"))).wait()
     const afterWithdraw = await lottery.connect(creator).getTable()
     expect(afterWithdraw.totalBalance).to.equal(DEPOSIT)
     expect(afterWithdraw.owner).to.equal(creator.address)
-  })
-
-  it("edits only the name through the factory", async () => {
-    const [creator, player] = await ethers.getSigners()
-    const factory = await deployFactory()
-    const createTx = await createLottery(factory, creator, "Rename Map", 6, ethers.parseEther("0.01"))
-    const address = createdAddress(factory, await createTx.wait())
-    const lottery = await ethers.getContractAt("Lottery", address)
-    await (await factory.connect(creator).setGameName(address, "Street Map")).wait()
-    expect((await factory.getGame(address)).name).to.equal("Street Map")
-    expect(await lottery.name()).to.equal("Street Map")
-    await expect(
-      factory.connect(player).setGameName(address, "Stolen")
-    ).to.be.revertedWith("Only owner")
   })
 })
 
@@ -1009,7 +940,6 @@ describe("session wallet acts as principal", () => {
     expect(await ethers.provider.getBalance(session.address)).to.equal(deposit)
 
     const createTx = await factory.connect(creator).createGame(
-      "Session Table",
       TABLE_TYPE_IDS.Roulette,
       ethers.parseEther("0.01"),
       ethers.parseEther("1"),
@@ -1049,7 +979,6 @@ describe("session wallet acts as principal", () => {
     })).wait()
 
     const createTx = await factory.connect(session).createGame(
-      "Owned By Me",
       TABLE_TYPE_IDS.Roulette,
       ethers.parseEther("0.01"),
       ethers.parseEther("1"),
@@ -1061,11 +990,8 @@ describe("session wallet acts as principal", () => {
     const rows = await factory.getGamesByCreator(player.address)
     expect(rows.length).to.equal(1)
     expect(rows[0].createdBy).to.equal(player.address)
-    await (await factory.connect(session).setGameName(game, "Renamed")).wait()
-    expect((await factory.getGame(game)).name).to.equal("Renamed")
 
     const lotteryTx = await factory.connect(session).createGame(
-      "Session Map",
       TABLE_TYPE_IDS.Polygons,
       6,
       0,

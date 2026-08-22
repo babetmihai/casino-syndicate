@@ -1,4 +1,4 @@
-import { Button, Group, Modal, NumberInput, SegmentedControl, TextInput, Text } from "@mantine/core"
+import { Button, Group, Modal, NumberInput, SegmentedControl, Text } from "@mantine/core"
 import React from "react"
 import { hideModal } from "app/core/modals"
 import { useFormik } from "formik"
@@ -18,7 +18,6 @@ const TableModal = ({ onSubmit }) => {
   const symbol = useSelector(() => selectNativeSymbol())
   const formik = useFormik({
     initialValues: {
-      name: "",
       type: TABLE_TYPES.Roulette,
       balance: 10,
       minBet: MIN_BET,
@@ -27,7 +26,6 @@ const TableModal = ({ onSubmit }) => {
       ticketPrice: MIN_BET
     },
     validationSchema: Yup.object({
-      name: Yup.string().required(t("name_required")),
       balance: Yup.number().min(MIN_TABLE_DEPOSIT, t("balance_required")),
       minBet: Yup.number().when("type", {
         is: TABLE_TYPES.Roulette,
@@ -79,20 +77,10 @@ const TableModal = ({ onSubmit }) => {
       onClose={hideModal}
       title={<Text className={cn("table-modal-title")} fw={500}>{t("create_table")}</Text>}
     >
-      <TextInput
-        className={cn("table-modal-name")}
-        name="name"
-        label="Table name"
-        placeholder="Saturday night"
-        data-autofocus
-        onChange={(event) => {
-          formik.setFieldValue("name", event.target.value)
-        }}
-      />
       <SegmentedControl
         className={cn("table-modal-type", "w-full")}
         fullWidth
-        mt="md"
+        data-autofocus
         value={formik.values.type}
         onChange={(value) => {
           formik.setFieldValue("type", value)

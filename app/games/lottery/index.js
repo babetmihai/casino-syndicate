@@ -84,7 +84,6 @@ export const fetchLottery = async (address) => {
   const ownerRaw = row.owner
   let owner
   if (ownerRaw && ownerRaw !== ethers.ZeroAddress) owner = ethers.getAddress(ownerRaw)
-  const tableAddress = ethers.getAddress(address)
   actions.update(lotteryPath(address), {
     polygonCount: Number(row.polygonCount),
     loseCount: Number(row.loseCount),
@@ -101,9 +100,6 @@ export const fetchLottery = async (address) => {
     owner,
     owners
   })
-  if (owner) {
-    actions.update(`tables.${tableAddress}`, { createdBy: owner })
-  }
 }
 
 

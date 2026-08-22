@@ -75,16 +75,16 @@ export const fetchTables = async () => {
 }
 
 export const createTable = async (values) => {
-  const { name, type, balance, minBet, maxBet, polygonCount, ticketPrice } = values
+  const { type, balance, minBet, maxBet, polygonCount, ticketPrice } = values
   const gameType = TABLE_TYPE_IDS[type]
   if (gameType === undefined) throw new Error("Unsupported game type")
 
   const factory = await getFactory()
   const isPolygons = type === TABLE_TYPES.Polygons
-  let args = [name, gameType, parseEth(minBet), parseEth(maxBet), 0]
+  let args = [gameType, parseEth(minBet), parseEth(maxBet), 0]
   const value = parseEth(balance)
   if (isPolygons) {
-    args = [name, gameType, polygonCount, 0, parseEth(ticketPrice)]
+    args = [gameType, polygonCount, 0, parseEth(ticketPrice)]
   }
   const receipt = await sendWalletTx(factory.createGame, args, { value })
 
@@ -108,23 +108,15 @@ export const createTable = async (values) => {
   await fetchTables()
 }
 
-export const setTableName = async (address, name) => {
-  const factory = await getFactory()
-  await sendWalletTx(factory.setGameName, [address, name])
-  await initTable(address)
-}
-
-
 const abiForType = (type) => {
   if (type === TABLE_TYPES.Polygons) return LotteryArtifact.abi
   return RouletteArtifact.abi
 }
 
-const toTable = ({ game, name, createdBy, createdAt, gameType } = {}) => {
+const toTable = ({ game, createdBy, createdAt, gameType } = {}) => {
   const address = ethers.getAddress(game)
   return {
     address,
-    name,
     createdBy: ethers.getAddress(createdBy),
     createdAt: Number(createdAt),
     type: TABLE_TYPE_BY_ID[Number(gameType)]

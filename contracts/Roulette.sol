@@ -2,13 +2,11 @@
 pragma solidity ^0.8.0;
 
 interface IGameFactory {
-	function setGameOwner(address owner) external;
 	function principalOf(address account) external view returns (address);
 }
 
 
 contract Roulette {
-	string public name;
 	address public createdBy;
 	address public factory;
 	uint256 public createdAt;
@@ -19,8 +17,6 @@ contract Roulette {
 	mapping(address => uint256) public shares;
 	mapping(address => uint256) public balances;
 	mapping(address => uint256) public lastWithdrawAt;
-	address[] private holders;
-	mapping(address => uint256) private holderIndex;
 
 	uint256 public constant CHIP = 0.01 ether;
 	uint256 public constant MIN_DEPOSIT = 1 ether;
@@ -40,12 +36,10 @@ contract Roulette {
 	event Deposited(address indexed user, uint256 amount);
 	event WinningNumber(uint256 number, uint256 totalBetAmount, uint256 winningAmount, uint256 playerBalance);
 
-	constructor(string memory _name, address _createdBy, uint256 _minBet, uint256 _maxBet) payable {
+	constructor(address _createdBy, uint256 _minBet, uint256 _maxBet) payable {
 		require(msg.value >= MIN_DEPOSIT, "Min deposit 1");
-		require(bytes(_name).length > 0, "Name required");
 		require(_minBet >= CHIP, "Min too small");
 		require(_maxBet >= _minBet, "Max below min");
-		name = _name;
 		createdBy = _createdBy;
 		factory = msg.sender;
 		createdAt = block.timestamp;
@@ -53,7 +47,6 @@ contract Roulette {
 		maxBet = _maxBet;
 		totalShares = msg.value;
 		shares[_createdBy] = msg.value;
-		addHolder(_createdBy);
 		emit Deposited(_createdBy, msg.value);
 	}
 
@@ -80,20 +73,6 @@ contract Roulette {
 		});
 	}
 
-	function setName(string calldata _name) external {
-		require(principal() == createdBy || msg.sender == factory, "Only owner");
-		require(bytes(_name).length > 0, "Name required");
-		name = _name;
-	}
-
-	function setLimits(uint256 _minBet, uint256 _maxBet) external {
-		require(principal() == createdBy, "Only owner");
-		require(_minBet >= CHIP, "Min too small");
-		require(_maxBet >= _minBet, "Max below min");
-		minBet = _minBet;
-		maxBet = _maxBet;
-	}
-
 	function depositShares() public payable {
 		require(msg.value > 0, "Must send some Ether");
 		address account = principal();
@@ -107,8 +86,6 @@ contract Roulette {
 
 		totalShares += memberShares;
 		shares[account] += memberShares;
-		addHolder(account);
-		syncOwner();
 		emit Deposited(account, msg.value);
 	}
 
@@ -136,9 +113,7 @@ contract Roulette {
 		shares[account] -= burned;
 		if (shares[account] == 0) {
 			delete shares[account];
-			removeHolder(account);
 		}
-		syncOwner();
 		lastWithdrawAt[account] = block.timestamp;
 		payable(msg.sender).transfer(amount);
 	}
@@ -193,48 +168,6 @@ contract Roulette {
 		}
 
 		emit WinningNumber(randomNumber, totalBetAmount, winningAmount, balances[principal()]);
-	}
-
-	function addHolder(address account) private {
-		if (holderIndex[account] != 0) {
-			return;
-		}
-		holders.push(account);
-		holderIndex[account] = holders.length;
-	}
-
-	function removeHolder(address account) private {
-		uint256 stored = holderIndex[account];
-		if (stored == 0) {
-			return;
-		}
-		uint256 i = stored - 1;
-		uint256 lastPos = holders.length - 1;
-		if (i != lastPos) {
-			address last = holders[lastPos];
-			holders[i] = last;
-			holderIndex[last] = stored;
-		}
-		holders.pop();
-		delete holderIndex[account];
-	}
-
-	function syncOwner() private {
-		address next = createdBy;
-		uint256 best = shares[next];
-		for (uint256 i = 0; i < holders.length; i++) {
-			address holder = holders[i];
-			uint256 amount = shares[holder];
-			if (amount > best) {
-				best = amount;
-				next = holder;
-			}
-		}
-		if (next == createdBy) {
-			return;
-		}
-		createdBy = next;
-		IGameFactory(factory).setGameOwner(next);
 	}
 
 	function payoutForNumber(uint256[157] memory _bets, uint256 randomNumber) private pure returns (uint256 winningAmount) {

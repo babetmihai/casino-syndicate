@@ -103,7 +103,7 @@ const MainScreen = () => {
 }
 
 const TableCard = React.memo(({ table, index }) => {
-  const { name, address, type } = table || {}
+  const { address, type } = table || {}
   const roulette = useSelector(() => selectRoulette(address)) || {}
   const lottery = useSelector(() => selectLottery(address)) || {}
   const symbol = useSelector(() => selectNativeSymbol())
@@ -134,7 +134,7 @@ const TableCard = React.memo(({ table, index }) => {
     >
       <div className={cn("table-card-order", "text-[0.75rem] tracking-[0.1em] text-cs-accent")}>{order}</div>
       <div className={cn("table-card-body", "flex min-w-0 flex-1 flex-col gap-0.5")}>
-        <h3 className={cn("table-card-name", titleClass, "m-0 truncate text-base")}>{name}</h3>
+        <h3 className={cn("table-card-type", titleClass, "m-0 truncate text-base")}>{type}</h3>
         <Text className={cn("table-card-address")} size="xs" c="dimmed">{shortAddress}</Text>
       </div>
       {hasStats && isPolygons &&

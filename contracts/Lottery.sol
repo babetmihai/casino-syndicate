@@ -2,13 +2,11 @@
 pragma solidity ^0.8.0;
 
 interface ILotteryFactory {
-	function setGameOwner(address owner) external;
 	function principalOf(address account) external view returns (address);
 }
 
 
 contract Lottery {
-	string public name;
 	address public createdBy;
 	address public factory;
 	uint256 public createdAt;
@@ -25,8 +23,6 @@ contract Lottery {
 	uint256 public totalShares;
 	mapping(address => uint256) public shares;
 	mapping(address => uint256) public lastWithdrawAt;
-	address[] private holders;
-	mapping(address => uint256) private holderIndex;
 
 	mapping(uint256 => address) public cellOwner;
 	mapping(uint256 => address) private cellMate;
@@ -74,16 +70,13 @@ contract Lottery {
 	event Deposited(address indexed user, uint256 amount);
 
 	constructor(
-		string memory _name,
 		address _createdBy,
 		uint256 _polygonCount,
 		uint256 _ticketPrice
 	) payable {
 		require(msg.value >= MIN_DEPOSIT, "Min deposit 1");
-		require(bytes(_name).length > 0, "Name required");
 		require(_polygonCount >= MIN_POLYGONS && _polygonCount <= MAX_POLYGONS, "Bad polygons");
 		require(_ticketPrice >= CHIP, "Price too small");
-		name = _name;
 		createdBy = _createdBy;
 		factory = msg.sender;
 		createdAt = block.timestamp;
@@ -92,7 +85,6 @@ contract Lottery {
 		ticketPrice = _ticketPrice;
 		totalShares = msg.value;
 		shares[_createdBy] = msg.value;
-		addHolder(_createdBy);
 		emit Deposited(_createdBy, msg.value);
 	}
 
@@ -153,12 +145,6 @@ contract Lottery {
 		});
 	}
 
-	function setName(string calldata _name) external {
-		require(principal() == createdBy || msg.sender == factory, "Only owner");
-		require(bytes(_name).length > 0, "Name required");
-		name = _name;
-	}
-
 	function depositShares() public payable {
 		require(msg.value > 0, "Send ETH");
 		address account = principal();
@@ -172,8 +158,6 @@ contract Lottery {
 
 		totalShares += memberShares;
 		shares[account] += memberShares;
-		addHolder(account);
-		syncOwner();
 		emit Deposited(account, msg.value);
 	}
 
@@ -202,9 +186,7 @@ contract Lottery {
 		shares[account] -= burned;
 		if (shares[account] == 0) {
 			delete shares[account];
-			removeHolder(account);
 		}
-		syncOwner();
 		lastWithdrawAt[account] = block.timestamp;
 		payable(msg.sender).transfer(amount);
 	}
@@ -426,45 +408,4 @@ contract Lottery {
 		return bal - locked;
 	}
 
-	function addHolder(address account) private {
-		if (holderIndex[account] != 0) {
-			return;
-		}
-		holders.push(account);
-		holderIndex[account] = holders.length;
-	}
-
-	function removeHolder(address account) private {
-		uint256 stored = holderIndex[account];
-		if (stored == 0) {
-			return;
-		}
-		uint256 i = stored - 1;
-		uint256 lastPos = holders.length - 1;
-		if (i != lastPos) {
-			address last = holders[lastPos];
-			holders[i] = last;
-			holderIndex[last] = stored;
-		}
-		holders.pop();
-		delete holderIndex[account];
-	}
-
-	function syncOwner() private {
-		address next = createdBy;
-		uint256 best = shares[next];
-		for (uint256 i = 0; i < holders.length; i++) {
-			address holder = holders[i];
-			uint256 amount = shares[holder];
-			if (amount > best) {
-				best = amount;
-				next = holder;
-			}
-		}
-		if (next == createdBy) {
-			return;
-		}
-		createdBy = next;
-		ILotteryFactory(factory).setGameOwner(next);
-	}
 }

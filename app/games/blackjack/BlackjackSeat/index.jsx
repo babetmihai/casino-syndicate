@@ -10,7 +10,6 @@ const CARD_STEP_X = 0.55
 const CARD_STEP_Y = 0.8
 const CARD_W = 2.25
 const CARD_H = 3.25
-const CHIP_BEHIND = -0.7
 
 const ChipPile = ({
   chips,
@@ -52,24 +51,24 @@ const ChipPile = ({
 }
 
 const HandWager = ({ amount, doubled }) => {
-  const front = doubled ? clampEth(amount / 2) : clampEth(amount)
-  const frontChips = toChips(front).slice(-4)
-  const backChips = doubled ? frontChips : []
+  const stake = doubled ? clampEth(amount / 2) : clampEth(amount)
+  const chips = toChips(stake).slice(-4)
   return (
-    <div className={cn("blackjack-hand-wager", "relative flex size-7 items-end justify-center")}>
-      {backChips.length > 0 &&
+    <div
+      className={cn(
+        "blackjack-hand-wager",
+        doubled && "blackjack-hand-wager-doubled",
+        "relative flex items-center justify-center gap-1",
+        doubled && "flex-col"
+      )}
+    >
+      {doubled &&
         <ChipPile
-          chips={backChips}
-          className={cn("blackjack-hand-wager-back", "absolute inset-0")}
-          zBase={1}
-          shiftY={CHIP_BEHIND}
+          chips={chips}
+          className={cn("blackjack-hand-wager-double")}
         />
       }
-      <ChipPile
-        chips={frontChips}
-        className={cn("blackjack-hand-wager-front")}
-        zBase={8}
-      />
+      <ChipPile chips={chips} />
     </div>
   )
 }
@@ -86,6 +85,9 @@ const BlackjackSeat = ({
   liftedChip,
   prize = 0,
   result = "",
+  settled = false,
+  dealerTotal = 0,
+  dealerCount = 0,
   onSpotPointerDown,
   onChipPointerDown
 }) => {
@@ -99,9 +101,23 @@ const BlackjackSeat = ({
   const chips = toChips(bet).slice(-4)
   const hasChips = chips.length > 0
   const lit = current || dropping
-  const showRoundWagers = shownHands.length > 0
-  const prizeChips = toChips(prize).slice(-4)
-  const hasPrize = prizeChips.length > 0
+  const liveWagers = _.filter(shownHands, (hand) => {
+    const { status } = hand || {}
+    if (status === STATUS.Bust) return false
+    if (!settled) return true
+    if (status === STATUS.Blackjack) return true
+    const dealerBj = dealerCount === 2 && dealerTotal === 21
+    if (dealerBj) return false
+    const { total } = handValue(takeCards(hand))
+    if (dealerTotal > 21) return true
+    if (total > dealerTotal) return true
+    return total === dealerTotal
+  })
+  const showWagers = liveWagers.length > 0
+  const doubled = _.some(liveWagers, (hand) => (hand || {}).status === STATUS.Doubled)
+  const primaryBet = clampEth((liveWagers[0] || {}).bet)
+  let primaryStake = primaryBet
+  if (doubled && !split) primaryStake = clampEth(primaryBet / 2)
 
   return (
     <div
@@ -137,6 +153,24 @@ const BlackjackSeat = ({
           const showStatus = bust || bj || status === STATUS.Doubled || result
           const resultWin = result === "Win"
           const resultLose = result === "Lose"
+          const dealerBj = dealerCount === 2 && dealerTotal === 21
+          let won = false
+          let handPrize = 0
+          if (settled && !bust) {
+            const stake = clampEth((hand || {}).bet)
+            if (bj && !dealerBj) {
+              won = true
+              handPrize = clampEth(stake * 1.5)
+            }
+            if (!bj && !dealerBj) {
+              if (dealerTotal > 21 || total > dealerTotal) {
+                won = true
+                handPrize = stake
+              }
+            }
+          }
+          if (won && !split) handPrize = clampEth(prize)
+          const payoutChips = toChips(handPrize).slice(-4)
           return (
             <div
               key={`${index}-${handIndex}`}
@@ -148,6 +182,12 @@ const BlackjackSeat = ({
                 split && !active && "opacity-50"
               )}
             >
+              {won && payoutChips.length > 0 &&
+                <ChipPile
+                  chips={payoutChips}
+                  className={cn("blackjack-hand-payout")}
+                />
+              }
               <div
                 className={cn(
                   "blackjack-spot-tray",
@@ -208,63 +248,57 @@ const BlackjackSeat = ({
           "blackjack-spot-circle",
           current && "blackjack-spot-circle-current",
           dropping && "blackjack-spot-circle-drop",
-          split && showRoundWagers && "blackjack-spot-circle-split",
-          "relative flex items-end justify-center gap-1 touch-none",
-          ((showRoundWagers && split) || hasPrize) && "w-full",
-          !showRoundWagers && !hasPrize && "aspect-square w-full max-w-[3.5rem] cursor-pointer",
-          showRoundWagers && !split && !hasPrize && "aspect-square w-full max-w-[3.5rem] cursor-pointer"
+          split && showWagers && "blackjack-spot-circle-split",
+          doubled && showWagers && "blackjack-spot-circle-doubled",
+          "relative flex aspect-square w-full max-w-[3.5rem] cursor-pointer items-center justify-center touch-none"
         )}
         onPointerDown={(event) => onSpotPointerDown(event, index)}
       >
-        {(!showRoundWagers || !split) &&
-          <div
-            className={cn(
-              "blackjack-spot-box",
-              current && "blackjack-spot-box-current animate-bj-spot",
-              dropping && "blackjack-spot-box-drop",
-              "relative flex size-[80%] items-center justify-center",
-              "rounded-full border bg-cs-elevated",
-              lit && "border-cs-accent",
-              !lit && "border-cs-border",
-              betting && "hover:border-cs-border-hover"
-            )}
-          >
-            {!hasChips && !showRoundWagers &&
-              <span className={cn("blackjack-spot-idle", "text-[0.7rem] tracking-[0.12em] text-cs-accent")}>
-                {order}
-              </span>
-            }
-            {!showRoundWagers &&
-              <ChipPile
-                chips={chips}
-                liftedChip={liftedChip}
-                betting={betting}
-                onChipPointerDown={(event, value, chipIndex) => onChipPointerDown(event, index, value, chipIndex)}
-              />
-            }
-            {showRoundWagers && !split &&
-              <HandWager
-                amount={(shownHands[0] || {}).bet}
-                doubled={(shownHands[0] || {}).status === STATUS.Doubled}
-              />
-            }
+        {showWagers && !split && doubled &&
+          <div className={cn("blackjack-spot-double", "absolute bottom-[90%] left-1/2 z-[2] -translate-x-1/2")}>
+            <HandWager amount={primaryStake} />
           </div>
         }
-        {showRoundWagers && split &&
-          _.map(shownHands, (hand, handIndex) => (
-            <HandWager
-              key={`${index}-wager-${handIndex}`}
-              amount={(hand || {}).bet}
-              doubled={(hand || {}).status === STATUS.Doubled}
+        {showWagers && split &&
+          <div className={cn("blackjack-spot-splits", "absolute bottom-[10%] left-1/2 z-[2] flex -translate-x-1/2 items-end gap-1")}>
+            {_.map(liveWagers, (hand, handIndex) => (
+              <HandWager
+                key={`${index}-wager-${handIndex}`}
+                amount={(hand || {}).bet}
+                doubled={(hand || {}).status === STATUS.Doubled}
+              />
+            ))}
+          </div>
+        }
+        <div
+          className={cn(
+            "blackjack-spot-box",
+            current && "blackjack-spot-box-current animate-bj-spot",
+            dropping && "blackjack-spot-box-drop",
+            "relative flex size-[80%] items-center justify-center",
+            "rounded-full border bg-cs-elevated",
+            lit && "border-cs-accent",
+            !lit && "border-cs-border",
+            betting && "hover:border-cs-border-hover"
+          )}
+        >
+          {!hasChips && !showWagers &&
+            <span className={cn("blackjack-spot-idle", "text-[0.7rem] tracking-[0.12em] text-cs-accent")}>
+              {order}
+            </span>
+          }
+          {betting && !showWagers &&
+            <ChipPile
+              chips={chips}
+              liftedChip={liftedChip}
+              betting={betting}
+              onChipPointerDown={(event, value, chipIndex) => onChipPointerDown(event, index, value, chipIndex)}
             />
-          ))
-        }
-        {hasPrize &&
-          <ChipPile
-            chips={prizeChips}
-            className={cn("blackjack-spot-payout")}
-          />
-        }
+          }
+          {showWagers && !split &&
+            <HandWager amount={primaryStake} />
+          }
+        </div>
       </div>
     </div>
   )

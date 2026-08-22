@@ -42,6 +42,7 @@ const BlackjackGame = React.memo(({ address }) => {
   const [chip, setChip] = React.useState(CHIP_VALUES[0])
   const [bets, setBets] = React.useState(emptyBets)
   const [busy, setBusy] = React.useState(false)
+  const [cleared, setCleared] = React.useState(false)
   const [drag, setDrag] = React.useState(null)
   const dragRef = React.useRef(null)
   const tableRef = React.useRef(null)
@@ -58,9 +59,12 @@ const BlackjackGame = React.memo(({ address }) => {
   const bankroll = clampEth(totalBalance)
   const playBalance = clampEth(balance)
   const betting = phase !== PHASE.Acting
-  const roundDealerCards = dealerCards.length > 0 ? dealerCards : ((lastRound || {}).dealerCards || [])
+  const liveDealerCards = dealerCards.length > 0 ? dealerCards : ((lastRound || {}).dealerCards || [])
+  const finished = betting && liveDealerCards.length > 0
+  const roundDealerCards = cleared ? [] : liveDealerCards
   const roundDealerCount = roundDealerCards.length
-  const settled = betting && roundDealerCount > 0
+  const settled = finished && !cleared
+  const shownSeats = cleared ? _.map(_.range(SEAT_COUNT), () => ({ hands: [] })) : seats
   const totalBet = clampEth(_.sum(bets))
   const canCover = totalBet * 8 <= bankroll + totalBet
   const myTurn = !betting && currentPlaying(seats, currentSeat, account)
@@ -92,12 +96,17 @@ const BlackjackGame = React.memo(({ address }) => {
 
   React.useEffect(() => {
     fetchBlackjack(address)
+    setCleared(false)
   }, [address, account])
 
   React.useEffect(() => {
     if (!account) return
     fetchBalance()
   }, [account])
+
+  React.useEffect(() => {
+    if (!betting) setCleared(false)
+  }, [betting])
 
   React.useEffect(() => {
     if (!betting || busy) return
@@ -107,6 +116,28 @@ const BlackjackGame = React.memo(({ address }) => {
   React.useEffect(() => {
     return () => setPendingBet(0)
   }, [])
+
+  let loseSweepKey = ""
+  if (settled) {
+    const paidKey = _.map(paidSeats, (row) => `${row.seat}-${row.payout}`).join(",")
+    loseSweepKey = `${roundDealerCards.join("-")}:${paidKey}`
+  }
+
+  React.useEffect(() => {
+    if (!loseSweepKey) return
+    setBets((current) => {
+      const next = [...current]
+      let changed = false
+      _.forEach(_.range(SEAT_COUNT), (index) => {
+        if (seatResult(paidSeats, index, true).label !== "Lose") return
+        if (next[index] === 0) return
+        next[index] = 0
+        changed = true
+      })
+      if (!changed) return current
+      return next
+    })
+  }, [loseSweepKey])
 
   const commitBets = (nextBets) => {
     const nextTotal = clampEth(_.sum(nextBets))
@@ -334,7 +365,7 @@ const BlackjackGame = React.memo(({ address }) => {
                 <BlackjackSeat
                   key={index}
                   index={index}
-                  seat={seats[index] || {}}
+                  seat={shownSeats[index] || {}}
                   bet={shownBets[index] || 0}
                   current={current}
                   currentHand={currentHand}
@@ -343,7 +374,10 @@ const BlackjackGame = React.memo(({ address }) => {
                   dropping={hoverSpot === index}
                   liftedChip={dragging && drag.fromIndex === index ? drag.chipIndex : undefined}
                   prize={seatPrize(paidSeats, index, settled)}
-                  result={seatResult(paidSeats, index, settled)}
+                  result={seatResult(paidSeats, index, settled).label}
+                  settled={settled}
+                  dealerTotal={dealerTotal}
+                  dealerCount={roundDealerCount}
                   onSpotPointerDown={onSpotPointerDown}
                   onChipPointerDown={onChipPointerDown}
                 />
@@ -379,7 +413,21 @@ const BlackjackGame = React.memo(({ address }) => {
             Deposit
           </Button>
         }
-        {authorized && betting &&
+        {authorized && betting && settled &&
+          <Button
+            className={cn("blackjack-clear", "flex-1")}
+            variant="outline"
+            color="gray"
+            disabled={busy}
+            onClick={() => {
+              setCleared(true)
+              setBets(emptyBets())
+            }}
+          >
+            Clear
+          </Button>
+        }
+        {authorized && betting && !settled &&
           <>
             <div className={cn("blackjack-chips", "flex shrink-0 flex-row gap-1.5")}>
               {CHIP_VALUES.map((value) => {

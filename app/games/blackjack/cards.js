@@ -2,6 +2,7 @@ import _ from "lodash"
 
 export const SEAT_COUNT = 3
 export const HAND_COUNT = 4
+export const MAX_CARDS = 12
 
 export const RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"]
 
@@ -24,6 +25,28 @@ export const STATUS = {
 export const PHASE = {
   Betting: 0,
   Acting: 1
+}
+
+export const ACTION = {
+  Hit: 0,
+  Stand: 1,
+  Double: 2,
+  Split: 3
+}
+
+export const DEAL_STEP = 220
+export const CARD_DEAL_MS = 420
+export const DEALER_REVEAL_MS = 800
+
+export const playerCardDelay = (order, seats, cardIndex) => {
+  if (order < 0) return 0
+  if (cardIndex >= 2) return 0
+  return (cardIndex * seats + order) * DEAL_STEP
+}
+
+export const dealerCardDelay = (seats, cardIndex) => {
+  if (cardIndex === 0) return seats * 2 * DEAL_STEP
+  return cardIndex * DEALER_REVEAL_MS
 }
 
 export const decodeCard = (card) => {

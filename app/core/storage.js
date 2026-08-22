@@ -6,7 +6,8 @@ const VERSION = 1
 const PERSISTENT_PATHS = [
   "auth",
   "language",
-  "sessions"
+  "sessions",
+  "dealers"
 ]
 
 localforage.config({

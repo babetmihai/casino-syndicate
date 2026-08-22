@@ -267,8 +267,7 @@
     transition: border-color 0.35s ease;
   }
 
-  .polygons-map-card-spinning,
-  .blackjack-table-card-busy {
+  .polygons-map-card-spinning {
     border-color: rgb(45 212 191 / 35%);
   }
 

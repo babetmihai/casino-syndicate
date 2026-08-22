@@ -2,7 +2,7 @@ import React from "react"
 import _ from "lodash"
 import { cn } from "app/core"
 import { clampEth, toChips } from "app/games/roulette/chips"
-import { handValue, statusLabel, takeCards, STATUS } from "../cards"
+import { handValue, playerCardDelay, statusLabel, takeCards, STATUS } from "../cards"
 import PlayingCard from "../BlackjackGame/PlayingCard"
 import ChipMark from "../BlackjackGame/ChipMark"
 
@@ -88,6 +88,8 @@ const BlackjackSeat = ({
   settled = false,
   dealerTotal = 0,
   dealerCount = 0,
+  dealOrder = -1,
+  dealSeats = 0,
   onSpotPointerDown,
   onChipPointerDown
 }) => {
@@ -133,13 +135,24 @@ const BlackjackSeat = ({
     >
       <div className={cn("blackjack-spot-hands", "flex min-h-[3.5rem] w-full items-end justify-center gap-0.5")}>
         {shownHands.length === 0 &&
-          <div
-            className={cn(
-              "blackjack-spot-tray",
-              "flex items-end overflow-visible rounded-[0.5rem] border border-cs-border bg-cs-elevated/80 p-0.5"
-            )}
-          >
-            <PlayingCard empty small />
+          <div className={cn("blackjack-hand", "flex min-w-0 flex-col items-center gap-0.5")}>
+            <div
+              className={cn(
+                "blackjack-spot-tray",
+                "relative flex items-end overflow-visible rounded-[0.5rem] border border-cs-border bg-cs-elevated/80 p-0.5"
+              )}
+            >
+              <div
+                className={cn("blackjack-hand-cards", "relative isolate")}
+                style={{
+                  width: `${CARD_W}rem`,
+                  height: `${CARD_H}rem`
+                }}
+              >
+                <PlayingCard empty small />
+              </div>
+            </div>
+            <span className={cn("blackjack-hand-total", "h-[1.15rem]")} />
           </div>
         }
         {_.map(shownHands, (hand, handIndex) => {
@@ -217,7 +230,7 @@ const BlackjackSeat = ({
                       <PlayingCard
                         card={card}
                         small
-                        delay={index * 70 + handIndex * 90 + cardIndex * 80}
+                        delay={playerCardDelay(dealOrder, dealSeats, cardIndex)}
                       />
                     </div>
                   ))}
@@ -226,7 +239,7 @@ const BlackjackSeat = ({
               <span
                 className={cn(
                   "blackjack-hand-total",
-                  "font-headings text-[0.75rem] font-bold tabular-nums tracking-[-0.02em]",
+                  "h-[1.15rem] font-headings text-[0.75rem] font-bold tabular-nums tracking-[-0.02em]",
                   (bust || resultLose) && "text-red-500",
                   (bj || resultWin) && "text-cs-accent",
                   !bust && !bj && !resultWin && !resultLose && "text-cs-muted"
@@ -250,15 +263,10 @@ const BlackjackSeat = ({
           dropping && "blackjack-spot-circle-drop",
           split && showWagers && "blackjack-spot-circle-split",
           doubled && showWagers && "blackjack-spot-circle-doubled",
-          "relative flex aspect-square w-full max-w-[3.5rem] cursor-pointer items-center justify-center touch-none"
+          "relative flex w-full max-w-[3.5rem] cursor-pointer flex-col items-center touch-none"
         )}
         onPointerDown={(event) => onSpotPointerDown(event, index)}
       >
-        {showWagers && !split && doubled &&
-          <div className={cn("blackjack-spot-double", "absolute bottom-[90%] left-1/2 z-[2] -translate-x-1/2")}>
-            <HandWager amount={primaryStake} />
-          </div>
-        }
         {showWagers && split &&
           <div className={cn("blackjack-spot-splits", "absolute bottom-[10%] left-1/2 z-[2] flex -translate-x-1/2 items-end gap-1")}>
             {_.map(liveWagers, (hand, handIndex) => (
@@ -275,7 +283,7 @@ const BlackjackSeat = ({
             "blackjack-spot-box",
             current && "blackjack-spot-box-current animate-bj-spot",
             dropping && "blackjack-spot-box-drop",
-            "relative flex size-[80%] items-center justify-center",
+            "relative flex size-[2.8rem] items-center justify-center",
             "rounded-full border bg-cs-elevated",
             lit && "border-cs-accent",
             !lit && "border-cs-border",
@@ -287,15 +295,20 @@ const BlackjackSeat = ({
               {order}
             </span>
           }
-          {betting && !showWagers &&
+          {hasChips && !showWagers &&
             <ChipPile
               chips={chips}
-              liftedChip={liftedChip}
+              liftedChip={betting ? liftedChip : undefined}
               betting={betting}
-              onChipPointerDown={(event, value, chipIndex) => onChipPointerDown(event, index, value, chipIndex)}
+              onChipPointerDown={betting ? (event, value, chipIndex) => onChipPointerDown(event, index, value, chipIndex) : undefined}
             />
           }
           {showWagers && !split &&
+            <HandWager amount={primaryStake} />
+          }
+        </div>
+        <div className={cn("blackjack-spot-double-slot", "flex h-[1.85rem] w-full items-start justify-center")}>
+          {showWagers && !split && doubled &&
             <HandWager amount={primaryStake} />
           }
         </div>

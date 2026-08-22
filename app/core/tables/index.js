@@ -6,7 +6,7 @@ import { generateContract, getFactory, sendWalletTx } from "../contracts"
 import { selectAuth } from "../auth"
 import { fetchRoulette } from "app/games/roulette"
 import { fetchPolygons } from "app/games/polygons"
-import { fetchBlackjack } from "app/games/blackjack"
+import { ensureBlackjackDeck, fetchBlackjack } from "app/games/blackjack"
 import { parseEth } from "app/games/roulette/chips"
 import history from "../history"
 import BlackjackArtifact from "artifacts/contracts/Blackjack.sol/Blackjack.json"
@@ -111,6 +111,7 @@ export const createTable = async (values) => {
   if (!address) throw new Error("GameCreated event not found")
 
   await initTable(address)
+  if (type === TABLE_TYPES.Blackjack) await ensureBlackjackDeck(address)
   await fetchTables()
 }
 

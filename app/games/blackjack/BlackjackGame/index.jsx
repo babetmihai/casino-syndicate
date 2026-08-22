@@ -46,7 +46,7 @@ import PlayingCard from "./PlayingCard"
 import ChipMark from "./ChipMark"
 
 const DRAG_THRESHOLD = 8
-const HOLD_FILL_MS = 1000
+const HOLD_FILL_MS = 500
 const emptyBets = () => _.range(SEAT_COUNT).fill(0)
 
 
@@ -57,6 +57,7 @@ const BlackjackGame = React.memo(({ address }) => {
   const [cleared, setCleared] = React.useState(false)
   const [drag, setDrag] = React.useState(null)
   const [holdingDeal, setHoldingDeal] = React.useState(false)
+  const [action, setAction] = React.useState()
   const [dealerShown, setDealerShown] = React.useState(0)
   const [dealerLanded, setDealerLanded] = React.useState(0)
   const dragRef = React.useRef(null)
@@ -70,14 +71,13 @@ const BlackjackGame = React.memo(({ address }) => {
   const symbol = useSelector(() => selectNativeSymbol())
   const {
     lastRound, minBet, maxBet, totalBalance, phase, currentSeat, currentHand,
-    dealerCards = [], seats = [], settling, extra, live
+    dealerCards = [], seats = [], acting
   } = table
   const minBetAmount = clampEth(minBet) || MIN_BET
   const maxBetAmount = tableMaxBet(maxBet)
   const bankroll = clampEth(totalBalance)
   const playBalance = clampEth(balance)
-  const liveRound = live || settling
-  const betting = phase !== PHASE.Acting && !liveRound
+  const betting = phase !== PHASE.Acting
   const liveDealerCards = dealerCards.length > 0 ? dealerCards : ((lastRound || {}).dealerCards || [])
   const finished = betting && liveDealerCards.length > 0
   const roundDealerCards = cleared ? [] : liveDealerCards
@@ -92,15 +92,15 @@ const BlackjackGame = React.memo(({ address }) => {
   const liveHand = liveHands[currentHand] || {}
   const liveCards = takeCards(liveHand)
   const livePlaying = myTurn && liveHand.status === STATUS.Playing
-  const closing = settling || (live && !livePlaying)
+  const closing = acting && !livePlaying && !betting
   const twoCards = livePlaying && liveCards.length === 2 && clampEth(liveHand.bet) > 0
   const canAffordSide = playBalance >= clampEth(liveHand.bet)
   const canDouble = twoCards && canAffordSide
   const openHand = _.some(_.take(liveHands, HAND_COUNT), (hand) => (hand || {}).status === STATUS.Empty)
   const canSplit = twoCards && openHand && canSplitCards(liveCards) && canAffordSide
-  const canDeal = authorized && betting && totalBet > 0 && totalBet <= playBalance && canCover && !busy && !settling
-  const locked = busy || settling
-  const waitingDeal = busy && betting
+  const canDeal = authorized && betting && totalBet > 0 && totalBet <= playBalance && canCover && !busy && !acting
+  const locked = busy || acting || action
+  const waitingDeal = (busy || acting) && betting
   const dealPending = !betting && dealerLanded < 1
   const shownDealerCards = _.take(roundDealerCards, dealerShown)
   const shownDealerCount = shownDealerCards.length
@@ -142,13 +142,13 @@ const BlackjackGame = React.memo(({ address }) => {
   }, [betting])
 
   React.useEffect(() => {
-    if (busy || settling) return
+    if (busy || acting) return
     if (betting) {
       setPendingBet(totalBet)
       return
     }
-    setPendingBet(clampEth(extra))
-  }, [totalBet, extra, betting, busy, settling])
+    setPendingBet(0)
+  }, [totalBet, betting, busy, acting])
 
   React.useEffect(() => {
     return () => {
@@ -380,20 +380,25 @@ const BlackjackGame = React.memo(({ address }) => {
     if (!canDeal) return
     if (event.button > 0) return
     if (holdTimer.current || dealingRef.current) return
+    event.preventDefault()
     event.currentTarget.setPointerCapture(event.pointerId)
     dealingRef.current = true
     setHoldingDeal(true)
     holdTimer.current = _.delay(() => {
       holdTimer.current = null
-      setHoldingDeal(false)
       run(() => dealBlackjack(address, bets))
     }, HOLD_FILL_MS)
   }
 
-  const play = async (fn) => {
+  const play = async (kind, fn) => {
     if (locked) return
-    await fn()
-    await fetchBalance()
+    setAction(kind)
+    try {
+      await fn()
+      await fetchBalance()
+    } finally {
+      setAction(undefined)
+    }
   }
 
   return (
@@ -409,6 +414,7 @@ const BlackjackGame = React.memo(({ address }) => {
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerCancel}
+      onContextMenu={(event) => event.preventDefault()}
     >
       <div className={cn("blackjack-status", "flex w-full shrink-0 items-center gap-2")}>
         <Text className={cn("blackjack-rules", "min-w-0 flex-1 truncate text-cs-muted")} size="xs">
@@ -520,7 +526,7 @@ const BlackjackGame = React.memo(({ address }) => {
             Deposit
           </Button>
         }
-        {authorized && (waitingDeal || dealPending) && !closing &&
+        {authorized && (waitingDeal || dealPending) && !closing && !holdingDeal &&
           <Button
             className={cn("blackjack-dealing", "flex-1")}
             variant="outline"
@@ -531,7 +537,7 @@ const BlackjackGame = React.memo(({ address }) => {
             Dealing
           </Button>
         }
-        {authorized && closing &&
+        {authorized && closing && !action &&
           <Button
             className={cn("blackjack-settle", "flex-1")}
             variant="outline"
@@ -556,7 +562,7 @@ const BlackjackGame = React.memo(({ address }) => {
             Clear
           </Button>
         }
-        {authorized && betting && !settled && !closing && !busy &&
+        {authorized && betting && !settled && !closing && !(busy && !holdingDeal) &&
           <>
             <div className={cn("blackjack-chips", "flex shrink-0 flex-row gap-1.5")}>
               {CHIP_VALUES.map((value) => {
@@ -612,7 +618,7 @@ const BlackjackGame = React.memo(({ address }) => {
                 className={cn(
                   "blackjack-deal-fill",
                   "absolute inset-0 w-0 bg-cs-accent transition-[width] duration-150",
-                  "group-data-[holding=true]:w-full group-data-[holding=true]:duration-1000",
+                  "group-data-[holding=true]:w-full group-data-[holding=true]:duration-500",
                   "group-data-[holding=true]:ease-linear"
                 )}
               />
@@ -620,15 +626,16 @@ const BlackjackGame = React.memo(({ address }) => {
             </button>
           </>
         }
-        {authorized && livePlaying && !closing && !dealPending &&
+        {authorized && (livePlaying || action) && !dealPending &&
           <>
             <Button
               className={cn(
                 "blackjack-hit",
                 "min-w-0 flex-1 disabled:cursor-default disabled:opacity-30 disabled:text-cs-muted"
               )}
+              loading={action === "hit"}
               disabled={locked}
-              onClick={() => play(() => hitBlackjack(address))}
+              onClick={() => play("hit", () => hitBlackjack(address))}
             >
               Hit
             </Button>
@@ -639,8 +646,9 @@ const BlackjackGame = React.memo(({ address }) => {
               )}
               variant="outline"
               color="gray"
+              loading={action === "stand"}
               disabled={locked}
-              onClick={() => play(() => standBlackjack(address))}
+              onClick={() => play("stand", () => standBlackjack(address))}
             >
               Pass
             </Button>
@@ -651,8 +659,9 @@ const BlackjackGame = React.memo(({ address }) => {
               )}
               variant="outline"
               color="gray"
+              loading={action === "double"}
               disabled={locked || !canDouble}
-              onClick={() => play(() => doubleBlackjack(address))}
+              onClick={() => play("double", () => doubleBlackjack(address))}
             >
               Double
             </Button>
@@ -663,8 +672,9 @@ const BlackjackGame = React.memo(({ address }) => {
               )}
               variant="outline"
               color="gray"
+              loading={action === "split"}
               disabled={locked || !canSplit}
-              onClick={() => play(() => splitBlackjack(address))}
+              onClick={() => play("split", () => splitBlackjack(address))}
             >
               Split
             </Button>

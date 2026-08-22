@@ -61,8 +61,6 @@ contract Blackjack {
 		uint64 turnStartedAt;
 		uint8[12] dealerCards;
 		SeatDTO[3] seats;
-		bytes32 deckCommit;
-		bytes32 playerSeed;
 	}
 
 	struct Seat {
@@ -74,17 +72,6 @@ contract Blackjack {
 		uint8[12][4] cards;
 	}
 
-	struct Board {
-		Seat[3] seats;
-		uint8[12] dealerCards;
-		uint8 phase;
-		uint8 currentSeat;
-		uint8 currentHand;
-		uint8 dealerCount;
-		uint256 drawIndex;
-		uint256 extra;
-	}
-
 	Seat[3] private seats;
 	uint8[12] private dealerCards;
 	uint8 public phase;
@@ -93,12 +80,10 @@ contract Blackjack {
 	uint8 public dealerCount;
 	uint64 public turnStartedAt;
 	uint256 public reserved;
-	bytes32 public deckCommit;
-	bytes32 public playerSeed;
+	uint256 private nonce;
 
 	event Deposited(address indexed user, uint256 amount);
-	event Committed(bytes32 commit);
-	event Dealt(bytes32 playerSeed);
+	event Dealt(uint8 dealerCard);
 	event Acted(address indexed player, uint8 seat, uint8 hand, uint8 kind, uint8 card);
 	event Settled(uint8 dealerTotal, uint8 dealerCount, uint8[12] dealerCards);
 	event Paid(address indexed player, uint8 seat, uint256 wagered, uint256 payout);
@@ -122,22 +107,27 @@ contract Blackjack {
 	}
 
 	function getTable() public view returns (TableDTO memory table) {
-		return viewTable(seats, dealerCards, phase, currentSeat, currentHand, dealerCount);
-	}
-
-	function preview(bytes32 secret, uint8[] memory kinds) public view returns (TableDTO memory table, uint256 extra) {
-		require(keccak256(abi.encodePacked(secret)) == deckCommit, "Secret");
-		require(phase == PHASE_ACTING, "Wait");
-		Board memory board = runRound(secret, kinds);
-		table = viewTable(
-			board.seats,
-			board.dealerCards,
-			board.phase,
-			board.currentSeat,
-			board.currentHand,
-			board.dealerCount
-		);
-		extra = board.extra;
+		address account = principal();
+		uint256 bankroll = houseBankroll();
+		uint256 owned = 0;
+		if (totalShares > 0 && bankroll > 0) {
+			owned = (bankroll * shares[account]) / totalShares;
+		}
+		table.memberShares = owned;
+		table.totalBalance = bankroll;
+		table.minBet = minBet;
+		table.maxBet = maxBet;
+		table.lastWithdrawAt = lastWithdrawAt[account];
+		table.owner = createdBy;
+		table.phase = phase;
+		table.currentSeat = currentSeat;
+		table.currentHand = currentHand;
+		table.dealerCount = dealerCount;
+		table.turnStartedAt = turnStartedAt;
+		table.dealerCards = dealerCards;
+		for (uint8 i = 0; i < SEAT_COUNT; i++) {
+			table.seats[i] = viewSeat(i);
+		}
 	}
 
 	function depositShares() public payable {
@@ -191,18 +181,8 @@ contract Blackjack {
 		payable(msg.sender).transfer(amount);
 	}
 
-	function commitDeck(bytes32 commit) external {
-		require(principal() == createdBy, "Owner");
+	function deal(uint256[3] memory bets) external payable {
 		require(phase == PHASE_BETTING, "Wait");
-		require(commit != bytes32(0), "Commit");
-		deckCommit = commit;
-		emit Committed(commit);
-	}
-
-	function deal(uint256[3] memory bets, bytes32 seed) external payable {
-		require(phase == PHASE_BETTING, "Wait");
-		require(deckCommit != bytes32(0), "Commit");
-		require(seed != bytes32(0), "Seed");
 		clearBoard();
 		address account = principal();
 		uint256 totalBetAmount = 0;
@@ -229,31 +209,35 @@ contract Blackjack {
 			seats[i].player = account;
 			seats[i].payer = msg.sender;
 			seats[i].bets[0] = bets[i];
+			dealTo(i, 0);
+			dealTo(i, 0);
+			seats[i].status[0] = PLAYING;
+			if (valueOf(i, 0) == 21) {
+				seats[i].status[0] = BLACKJACK;
+			}
 		}
-		playerSeed = seed;
+		uint8 up = drawCard();
+		dealerCards[0] = up;
+		dealerCount = 1;
 		phase = PHASE_ACTING;
-		turnStartedAt = uint64(block.timestamp);
-		emit Dealt(seed);
+		emit Dealt(up);
+		nextTurn();
 	}
 
-	function settle(bytes32 secret, uint8[] calldata kinds, bytes32 nextCommit) external payable {
-		require(phase == PHASE_ACTING, "Wait");
-		require(keccak256(abi.encodePacked(secret)) == deckCommit, "Secret");
-		Board memory board = runRound(secret, kinds);
-		require(board.phase == PHASE_BETTING, "Playing");
-		require(msg.value == board.extra, "Extra");
-		writeBoard(board);
-		address player = principal();
-		for (uint256 k = 0; k < kinds.length; k++) {
-			emit Acted(player, 0, 0, kinds[k], 0);
-		}
-		payBoard();
-		if (principal() == createdBy && nextCommit != bytes32(0)) {
-			deckCommit = nextCommit;
-			emit Committed(nextCommit);
-		} else {
-			deckCommit = bytes32(0);
-		}
+	function hit() external {
+		takeAction(0);
+	}
+
+	function stand() external {
+		takeAction(1);
+	}
+
+	function doubleDown() external payable {
+		takeAction(2);
+	}
+
+	function split() external payable {
+		takeAction(3);
 	}
 
 	function forceClose() external {
@@ -263,13 +247,13 @@ contract Blackjack {
 		uint256[3] memory amounts;
 		for (uint8 i = 0; i < SEAT_COUNT; i++) {
 			payers[i] = seats[i].payer;
-			amounts[i] = seats[i].bets[0];
+			for (uint8 h = 0; h < HAND_COUNT; h++) {
+				amounts[i] += seats[i].bets[h];
+			}
 		}
 		clearBoard();
 		phase = PHASE_BETTING;
 		reserved = 0;
-		playerSeed = bytes32(0);
-		deckCommit = bytes32(0);
 		for (uint8 i = 0; i < SEAT_COUNT; i++) {
 			if (amounts[i] > 0) {
 				payable(payers[i]).transfer(amounts[i]);
@@ -277,138 +261,93 @@ contract Blackjack {
 		}
 	}
 
-	function runRound(bytes32 secret, uint8[] memory kinds) private view returns (Board memory board) {
-		for (uint8 i = 0; i < SEAT_COUNT; i++) {
-			board.seats[i].player = seats[i].player;
-			board.seats[i].payer = seats[i].payer;
-			board.seats[i].bets[0] = seats[i].bets[0];
-		}
-		board.phase = PHASE_ACTING;
-		for (uint8 i = 0; i < SEAT_COUNT; i++) {
-			if (board.seats[i].bets[0] == 0) {
-				continue;
-			}
-			dealTo(board, secret, i, 0);
-			dealTo(board, secret, i, 0);
-			board.seats[i].status[0] = PLAYING;
-			if (valueOf(board, i, 0) == 21) {
-				board.seats[i].status[0] = BLACKJACK;
-			}
-		}
-		board.dealerCards[0] = drawCard(board, secret);
-		board.dealerCount = 1;
-		nextTurn(board, secret);
-		for (uint256 k = 0; k < kinds.length; k++) {
-			require(board.phase == PHASE_ACTING, "Wait");
-			takeAction(board, secret, kinds[k]);
-		}
-	}
-
-	function takeAction(Board memory board, bytes32 secret, uint8 kind) private view {
-		uint8 seat = board.currentSeat;
-		uint8 hand = board.currentHand;
-		require(board.seats[seat].status[hand] == PLAYING, "Playing");
+	function takeAction(uint8 kind) private {
+		require(phase == PHASE_ACTING, "Wait");
+		address account = principal();
+		uint8 seat = currentSeat;
+		require(seats[seat].player == account, "Turn");
+		uint8 hand = currentHand;
+		require(seats[seat].status[hand] == PLAYING, "Playing");
+		uint8 card = 0;
 		if (kind == 0) {
-			dealTo(board, secret, seat, hand);
-			uint8 total = valueOf(board, seat, hand);
+			card = dealTo(seat, hand);
+			uint8 total = valueOf(seat, hand);
 			if (total > 21) {
-				board.seats[seat].status[hand] = BUST;
+				seats[seat].status[hand] = BUST;
 			} else if (total == 21) {
-				board.seats[seat].status[hand] = STAND;
+				seats[seat].status[hand] = STAND;
 			}
 		} else if (kind == 1) {
-			board.seats[seat].status[hand] = STAND;
+			seats[seat].status[hand] = STAND;
 		} else if (kind == 2) {
-			require(board.seats[seat].counts[hand] == 2, "Double");
-			uint256 bet = board.seats[seat].bets[hand];
-			board.extra += bet;
-			board.seats[seat].bets[hand] += bet;
-			dealTo(board, secret, seat, hand);
-			if (valueOf(board, seat, hand) > 21) {
-				board.seats[seat].status[hand] = BUST;
+			require(seats[seat].counts[hand] == 2, "Double");
+			require(msg.value == seats[seat].bets[hand], "Double");
+			seats[seat].bets[hand] += msg.value;
+			seats[seat].payer = msg.sender;
+			card = dealTo(seat, hand);
+			if (valueOf(seat, hand) > 21) {
+				seats[seat].status[hand] = BUST;
 			} else {
-				board.seats[seat].status[hand] = DOUBLED;
+				seats[seat].status[hand] = DOUBLED;
 			}
 		} else {
-			require(board.seats[seat].counts[hand] == 2, "Split");
-			require(canSplitCards(board.seats[seat].cards[hand][0], board.seats[seat].cards[hand][1]), "Split");
-			uint8 next = emptyHand(board, seat);
+			require(seats[seat].counts[hand] == 2, "Split");
+			require(canSplitCards(seats[seat].cards[hand][0], seats[seat].cards[hand][1]), "Split");
+			uint8 next = emptyHand(seat);
 			require(next < HAND_COUNT, "Split");
-			uint256 bet = board.seats[seat].bets[hand];
-			board.extra += bet;
-			uint8 splitCard = board.seats[seat].cards[hand][1];
-			board.seats[seat].cards[hand][1] = 0;
-			board.seats[seat].counts[hand] = 1;
-			board.seats[seat].bets[next] = bet;
-			board.seats[seat].cards[next][0] = splitCard;
-			board.seats[seat].counts[next] = 1;
-			board.seats[seat].status[next] = PLAYING;
-			bool aces = rankOf(board.seats[seat].cards[hand][0]) == 0;
-			dealTo(board, secret, seat, hand);
-			dealTo(board, secret, seat, next);
+			require(msg.value == seats[seat].bets[hand], "Split");
+			uint8 splitCard = seats[seat].cards[hand][1];
+			seats[seat].cards[hand][1] = 0;
+			seats[seat].counts[hand] = 1;
+			seats[seat].bets[next] = msg.value;
+			seats[seat].cards[next][0] = splitCard;
+			seats[seat].counts[next] = 1;
+			seats[seat].status[next] = PLAYING;
+			seats[seat].payer = msg.sender;
+			bool aces = rankOf(seats[seat].cards[hand][0]) == 0;
+			dealTo(seat, hand);
+			dealTo(seat, next);
 			if (aces) {
-				board.seats[seat].status[hand] = STAND;
-				board.seats[seat].status[next] = STAND;
+				seats[seat].status[hand] = STAND;
+				seats[seat].status[next] = STAND;
 			} else {
-				if (valueOf(board, seat, hand) == 21) {
-					board.seats[seat].status[hand] = STAND;
+				if (valueOf(seat, hand) == 21) {
+					seats[seat].status[hand] = STAND;
 				}
-				if (valueOf(board, seat, next) == 21) {
-					board.seats[seat].status[next] = STAND;
+				if (valueOf(seat, next) == 21) {
+					seats[seat].status[next] = STAND;
 				}
 			}
 		}
-		if (board.seats[seat].status[hand] != PLAYING) {
-			nextTurn(board, secret);
+		emit Acted(account, seat, hand, kind, card);
+		if (seats[seat].status[hand] != PLAYING) {
+			nextTurn();
+		} else {
+			turnStartedAt = uint64(block.timestamp);
 		}
 	}
 
-	function nextTurn(Board memory board, bytes32 secret) private view {
+	function nextTurn() private {
 		for (uint8 s = 0; s < SEAT_COUNT; s++) {
 			for (uint8 h = 0; h < HAND_COUNT; h++) {
-				if (board.seats[s].status[h] != PLAYING) {
+				if (seats[s].status[h] != PLAYING) {
 					continue;
 				}
-				board.currentSeat = s;
-				board.currentHand = h;
+				currentSeat = s;
+				currentHand = h;
+				turnStartedAt = uint64(block.timestamp);
 				return;
 			}
 		}
-		while (board.dealerCount < MAX_CARDS && dealerValue(board) < 17) {
-			board.dealerCards[board.dealerCount] = drawCard(board, secret);
-			board.dealerCount++;
+		settle();
+	}
+
+	function settle() private {
+		while (dealerCount < MAX_CARDS && dealerValue() < 17) {
+			dealerCards[dealerCount] = drawCard();
+			dealerCount++;
 		}
-		board.phase = PHASE_BETTING;
-		board.currentSeat = 0;
-		board.currentHand = 0;
-	}
-
-	function dealTo(Board memory board, bytes32 secret, uint8 seat, uint8 hand) private view returns (uint8 card) {
-		uint8 count = board.seats[seat].counts[hand];
-		require(count < MAX_CARDS, "Cards");
-		card = drawCard(board, secret);
-		board.seats[seat].cards[hand][count] = card;
-		board.seats[seat].counts[hand] = count + 1;
-	}
-
-	function drawCard(Board memory board, bytes32 secret) private view returns (uint8) {
-		uint256 index = board.drawIndex;
-		board.drawIndex = index + 1;
-		return uint8(uint256(keccak256(abi.encodePacked(secret, playerSeed, index))) % 52);
-	}
-
-	function writeBoard(Board memory board) private {
-		for (uint8 i = 0; i < SEAT_COUNT; i++) {
-			seats[i] = board.seats[i];
-		}
-		dealerCards = board.dealerCards;
-		dealerCount = board.dealerCount;
-		currentSeat = board.currentSeat;
-		currentHand = board.currentHand;
-	}
-
-	function payBoard() private {
-		uint8 dealerTotal = dealerValueStorage();
+		uint8 dealerTotal = dealerValue();
 		bool dealerBust = dealerTotal > 21;
 		bool dealerBj = dealerCount == 2 && dealerTotal == 21;
 		uint256[3] memory payouts;
@@ -439,7 +378,6 @@ contract Blackjack {
 		currentSeat = 0;
 		currentHand = 0;
 		turnStartedAt = 0;
-		playerSeed = bytes32(0);
 		emit Settled(dealerTotal, dealerCount, dealerCards);
 		for (uint8 i = 0; i < SEAT_COUNT; i++) {
 			if (players[i] == address(0)) {
@@ -474,7 +412,7 @@ contract Blackjack {
 		if (playerBj) {
 			return bet + (bet * 3) / 2;
 		}
-		uint8 pt = valueOfStorage(seat, hand);
+		uint8 pt = valueOf(seat, hand);
 		if (dealerBust || pt > dealerTotal) {
 			return bet * 2;
 		}
@@ -482,6 +420,19 @@ contract Blackjack {
 			return bet;
 		}
 		return 0;
+	}
+
+	function dealTo(uint8 seat, uint8 hand) private returns (uint8 card) {
+		uint8 count = seats[seat].counts[hand];
+		require(count < MAX_CARDS, "Cards");
+		card = drawCard();
+		seats[seat].cards[hand][count] = card;
+		seats[seat].counts[hand] = count + 1;
+	}
+
+	function drawCard() private returns (uint8) {
+		nonce++;
+		return uint8(uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender, nonce))) % 52);
 	}
 
 	function clearBoard() private {
@@ -493,50 +444,17 @@ contract Blackjack {
 		currentSeat = 0;
 		currentHand = 0;
 		turnStartedAt = 0;
-		playerSeed = bytes32(0);
 	}
 
-	function viewTable(
-		Seat[3] memory boardSeats,
-		uint8[12] memory boardDealerCards,
-		uint8 boardPhase,
-		uint8 boardCurrentSeat,
-		uint8 boardCurrentHand,
-		uint8 boardDealerCount
-	) private view returns (TableDTO memory table) {
-		address account = principal();
-		uint256 bankroll = houseBankroll();
-		uint256 owned = 0;
-		if (totalShares > 0 && bankroll > 0) {
-			owned = (bankroll * shares[account]) / totalShares;
-		}
-		table.memberShares = owned;
-		table.totalBalance = bankroll;
-		table.minBet = minBet;
-		table.maxBet = maxBet;
-		table.lastWithdrawAt = lastWithdrawAt[account];
-		table.owner = createdBy;
-		table.phase = boardPhase;
-		table.currentSeat = boardCurrentSeat;
-		table.currentHand = boardCurrentHand;
-		table.dealerCount = boardDealerCount;
-		table.turnStartedAt = turnStartedAt;
-		table.dealerCards = boardDealerCards;
-		table.deckCommit = deckCommit;
-		table.playerSeed = playerSeed;
-		for (uint8 i = 0; i < SEAT_COUNT; i++) {
-			table.seats[i] = viewSeat(boardSeats[i]);
-		}
-	}
-
-	function viewSeat(Seat memory s) private pure returns (SeatDTO memory row) {
+	function viewSeat(uint8 i) private view returns (SeatDTO memory row) {
+		Seat storage s = seats[i];
 		row.player = s.player;
 		for (uint8 h = 0; h < HAND_COUNT; h++) {
 			row.hands[h] = viewHand(s, h);
 		}
 	}
 
-	function viewHand(Seat memory s, uint8 h) private pure returns (HandDTO memory hand) {
+	function viewHand(Seat storage s, uint8 h) private view returns (HandDTO memory hand) {
 		hand.bet = s.bets[h];
 		hand.status = s.status[h];
 		hand.count = s.counts[h];
@@ -545,27 +463,7 @@ contract Blackjack {
 		}
 	}
 
-	function valueOf(Board memory board, uint8 seat, uint8 hand) private pure returns (uint8 total) {
-		uint8 aces = 0;
-		uint8 count = board.seats[seat].counts[hand];
-		for (uint8 i = 0; i < count; i++) {
-			uint8 r = rankOf(board.seats[seat].cards[hand][i]);
-			if (r == 0) {
-				aces++;
-				total += 11;
-			} else if (r >= 9) {
-				total += 10;
-			} else {
-				total += r + 1;
-			}
-		}
-		while (total > 21 && aces > 0) {
-			total -= 10;
-			aces--;
-		}
-	}
-
-	function valueOfStorage(uint8 seat, uint8 hand) private view returns (uint8 total) {
+	function valueOf(uint8 seat, uint8 hand) private view returns (uint8 total) {
 		uint8 aces = 0;
 		uint8 count = seats[seat].counts[hand];
 		for (uint8 i = 0; i < count; i++) {
@@ -585,26 +483,7 @@ contract Blackjack {
 		}
 	}
 
-	function dealerValue(Board memory board) private pure returns (uint8 total) {
-		uint8 aces = 0;
-		for (uint8 i = 0; i < board.dealerCount; i++) {
-			uint8 r = rankOf(board.dealerCards[i]);
-			if (r == 0) {
-				aces++;
-				total += 11;
-			} else if (r >= 9) {
-				total += 10;
-			} else {
-				total += r + 1;
-			}
-		}
-		while (total > 21 && aces > 0) {
-			total -= 10;
-			aces--;
-		}
-	}
-
-	function dealerValueStorage() private view returns (uint8 total) {
+	function dealerValue() private view returns (uint8 total) {
 		uint8 aces = 0;
 		for (uint8 i = 0; i < dealerCount; i++) {
 			uint8 r = rankOf(dealerCards[i]);
@@ -639,9 +518,9 @@ contract Blackjack {
 		return isTenOrFace(a) && isTenOrFace(b);
 	}
 
-	function emptyHand(Board memory board, uint8 seat) private pure returns (uint8) {
+	function emptyHand(uint8 seat) private view returns (uint8) {
 		for (uint8 h = 0; h < HAND_COUNT; h++) {
-			if (board.seats[seat].status[h] == EMPTY) {
+			if (seats[seat].status[h] == EMPTY) {
 				return h;
 			}
 		}

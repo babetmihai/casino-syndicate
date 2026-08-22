@@ -34,9 +34,9 @@ export const ACTION = {
   Split: 3
 }
 
-export const DEAL_STEP = 220
-export const CARD_DEAL_MS = 420
-export const DEALER_REVEAL_MS = 800
+export const DEAL_STEP = 110
+export const CARD_DEAL_MS = 240
+export const DEALER_REVEAL_MS = 360
 
 export const playerCardDelay = (order, seats, cardIndex) => {
   if (order < 0) return 0

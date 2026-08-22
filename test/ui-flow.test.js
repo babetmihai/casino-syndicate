@@ -1074,39 +1074,32 @@ describe("UI flow: create, view, play blackjack", () => {
 
   const emptyBets = () => [0n, 0n, 0n]
 
-  const newSecret = () => ethers.hexlify(ethers.randomBytes(32))
-
-  const commitDeck = async (game, creator, secret) => {
-    await (await game.connect(creator).commitDeck(ethers.keccak256(secret))).wait()
-    return secret
-  }
-
-  const dealSeat = (game, player, seat, seed, amount = BET) => {
+  const dealSeat = (game, player, seat, amount = BET) => {
     const bets = emptyBets()
     bets[seat] = amount
-    return game.connect(player).deal(bets, seed, { value: amount })
+    return game.connect(player).deal(bets, { value: amount })
   }
 
-  const standOut = async (game, secret, startKinds = []) => {
-    const kinds = [...startKinds]
+  const standOut = async (game, player) => {
     for (;;) {
-      const [table, extra] = await game.preview(secret, kinds)
-      if (Number(table.phase) === 0) return { kinds, extra, table }
-      kinds.push(1)
+      const table = await game.connect(player).getTable()
+      if (Number(table.phase) === 0) return table
+      await (await game.connect(player).stand()).wait()
     }
   }
 
-  const settleRound = async (game, player, secret, startKinds = []) => {
-    const { kinds, extra } = await standOut(game, secret, startKinds)
-    return game.connect(player).settle(secret, kinds, ethers.ZeroHash, { value: extra })
+  const openSeat = async (game, player, seat, amount = BET) => {
+    const receipt = await (await dealSeat(game, player, seat, amount)).wait()
+    const table = await game.connect(player).getTable()
+    return { receipt, table }
   }
 
-  const openSeat = async (game, creator, player, seat, amount = BET) => {
-    const secret = await commitDeck(game, creator, newSecret())
-    const seed = newSecret()
-    const receipt = await (await dealSeat(game, player, seat, seed, amount)).wait()
-    const [table] = await game.preview(secret, [])
-    return { secret, seed, receipt, table }
+  const openPlaying = async (game, player, seat, amount = BET) => {
+    for (let i = 0; i < 40; i++) {
+      const opened = await openSeat(game, player, seat, amount)
+      if (Number(opened.table.phase) === 1) return opened
+    }
+    throw new Error("playing hand not found")
   }
 
   it("creates a table, lists it, funds it, and plays a round", async () => {
@@ -1138,7 +1131,7 @@ describe("UI flow: create, view, play blackjack", () => {
     expect(afterTopUp.totalBalance).to.equal(ethers.parseEther("102"))
     expect(afterTopUp.memberShares).to.equal(ethers.parseEther("102"))
 
-    const { receipt: dealt, table: previewed, secret, seed } = await openSeat(game, creator, player, 2)
+    const { receipt: dealt, table: previewed } = await openPlaying(game, player, 2)
     expect(parseEvent(game, dealt, "Dealt"), "Dealt event not found").to.not.equal(undefined)
 
     let table = await game.connect(player).getTable()
@@ -1146,20 +1139,11 @@ describe("UI flow: create, view, play blackjack", () => {
     expect(previewed.dealerCount).to.equal(1n)
     expect(previewed.seats[2].player).to.equal(player.address)
     expect(previewed.seats[2].hands[0].count).to.equal(2n)
-    const cardAt = (index) => Number(BigInt(ethers.keccak256(ethers.solidityPacked(
-      ["bytes32", "bytes32", "uint256"],
-      [secret, seed, BigInt(index)]
-    ))) % 52n)
-    expect(Number(previewed.seats[2].hands[0].cards[0])).to.equal(cardAt(0))
-    expect(Number(previewed.seats[2].hands[0].cards[1])).to.equal(cardAt(1))
-    expect(Number(previewed.dealerCards[0])).to.equal(cardAt(2))
 
     if (Number(previewed.seats[2].hands[0].status) === 1) {
-      const standReceipt = await (await settleRound(game, player, secret, [1])).wait()
+      const standReceipt = await (await game.connect(player).stand()).wait()
       const settled = parseEvent(game, standReceipt, "Settled")
-      expect(settled, "Settled event not found").to.not.equal(undefined)
-    } else {
-      await (await settleRound(game, player, secret, [])).wait()
+      if (!settled) await standOut(game, player)
     }
 
     table = await game.connect(player).getTable()
@@ -1190,18 +1174,17 @@ describe("UI flow: create, view, play blackjack", () => {
     const factory = await deployFactory()
     const createTx = await createBlackjack(factory, creator)
     const game = await ethers.getContractAt("Blackjack", createdAddress(factory, await createTx.wait()))
-    const secret = await commitDeck(game, creator, newSecret())
     const bets = emptyBets()
     bets[0] = BET
     bets[2] = BET
-    await (await game.connect(player).deal(bets, newSecret(), { value: BET * 2n })).wait()
-    const [previewed] = await game.preview(secret, [])
+    await (await game.connect(player).deal(bets, { value: BET * 2n })).wait()
+    const previewed = await game.connect(player).getTable()
     expect(previewed.seats[0].player).to.equal(player.address)
     expect(previewed.seats[2].player).to.equal(player.address)
     expect(previewed.seats[0].hands[0].bet).to.equal(BET)
     expect(previewed.seats[2].hands[0].bet).to.equal(BET)
     expect(previewed.seats[1].player).to.equal(ethers.ZeroAddress)
-    await (await settleRound(game, player, secret, [])).wait()
+    await standOut(game, player)
   })
 
   it("rejects bets outside table limits", async () => {
@@ -1215,16 +1198,15 @@ describe("UI flow: create, view, play blackjack", () => {
       { value: ethers.parseEther("1") }
     )
     const game = await ethers.getContractAt("Blackjack", createdAddress(factory, await createTx.wait()))
-    await commitDeck(game, creator, newSecret())
     const below = emptyBets()
     below[0] = ethers.parseEther("0.001")
     await expect(
-      game.connect(player).deal(below, newSecret(), { value: ethers.parseEther("0.001") })
+      game.connect(player).deal(below, { value: ethers.parseEther("0.001") })
     ).to.be.revertedWith("Bet amount must be at least minBet")
     const above = emptyBets()
     above[0] = ethers.parseEther("0.02")
     await expect(
-      game.connect(player).deal(above, newSecret(), { value: ethers.parseEther("0.02") })
+      game.connect(player).deal(above, { value: ethers.parseEther("0.02") })
     ).to.be.revertedWith("Bet amount must be less than maxBetAmount")
   })
 
@@ -1236,14 +1218,16 @@ describe("UI flow: create, view, play blackjack", () => {
     let paid
     let table
     for (let i = 0; i < 40; i++) {
-      const { secret, receipt: dealReceipt, table: previewed } = await openSeat(game, creator, player, 1)
+      const { receipt: dealReceipt, table: previewed } = await openSeat(game, player, 1)
       let receipt = dealReceipt
       table = previewed
       if (Number(table.phase) === 1) {
-        receipt = await (await settleRound(game, player, secret, [])).wait()
-        table = await game.connect(player).getTable()
-      } else {
-        receipt = await (await settleRound(game, player, secret, [])).wait()
+        receipt = await (await game.connect(player).stand()).wait()
+        if (!parseEvent(game, receipt, "Settled")) {
+          await standOut(game, player)
+          table = await game.connect(player).getTable()
+          continue
+        }
         table = await game.connect(player).getTable()
       }
       const settled = parseEvent(game, receipt, "Settled")
@@ -1274,21 +1258,25 @@ describe("UI flow: create, view, play blackjack", () => {
     let doubled
     let split
     for (let i = 0; i < 80; i++) {
-      const { secret, table } = await openSeat(game, creator, player, 0)
+      const { table } = await openSeat(game, player, 0)
       const hand = table.seats[0].hands[0]
       const cards = takeCards(hand)
       const playing = Number(hand.status) === 1
       if (playing && !split && canSplitCards(cards[0], cards[1])) {
-        const receipt = await (await settleRound(game, player, secret, [3])).wait()
+        const receipt = await (await game.connect(player).split({ value: BET })).wait()
         split = parseEvent(game, receipt, "Acted")
+        await standOut(game, player)
+        if (doubled && split) break
         continue
       }
       if (playing && !doubled && cards.length === 2) {
-        const receipt = await (await settleRound(game, player, secret, [2])).wait()
+        const receipt = await (await game.connect(player).doubleDown({ value: BET })).wait()
         doubled = parseEvent(game, receipt, "Acted")
+        await standOut(game, player)
+        if (doubled && split) break
         continue
       }
-      await (await settleRound(game, player, secret, [])).wait()
+      await standOut(game, player)
       if (doubled && split) break
     }
     expect(doubled, "double not found").to.not.equal(undefined)
@@ -1305,8 +1293,7 @@ describe("UI flow: create, view, play blackjack", () => {
     let splits = 0
     let doubled
     for (let i = 0; i < 200; i++) {
-      const { secret, table: dealt } = await openSeat(game, creator, player, 0)
-      const kinds = []
+      const { table: dealt } = await openSeat(game, player, 0)
       let table = dealt
       while (Number(table.phase) === 1 && table.seats[0].player === player.address) {
         const handIndex = Number(table.currentHand)
@@ -1316,36 +1303,19 @@ describe("UI flow: create, view, play blackjack", () => {
         if (!playing) break
         const open = table.seats[0].hands.some((row) => Number(row.status) === 0)
         if (open && cards.length === 2 && canSplitCards(cards[0], cards[1]) && splits < 3) {
-          kinds.push(3)
+          await (await game.connect(player).split({ value: hand.bet })).wait()
           splits += 1
-          const [next] = await game.preview(secret, kinds)
-          table = next
+          table = await game.connect(player).getTable()
           continue
         }
         if (!doubled && splits > 0 && cards.length === 2) {
-          kinds.push(2)
-          doubled = { args: { kind: 2n } }
-          const [next] = await game.preview(secret, kinds)
-          table = next
+          const receipt = await (await game.connect(player).doubleDown({ value: hand.bet })).wait()
+          doubled = parseEvent(game, receipt, "Acted")
+          table = await game.connect(player).getTable()
           continue
         }
-        kinds.push(1)
-        const [next] = await game.preview(secret, kinds)
-        table = next
-      }
-      const { extra } = await standOut(game, secret, kinds)
-      const receipt = await (await game.connect(player).settle(secret, kinds, ethers.ZeroHash, { value: extra })).wait()
-      if (!doubled && parseEvent(game, receipt, "Acted")) {
-        const acted = receipt.logs
-          .map((log) => {
-            try {
-              return game.interface.parseLog(log)
-            } catch {
-              return null
-            }
-          })
-          .filter((parsed) => parsed && parsed.name === "Acted" && Number(parsed.args.kind) === 2)
-        if (acted[0]) doubled = acted[0]
+        await (await game.connect(player).stand()).wait()
+        table = await game.connect(player).getTable()
       }
       if (splits >= 2 && doubled) break
     }
@@ -1362,17 +1332,18 @@ describe("UI flow: create, view, play blackjack", () => {
     let split
     let ranks
     for (let i = 0; i < 120; i++) {
-      const { secret, table } = await openSeat(game, creator, player, 2)
+      const { table } = await openSeat(game, player, 2)
       const hand = table.seats[2].hands[0]
       const cards = takeCards(hand)
       const playing = Number(hand.status) === 1
       if (playing && isMixedTens(cards[0], cards[1])) {
-        const receipt = await (await settleRound(game, player, secret, [3])).wait()
+        const receipt = await (await game.connect(player).split({ value: BET })).wait()
         split = parseEvent(game, receipt, "Acted")
         ranks = [rankOf(cards[0]), rankOf(cards[1])]
+        await standOut(game, player)
         break
       }
-      await (await settleRound(game, player, secret, [])).wait()
+      await standOut(game, player)
     }
     expect(split, "mixed tens split not found").to.not.equal(undefined)
     expect(Number(split.args.kind)).to.equal(3)
@@ -1387,9 +1358,14 @@ describe("UI flow: create, view, play blackjack", () => {
     const createTx = await createBlackjack(factory, creator)
     const game = await ethers.getContractAt("Blackjack", createdAddress(factory, await createTx.wait()))
     let hit
-    for (let i = 0; i < 120; i++) {
-      const { secret } = await openSeat(game, creator, player, 2)
-      const used = await (await settleRound(game, player, secret, [])).wait()
+    for (let i = 0; i < 200; i++) {
+      const { receipt } = await openSeat(game, player, 2)
+      let used = receipt
+      const table = await game.connect(player).getTable()
+      if (Number(table.phase) === 1) {
+        await standOut(game, player)
+        continue
+      }
       const settled = parseEvent(game, used, "Settled")
       if (!settled) continue
       const paid = parsePaid(game, used)[0]

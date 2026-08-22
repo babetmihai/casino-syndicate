@@ -4,11 +4,11 @@ import { hideModal, showModal } from "app/core/modals"
 import { useFormik } from "formik"
 import * as Yup from "yup"
 import { useTranslation } from "react-i18next"
-import { MIN_BET, clampEth } from "app/games/roulette/chips"
+import { MIN_BET, clampEth, ethLabel } from "app/games/roulette/chips"
 import { useSelector } from "react-redux"
 import { selectNativeSymbol } from "app/core/chain"
 import { cn } from "app/core"
-import { depositSession, selectAuth } from ".."
+import { depositSession, fetchWalletBalance, selectAuth } from ".."
 
 
 export const requirePlayWallet = () => {
@@ -22,8 +22,14 @@ export const requirePlayWallet = () => {
 const SessionModal = () => {
   const { t } = useTranslation()
   const symbol = useSelector(() => selectNativeSymbol())
-  const { session } = useSelector(() => selectAuth()) || {}
+  const { session, walletBalance } = useSelector(() => selectAuth()) || {}
   const { authorized } = session || {}
+  const accountBalance = clampEth(walletBalance)
+
+  React.useEffect(() => {
+    fetchWalletBalance()
+  }, [])
+
   const formik = useFormik({
     initialValues: {
       balance: 1
@@ -34,7 +40,9 @@ const SessionModal = () => {
     onSubmit: async (values, form) => {
       form.setSubmitting(true)
       try {
-        await depositSession(clampEth(values.balance))
+        let amount = clampEth(values.balance)
+        if (amount > accountBalance) amount = accountBalance
+        await depositSession(amount)
         hideModal()
       } finally {
         form.setSubmitting(false)
@@ -53,8 +61,11 @@ const SessionModal = () => {
       onClose={hideModal}
       title={<Text className={cn("session-modal-title")} fw={500}>Deposit</Text>}
     >
-      <Text className={cn("session-modal-copy")} size="sm" c="dimmed" mb="md">
+      <Text className={cn("session-modal-copy")} size="sm" c="dimmed">
         {copy}
+      </Text>
+      <Text className={cn("session-modal-account-balance")} size="xs" c="dimmed" mt="xs" mb="md">
+        Account {ethLabel(accountBalance, symbol)}
       </Text>
       <NumberInput
         className={cn("session-modal-amount")}

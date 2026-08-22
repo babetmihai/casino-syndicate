@@ -4,18 +4,24 @@ import { hideModal } from "app/core/modals"
 import { useFormik } from "formik"
 import * as Yup from "yup"
 import { useTranslation } from "react-i18next"
-import { MIN_BET, clampEth } from "app/games/roulette/chips"
+import { MIN_BET, clampEth, ethLabel } from "app/games/roulette/chips"
 import { useSelector } from "react-redux"
 import { selectNativeSymbol } from "app/core/chain"
 import { cn } from "app/core"
-import { selectAuth, withdrawSession } from ".."
+import { fetchWalletBalance, selectAuth, withdrawSession } from ".."
 
 
 const SessionWithdrawModal = () => {
   const { t } = useTranslation()
   const symbol = useSelector(() => selectNativeSymbol())
-  const { balance } = useSelector(() => selectAuth()) || {}
+  const { balance, walletBalance } = useSelector(() => selectAuth()) || {}
   const maxAmount = clampEth(balance)
+  const accountBalance = clampEth(walletBalance)
+
+  React.useEffect(() => {
+    fetchWalletBalance()
+  }, [])
+
   const formik = useFormik({
     initialValues: {
       balance: maxAmount
@@ -42,8 +48,11 @@ const SessionWithdrawModal = () => {
       onClose={hideModal}
       title={<Text className={cn("session-withdraw-modal-title")} fw={500}>{t("withdraw")}</Text>}
     >
-      <Text className={cn("session-withdraw-modal-copy")} size="sm" c="dimmed" mb="md">
+      <Text className={cn("session-withdraw-modal-copy")} size="sm" c="dimmed">
         Send {symbol} from your play wallet back to your main account.
+      </Text>
+      <Text className={cn("session-withdraw-modal-account-balance")} size="xs" c="dimmed" mt="xs" mb="md">
+        Account {ethLabel(accountBalance, symbol)}
       </Text>
       <NumberInput
         className={cn("session-withdraw-modal-amount")}

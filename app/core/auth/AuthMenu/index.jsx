@@ -1,7 +1,7 @@
 import React from "react"
 import { Menu, Text, UnstyledButton } from "@mantine/core"
 import { ArrowUpIcon, SignOutIcon, VaultIcon, WalletIcon } from "@phosphor-icons/react"
-import { selectAuth, logout, fetchBalance, requestTestEth } from "app/core/auth"
+import { selectAuth, selectPendingBet, logout, fetchBalance, requestTestEth } from "app/core/auth"
 import SessionModal from "app/core/auth/SessionModal"
 import SessionWithdrawModal from "app/core/auth/SessionWithdrawModal"
 import { showModal } from "app/core/modals"
@@ -13,13 +13,16 @@ import { isLocalChain, selectChain } from "app/core/chain"
 
 const AuthMenu = () => {
   const { account, balance, session } = useSelector(() => selectAuth()) || {}
+  const pendingBet = useSelector(() => selectPendingBet())
   const { chainId, symbol } = useSelector(() => selectChain()) || {}
   const { authorized } = session || {}
   const shortAccount = `${account.slice(0, 6)}…${account.slice(-4)}`
-  const playBalance = clampEth(balance)
+  const deposited = clampEth(balance)
+  let playBalance = deposited - clampEth(pendingBet)
+  if (playBalance < 0) playBalance = 0
   const balanceLabel = ethLabel(playBalance, symbol)
   const showTestFunds = isLocalChain(chainId)
-  const showWithdraw = authorized && playBalance > 0
+  const showWithdraw = authorized && deposited > 0
 
   React.useEffect(() => {
     if (!account) return
@@ -51,7 +54,6 @@ const AuthMenu = () => {
         </UnstyledButton>
       </Menu.Target>
       <Menu.Dropdown>
-        <Menu.Label className={cn("auth-menu-label")}>{shortAccount}</Menu.Label>
         <Menu.Item
           className={cn("auth-menu-deposit")}
           onClick={() => showModal(SessionModal)}

@@ -4,7 +4,7 @@ import _ from "lodash"
 import { Button, Card, Text } from "@mantine/core"
 import { fetchRoulette, postRouletteBet, pushSpinHistory, selectRoulette } from ".."
 import { useSelector } from "react-redux"
-import { fetchBalance, selectAuth } from "app/core/auth"
+import { fetchBalance, selectAuth, setPendingBet } from "app/core/auth"
 import { showModal } from "app/core/modals"
 import { cn } from "app/core"
 import AuthModal from "app/core/auth/AuthModal"
@@ -51,6 +51,15 @@ const RouletteGame = React.memo(({ address }) => {
     if (!account) return
     fetchBalance()
   }, [account])
+
+  React.useEffect(() => {
+    if (revealing) return
+    setPendingBet(totalBet)
+  }, [totalBet, revealing])
+
+  React.useEffect(() => {
+    return () => setPendingBet(0)
+  }, [])
 
   React.useEffect(() => {
     if (!showBanner) return
@@ -116,11 +125,12 @@ const RouletteGame = React.memo(({ address }) => {
       setLandingNumber(null)
       try {
         const spin = await postRouletteBet(address, bets)
-        fetchBalance()
         if (!spin) {
           setRevealing(false)
           return
         }
+        await fetchBalance()
+        setPendingBet(0)
         setLandingNumber(spin.number)
       } catch {
         setRevealing(false)

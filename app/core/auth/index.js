@@ -12,7 +12,7 @@ import {
   sendWalletTx,
   syncWalletChain
 } from "../contracts"
-import { formatEth, parseEth } from "app/games/roulette/chips"
+import { clampEth, formatEth, parseEth } from "app/games/roulette/chips"
 import { isLocalChain, selectChain } from "../chain"
 
 
@@ -26,6 +26,12 @@ export const selectSession = () => {
 
 export const logout = () => actions.unset("auth")
 
+export const selectPendingBet = () => actions.get("pendingBet", 0)
+
+export const setPendingBet = (amount) => {
+  actions.set("pendingBet", clampEth(amount))
+}
+
 const playAddress = () => {
   const { session } = selectAuth() || {}
   const { address } = session || {}
@@ -37,6 +43,13 @@ export const fetchBalance = async () => {
   if (!address) return
   const balance = await getBalance(address)
   actions.set("auth.balance", formatEth(balance))
+}
+
+export const fetchWalletBalance = async () => {
+  const { account } = selectAuth()
+  if (!account) return
+  const balance = await getBalance(account)
+  actions.set("auth.walletBalance", formatEth(balance))
 }
 
 const sessionKey = (account) => ethers.getAddress(account)
@@ -77,6 +90,7 @@ export const login = async () => {
   actions.set("auth", { account })
   await syncSession()
   await fetchBalance()
+  await fetchWalletBalance()
 }
 
 export const depositSession = async (amount) => {
@@ -91,12 +105,14 @@ export const depositSession = async (amount) => {
   }
   await syncSession()
   await fetchBalance()
+  await fetchWalletBalance()
 }
 
 export const withdrawSession = async (amount) => {
   const { account } = selectAuth() || {}
   await sendSessionPayment(account, parseEth(amount))
   await fetchBalance()
+  await fetchWalletBalance()
 }
 
 export const requestTestEth = async () => {
@@ -104,6 +120,7 @@ export const requestTestEth = async () => {
   const { chainId } = selectChain()
   if (!isLocalChain(chainId)) return
   await fundAccount(account)
+  await fetchWalletBalance()
 }
 
 let watchingWallet
@@ -115,6 +132,7 @@ export const watchWallet = async () => {
   if (account) {
     await syncSession()
     await fetchBalance()
+    await fetchWalletBalance()
   }
   if (watchingWallet) return
   watchingWallet = true
@@ -125,6 +143,7 @@ export const watchWallet = async () => {
     if (next) {
       await syncSession()
       await fetchBalance()
+      await fetchWalletBalance()
     }
   })
 }

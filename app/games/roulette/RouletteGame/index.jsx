@@ -144,8 +144,6 @@ const RouletteGame = React.memo(({ address }) => {
           spinningRef.current = false
           return
         }
-        await fetchBalance()
-        setPendingBet(0)
         setLandingNumber(spin.number)
       } catch {
         setRevealing(false)

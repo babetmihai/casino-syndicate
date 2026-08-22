@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Casino Syndicate
 
-Vite/React/Redux UI (`app`), Hardhat contracts (`contracts`). `GameFactory` creates games by `GameType`; roulette is one type. Redux via `app/core/store.js`.
+Vite/React/Redux UI (`app`), Hardhat contracts (`contracts`). `GameFactory` creates games by `GameType`; roulette and polygons are the types. Redux via `app/core/store.js`.
 
 ## Style
 
@@ -34,5 +34,5 @@ Vite/React/Redux UI (`app`), Hardhat contracts (`contracts`). `GameFactory` crea
 
 ## Contracts
 
-- Game logic lives on the game contract (`Roulette.sol`). Factory only creates, indexes, and stores `GameType`
+- Game logic lives on the game contract (`Roulette.sol`, `Polygons.sol`). Factory only creates, indexes, and stores `GameType`
 - Solidity keeps required semicolons; do not apply the JS style rules to `.sol`

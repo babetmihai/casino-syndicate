@@ -16,7 +16,7 @@ import {
 import { ethers } from "ethers"
 
 
-const LotteryMap = ({
+const PolygonsMap = ({
   address,
   owners = [],
   mates = [],
@@ -40,8 +40,8 @@ const LotteryMap = ({
   return (
     <svg
       className={cn(
-        "lottery-map",
-        spinning && "lottery-map-spinning",
+        "polygons-map",
+        spinning && "polygons-map-spinning",
         "block aspect-square h-auto overflow-hidden"
       )}
       viewBox="0 0 1 1"
@@ -69,7 +69,7 @@ const LotteryMap = ({
         return (
           <g
             key={polygon.id}
-            className={cn("lottery-map-cell-group")}
+            className={cn("polygons-map-cell-group")}
           >
             {_.map(pieces, (piece, pieceIndex) => paintPiece({
               key: `${polygon.id}-${pieceIndex}`,
@@ -91,7 +91,7 @@ const LotteryMap = ({
   )
 }
 
-export default React.memo(LotteryMap)
+export default React.memo(PolygonsMap)
 
 
 const paintPiece = ({
@@ -123,19 +123,19 @@ const paintPiece = ({
   return (
     <g
       key={key}
-      className={cn("lottery-map-sector", isLose && "lottery-map-sector-lose")}
+      className={cn("polygons-map-sector", isLose && "polygons-map-sector-lose")}
     >
       {showGlow &&
         <path
           className={cn(
-            "lottery-map-cell-glow",
+            "polygons-map-cell-glow",
             "pointer-events-none",
-            isLit && "lottery-map-cell-glow-on",
-            trailRank === 1 && "lottery-map-cell-glow-1",
-            trailRank === 2 && "lottery-map-cell-glow-2",
-            trailRank === 3 && "lottery-map-cell-glow-3",
-            isFlash && "lottery-map-cell-glow-flash animate-map-glow-flash",
-            isWinPulse && !isFlash && "lottery-map-cell-glow-win animate-map-glow-win"
+            isLit && "polygons-map-cell-glow-on",
+            trailRank === 1 && "polygons-map-cell-glow-1",
+            trailRank === 2 && "polygons-map-cell-glow-2",
+            trailRank === 3 && "polygons-map-cell-glow-3",
+            isFlash && "polygons-map-cell-glow-flash animate-map-glow-flash",
+            isWinPulse && !isFlash && "polygons-map-cell-glow-win animate-map-glow-win"
           )}
           d={path}
           fill={glow}
@@ -143,16 +143,16 @@ const paintPiece = ({
       }
       <path
         className={cn(
-          "lottery-map-cell",
-          isLose && "lottery-map-cell-lose",
-          isMine && "lottery-map-cell-mine",
-          owner && "lottery-map-cell-claimed",
-          isFocus && "lottery-map-cell-focus",
-          isLit && "lottery-map-cell-lit",
-          isLit && isOccupied && !isFlash && "lottery-map-cell-occupied animate-map-pass",
-          isFlash && "lottery-map-cell-taken animate-map-taken",
-          isSplitFlash && "lottery-map-cell-split animate-map-taken",
-          isWinPulse && !isFlash && "lottery-map-cell-win animate-map-win"
+          "polygons-map-cell",
+          isLose && "polygons-map-cell-lose",
+          isMine && "polygons-map-cell-mine",
+          owner && "polygons-map-cell-claimed",
+          isFocus && "polygons-map-cell-focus",
+          isLit && "polygons-map-cell-lit",
+          isLit && isOccupied && !isFlash && "polygons-map-cell-occupied animate-map-pass",
+          isFlash && "polygons-map-cell-taken animate-map-taken",
+          isSplitFlash && "polygons-map-cell-split animate-map-taken",
+          isWinPulse && !isFlash && "polygons-map-cell-win animate-map-win"
         )}
         d={path}
         fill={fill}

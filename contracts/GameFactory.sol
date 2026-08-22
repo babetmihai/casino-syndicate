@@ -2,7 +2,7 @@
 pragma solidity ^0.8.0;
 
 import "./Roulette.sol";
-import "./Lottery.sol";
+import "./Polygons.sol";
 
 
 contract GameFactory {
@@ -63,7 +63,7 @@ contract GameFactory {
 			game = address(new Roulette{value: msg.value}(creator, a, b));
 		} else if (gameType == GameType.Polygons) {
 			require(msg.value >= 1 ether, "Min deposit 1");
-			game = address(new Lottery{value: msg.value}(creator, a, c));
+			game = address(new Polygons{value: msg.value}(creator, a, c));
 		} else {
 			revert("Unsupported game type");
 		}

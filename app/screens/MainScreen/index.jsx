@@ -11,7 +11,7 @@ import _ from "lodash"
 import { cn, labelClass, titleClass } from "app/core"
 import { selectAuth } from "app/core/auth"
 import { selectRoulette } from "app/games/roulette"
-import { selectLottery } from "app/games/lottery"
+import { selectPolygons } from "app/games/polygons"
 import { bankrollClass, clampEth, ethLabel, MIN_BET, tableMaxBet } from "app/games/roulette/chips"
 import { ethers } from "ethers"
 import { selectNativeSymbol } from "app/core/chain"
@@ -105,18 +105,18 @@ const MainScreen = () => {
 const TableCard = React.memo(({ table, index }) => {
   const { address, type } = table || {}
   const roulette = useSelector(() => selectRoulette(address)) || {}
-  const lottery = useSelector(() => selectLottery(address)) || {}
+  const polygons = useSelector(() => selectPolygons(address)) || {}
   const symbol = useSelector(() => selectNativeSymbol())
   const isPolygons = type === TABLE_TYPES.Polygons
   const { minBet, maxBet, totalBalance } = roulette
-  const { claimedCount, polygonCount, ticketPrice, totalBalance: lotteryBalance } = lottery
+  const { claimedCount, polygonCount, ticketPrice, totalBalance: polygonsBalance } = polygons
   const shortAddress = `${address.slice(0, 6)}…${address.slice(-4)}`
   const bankroll = clampEth(totalBalance)
-  const lotteryBankroll = clampEth(lotteryBalance)
+  const polygonsBankroll = clampEth(polygonsBalance)
   const minBetAmount = clampEth(minBet) || MIN_BET
   const maxBetAmount = tableMaxBet(maxBet)
   let stats = roulette
-  if (isPolygons) stats = lottery
+  if (isPolygons) stats = polygons
   const hasStats = !_.isEmpty(stats)
   const order = String(index + 1).padStart(2, "0")
 
@@ -139,8 +139,8 @@ const TableCard = React.memo(({ table, index }) => {
       </div>
       {hasStats && isPolygons &&
         <div className={cn("table-card-stats", "flex shrink-0 flex-col items-end gap-0.5 text-right")}>
-          <span className={cn("table-card-bankroll", titleClass, "text-base", bankrollClass(lotteryBankroll, ticketPrice))}>
-            {ethLabel(lotteryBankroll, symbol)}
+          <span className={cn("table-card-bankroll", titleClass, "text-base", bankrollClass(polygonsBankroll, ticketPrice))}>
+            {ethLabel(polygonsBankroll, symbol)}
           </span>
           <Text className={cn("table-card-limits")} size="xs" c="dimmed">
             {claimedCount || 0}/{polygonCount || 0}

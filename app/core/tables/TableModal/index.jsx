@@ -6,7 +6,7 @@ import * as Yup from "yup"
 import { useTranslation } from "react-i18next"
 import { TABLE_TYPES } from ".."
 import { LOW_BANKROLL_MULTIPLIER, MIN_BET, MIN_TABLE_DEPOSIT, clampEth } from "app/games/roulette/chips"
-import { MAX_POLYGONS, MIN_POLYGONS } from "app/games/lottery"
+import { MAX_POLYGONS, MIN_POLYGONS } from "app/games/polygons"
 import { useSelector } from "react-redux"
 import { selectNativeSymbol } from "app/core/chain"
 import { cn } from "app/core"
@@ -123,7 +123,7 @@ const TableModal = ({ onSubmit }) => {
         </Group>
       }
       {isPolygons &&
-        <Group className={cn("table-modal-lottery")} grow align="flex-start" mt="md">
+        <Group className={cn("table-modal-polygons-fields")} grow align="flex-start" mt="md">
           <NumberInput
             className={cn("table-modal-polygons")}
             label="Polygons"

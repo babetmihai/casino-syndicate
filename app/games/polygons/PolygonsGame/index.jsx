@@ -2,14 +2,14 @@ import React from "react"
 import { createPortal } from "react-dom"
 import _ from "lodash"
 import { Button, Card, Text } from "@mantine/core"
-import { buyLotteryTicket, fetchLottery, selectLottery, unwatchLottery, watchLottery, withdrawLotteryPrize } from ".."
+import { buyPolygonsTicket, fetchPolygons, selectPolygons, unwatchPolygons, watchPolygons, withdrawPolygonsPrize } from ".."
 import { useSelector } from "react-redux"
 import { fetchBalance, selectAuth } from "app/core/auth"
 import { showModal } from "app/core/modals"
 import { cn } from "app/core"
 import AuthModal from "app/core/auth/AuthModal"
 import SessionModal, { requirePlayWallet } from "app/core/auth/SessionModal"
-import LotteryMap from "../LotteryMap"
+import PolygonsMap from "../PolygonsMap"
 import { bankrollClass, clampEth, ethLabel } from "app/games/roulette/chips"
 import { selectNativeSymbol } from "app/core/chain"
 import { buildPolygons, seedFromAddress } from "../polygons"
@@ -27,7 +27,7 @@ const BANNER_LONG_MS = 4500
 const TRAIL = 4
 
 
-const LotteryGame = React.memo(({ address }) => {
+const PolygonsGame = React.memo(({ address }) => {
   const [buying, setBuying] = React.useState(false)
   const [claiming, setClaiming] = React.useState(false)
   const [revealing, setRevealing] = React.useState(false)
@@ -46,12 +46,12 @@ const LotteryGame = React.memo(({ address }) => {
   const seenHouseSettle = React.useRef()
   const { account, session, balance } = useSelector(() => selectAuth()) || {}
   const { authorized } = session || {}
-  const lottery = useSelector(() => selectLottery(address)) || {}
+  const polygons = useSelector(() => selectPolygons(address)) || {}
   const symbol = useSelector(() => selectNativeSymbol())
   const {
     polygonCount, loseCount, ticketPrice, claimedCount, loseLit, prize, myPrize,
     owners = [], mates = [], lastTicket, totalBalance, livePlayers = [], lastSettle
-  } = lottery
+  } = polygons
   const { settled, playersWin, roundPrize, splitIds = [], roundMates } = lastTicket || {}
   const hasPrize = clampEth(myPrize) > 0
   const pending = hasPrize
@@ -106,12 +106,12 @@ const LotteryGame = React.memo(({ address }) => {
 
   React.useEffect(() => {
     if (holdingSpin || revealing || buying) {
-      unwatchLottery(address)
+      unwatchPolygons(address)
       return
     }
-    fetchLottery(address)
-    watchLottery(address)
-    return () => unwatchLottery(address)
+    fetchPolygons(address)
+    watchPolygons(address)
+    return () => unwatchPolygons(address)
   }, [address, account, holdingSpin, revealing, buying])
 
   React.useEffect(() => {
@@ -158,7 +158,7 @@ const LotteryGame = React.memo(({ address }) => {
     if (!requirePlayWallet()) return
     setClaiming(true)
     try {
-      await withdrawLotteryPrize(address)
+      await withdrawPolygonsPrize(address)
       fetchBalance()
     } finally {
       setClaiming(false)
@@ -170,7 +170,7 @@ const LotteryGame = React.memo(({ address }) => {
     setRevealing(true)
     let keepLit = false
     try {
-      const ticket = await buyLotteryTicket(address)
+      const ticket = await buyPolygonsTicket(address)
       if (!ticket) return
       const draws = ticket.draws || []
       const winner = _.last(_.map(draws, "polygonId"))
@@ -180,7 +180,7 @@ const LotteryGame = React.memo(({ address }) => {
       stopFlash.current = undefined
       spinDone.current = undefined
       const showResult = ticket.settled
-      await fetchLottery(address)
+      await fetchPolygons(address)
       fetchBalance()
       keepLit = true
       setBuying(false)
@@ -225,7 +225,7 @@ const LotteryGame = React.memo(({ address }) => {
     if (holdTimer.current || spinningRef.current) return
     event.currentTarget.setPointerCapture(event.pointerId)
     spinningRef.current = true
-    unwatchLottery(address)
+    unwatchPolygons(address)
     setHoldingSpin(true)
     setLanded(false)
     pendingWinner.current = undefined
@@ -256,43 +256,42 @@ const LotteryGame = React.memo(({ address }) => {
   return (
     <div
       className={cn(
-        "lottery-game",
+        "polygons-game",
         "flex min-h-0 w-full flex-1 flex-col overflow-hidden px-3 pt-2 select-none",
         "pb-[max(0.5rem,env(safe-area-inset-bottom))] gap-2"
       )}
     >
       <div
         className={cn(
-          "lottery-status",
+          "polygons-status",
           "flex w-full shrink-0 flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5",
           "font-mono text-[0.75rem] tracking-[0.04em]"
         )}
       >
-        <Text className={cn("lottery-claimed", "whitespace-nowrap text-cs-muted")} size="xs">
-          <span className={cn("lottery-claimed-count", "text-cs-accent tabular-nums")}>{shownClaimed}</span>
+        <Text className={cn("polygons-claimed", "whitespace-nowrap text-cs-muted")} size="xs">
+          <span className={cn("polygons-claimed-count", "text-cs-accent tabular-nums")}>{shownClaimed}</span>
           /{polygonCount || 0} claimed
-          <span className={cn("lottery-lose")}>
+          <span className={cn("polygons-lose")}>
             {" · "}
-            <span className={cn("lottery-lose-count", "text-cs-accent-2 tabular-nums")}>{shownLose}</span>
+            <span className={cn("polygons-lose-count", "text-cs-accent-2 tabular-nums")}>{shownLose}</span>
             /{loseCount || 0} house
           </span>
         </Text>
-        <Text className={cn("lottery-bankroll", "whitespace-nowrap", bankrollClass(bankroll, ticketPrice))} size="xs">
+        <Text className={cn("polygons-bankroll", "whitespace-nowrap", bankrollClass(bankroll, ticketPrice))} size="xs">
           {ethLabel(bankroll, symbol)}
         </Text>
       </div>
       <Card
         className={cn(
-          "lottery-map-card",
-          revealing && "lottery-map-card-spinning",
+          "polygons-map-card",
+          revealing && "polygons-map-card-spinning",
           "flex min-h-0 w-full flex-1 flex-col overflow-hidden"
         )}
         padding={0}
       >
-        <div className={cn("lottery-map-frame", "relative flex min-h-0 w-full flex-1 flex-col items-center justify-center p-1.5")}>
-          <div className={cn("lottery-map-stack", "flex min-h-0 max-h-full w-full flex-1 flex-col items-center gap-1")}>
-            <div className={cn("lottery-map-wrap", "flex min-h-0 w-full flex-1 items-center justify-center")}>
-            <LotteryMap
+        <div className={cn("polygons-map-frame", "relative flex min-h-0 w-full flex-1 flex-col items-center justify-center p-1.5")}>
+          <div className={cn("polygons-map-stack", "flex min-h-0 w-full flex-1 flex-col items-center justify-center")}>
+            <PolygonsMap
               address={address}
               owners={mapOwners}
               mates={mapMates}
@@ -305,17 +304,16 @@ const LotteryGame = React.memo(({ address }) => {
               spinning={revealing}
               celebrate={showBanner && playersWon}
             />
-            </div>
-            <div className={cn("lottery-prize", "flex h-[1.25rem] shrink-0 items-center justify-center")}>
-              <span className={cn("lottery-prize-value", "font-headings text-[1rem] font-extrabold leading-none tabular-nums text-cs-accent")}>
+            <div className={cn("polygons-prize", "flex h-[1.25rem] shrink-0 items-center justify-center")}>
+              <span className={cn("polygons-prize-value", "font-headings text-[1rem] font-extrabold leading-none tabular-nums text-cs-accent")}>
                 {ethLabel(pot, symbol)}
               </span>
             </div>
           </div>
           {showClaim &&
-            <div className={cn("lottery-claim-wrap", "absolute inset-0 z-10 flex items-center justify-center bg-cs-bg")}>
+            <div className={cn("polygons-claim-wrap", "absolute inset-0 z-10 flex items-center justify-center bg-cs-bg")}>
               <Button
-                className={cn("lottery-claim", "animate-claim min-w-36")}
+                className={cn("polygons-claim", "animate-claim min-w-36")}
                 loading={claiming}
                 onClick={onClaim}
               >
@@ -325,14 +323,14 @@ const LotteryGame = React.memo(({ address }) => {
           }
         </div>
       </Card>
-      <div className={cn("lottery-controls", "flex w-full shrink-0 flex-wrap items-center gap-2")}>
+      <div className={cn("polygons-controls", "flex w-full shrink-0 flex-wrap items-center gap-2")}>
         {!account &&
-          <Button className={cn("lottery-connect", "flex-1")} onClick={() => showModal(AuthModal)}>
+          <Button className={cn("polygons-connect", "flex-1")} onClick={() => showModal(AuthModal)}>
             Connect
           </Button>
         }
         {account && !authorized &&
-          <Button className={cn("lottery-deposit", "flex-1")} onClick={() => showModal(SessionModal)}>
+          <Button className={cn("polygons-deposit", "flex-1")} onClick={() => showModal(SessionModal)}>
             Deposit
           </Button>
         }
@@ -340,7 +338,7 @@ const LotteryGame = React.memo(({ address }) => {
           <button
             type="button"
             className={cn(
-              "lottery-spin",
+              "polygons-spin",
               "group relative inline-flex min-h-8 min-w-0 flex-1 appearance-none items-center justify-center overflow-hidden",
               "rounded-[0.75rem] border border-cs-border bg-transparent px-3 py-2 font-sans text-[0.75rem]",
               "leading-normal tracking-[0.06em] uppercase text-cs-text",
@@ -362,28 +360,28 @@ const LotteryGame = React.memo(({ address }) => {
           >
             <span
               className={cn(
-                "lottery-spin-fill",
+                "polygons-spin-fill",
                 "absolute inset-0 w-0 bg-cs-accent transition-[width] duration-150",
                 "group-data-[holding=true]:w-full group-data-[holding=true]:duration-1000",
                 "group-data-[holding=true]:ease-linear",
                 "group-data-[spinning=true]:w-full group-data-[spinning=true]:duration-200"
               )}
             />
-            <span className={cn("lottery-spin-label", "relative z-[1]")}>{spinLabel}</span>
+            <span className={cn("polygons-spin-label", "relative z-[1]")}>{spinLabel}</span>
           </button>
         }
       </div>
       {createPortal(
         showBanner && !revealing && bannerLabel &&
           <div className={cn(
-            "lottery-banner",
+            "polygons-banner",
             "pointer-events-none fixed inset-0 z-[200] flex items-center justify-center"
           )}>
-            <div className={cn("lottery-banner-dim", "absolute inset-0 bg-cs-bg/72")} />
+            <div className={cn("polygons-banner-dim", "absolute inset-0 bg-cs-bg/72")} />
             <Card
               className={cn(
-                "lottery-banner-card",
-                houseWon && "lottery-banner-house",
+                "polygons-banner-card",
+                houseWon && "polygons-banner-house",
                 "relative z-[1] flex min-w-36 flex-col items-center gap-1 rounded-[0.75rem] px-6 py-4 text-center",
                 cardAnim,
                 playersWon && "border-transparent bg-cs-accent text-cs-bg",
@@ -392,11 +390,11 @@ const LotteryGame = React.memo(({ address }) => {
               shadow="md"
               withBorder={false}
             >
-              <Text className={cn("lottery-banner-label", "opacity-80")} size="sm">
+              <Text className={cn("polygons-banner-label", "opacity-80")} size="sm">
                 {bannerLabel}
               </Text>
               {bannerHero &&
-                <Text className={cn("lottery-banner-number", "font-headings leading-none font-extrabold", heroClass)}>
+                <Text className={cn("polygons-banner-number", "font-headings leading-none font-extrabold", heroClass)}>
                   {bannerHero}
                 </Text>
               }
@@ -408,7 +406,7 @@ const LotteryGame = React.memo(({ address }) => {
   )
 })
 
-export default LotteryGame
+export default PolygonsGame
 
 
 const flashAll = (address, count, winCount, setLitIds, setLanded, stopFlash, { getWinner, getCruiseDelay }) => {

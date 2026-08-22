@@ -179,78 +179,78 @@
     border-color: var(--color-cs-border);
   }
 
-  .lottery-map-cell,
-  .lottery-map-cell-glow {
+  .polygons-map-cell,
+  .polygons-map-cell-glow {
     transform-box: fill-box;
     transform-origin: center;
   }
 
-  .lottery-map-cell {
+  .polygons-map-cell {
     transition: fill 0.14s ease-out;
   }
 
-  .lottery-map-spinning .lottery-map-cell {
+  .polygons-map-spinning .polygons-map-cell {
     transition: fill 0.04s linear;
   }
 
-  .lottery-map-cell-glow {
+  .polygons-map-cell-glow {
     transform: scale(1.14);
     opacity: 0.2;
     transition: opacity 0.1s linear, transform 0.1s linear;
   }
 
-  .lottery-map-cell-glow-flash,
-  .lottery-map-cell-glow-win {
+  .polygons-map-cell-glow-flash,
+  .polygons-map-cell-glow-win {
     transition: none;
   }
 
-  .lottery-map-cell-glow-on {
+  .polygons-map-cell-glow-on {
     opacity: 0.4;
     transform: scale(1.2);
   }
 
-  .lottery-map-cell-glow-1 {
+  .polygons-map-cell-glow-1 {
     opacity: 0.26;
     transform: scale(1.16);
   }
 
-  .lottery-map-cell-glow-2 {
+  .polygons-map-cell-glow-2 {
     opacity: 0.15;
     transform: scale(1.12);
   }
 
-  .lottery-map-cell-glow-3 {
+  .polygons-map-cell-glow-3 {
     opacity: 0.08;
     transform: scale(1.08);
   }
 
-  .lottery-map-card,
-  .lottery-map-frame,
-  .lottery-claim-wrap {
+  .polygons-map-card,
+  .polygons-map-frame,
+  .polygons-claim-wrap {
     contain: paint;
   }
 
-  .lottery-map {
+  .polygons-map {
     width: auto;
     height: auto;
     max-width: 100%;
-    max-height: 100%;
+    max-height: calc(100% - 1.25rem);
   }
 
-  .lottery-map-card {
+  .polygons-map-card {
     transition: border-color 0.35s ease;
   }
 
-  .lottery-map-card-spinning {
+  .polygons-map-card-spinning {
     border-color: rgb(45 212 191 / 35%);
   }
 
-  .lottery-banner-card,
+  .polygons-banner-card,
   .roulette-banner-card {
     box-shadow: 0 0 2.5rem rgb(45 212 191 / 0.22);
   }
 
-  .lottery-banner-house,
+  .polygons-banner-house,
   .roulette-banner-black {
     box-shadow: 0 0 2.5rem rgb(129 140 248 / 0.24);
   }
@@ -259,25 +259,25 @@
     transition: fill 0.06s linear, stroke 0.06s linear, stroke-width 0.06s linear;
   }
 
-  .lottery-spin,
+  .polygons-spin,
   .roulette-spin {
     transition: border-color 0.2s ease, color 0.2s ease, transform 0.15s ease;
   }
 
-  .lottery-spin[data-holding="true"],
+  .polygons-spin[data-holding="true"],
   .roulette-spin[data-holding="true"] {
     transform: scale(0.985);
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .lottery-map-cell,
-    .lottery-map-cell-glow,
-    .lottery-banner,
-    .lottery-banner-card,
+    .polygons-map-cell,
+    .polygons-map-cell-glow,
+    .polygons-banner,
+    .polygons-banner-card,
     .roulette-banner,
     .roulette-banner-card,
-    .lottery-claim,
-    .lottery-claim-wrap,
+    .polygons-claim,
+    .polygons-claim-wrap,
     .roulette-spot-rect {
       animation: none !important;
       transition: none !important;

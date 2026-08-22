@@ -5,10 +5,10 @@ import { clearLoader, setLoader } from "../loaders"
 import { generateContract, getFactory, sendWalletTx } from "../contracts"
 import { selectAuth } from "../auth"
 import { fetchRoulette } from "app/games/roulette"
-import { fetchLottery } from "app/games/lottery"
+import { fetchPolygons } from "app/games/polygons"
 import { parseEth } from "app/games/roulette/chips"
 import history from "../history"
-import LotteryArtifact from "artifacts/contracts/Lottery.sol/Lottery.json"
+import PolygonsArtifact from "artifacts/contracts/Polygons.sol/Polygons.json"
 import RouletteArtifact from "artifacts/contracts/Roulette.sol/Roulette.json"
 import _ from "lodash"
 
@@ -69,7 +69,7 @@ export const fetchTables = async () => {
   const tables = _.keyBy(rows.map(toTable), "address")
   actions.set("tables", tables)
   await Promise.all(_.map(tables, (table) => {
-    if (table.type === TABLE_TYPES.Polygons) return fetchLottery(table.address)
+    if (table.type === TABLE_TYPES.Polygons) return fetchPolygons(table.address)
     return fetchRoulette(table.address)
   }))
 }
@@ -109,7 +109,7 @@ export const createTable = async (values) => {
 }
 
 const abiForType = (type) => {
-  if (type === TABLE_TYPES.Polygons) return LotteryArtifact.abi
+  if (type === TABLE_TYPES.Polygons) return PolygonsArtifact.abi
   return RouletteArtifact.abi
 }
 

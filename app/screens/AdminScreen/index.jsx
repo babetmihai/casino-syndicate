@@ -4,9 +4,9 @@ import { useSelector } from "react-redux"
 import { useParams } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import RouletteAdmin from "app/games/roulette/RouletteAdmin"
-import LotteryAdmin from "app/games/lottery/LotteryAdmin"
+import PolygonsAdmin from "app/games/polygons/PolygonsAdmin"
 import { buyTableShares, selectRoulette, withdrawTableShares } from "app/games/roulette"
-import { depositLotteryShares, selectLottery, withdrawLotteryShares } from "app/games/lottery"
+import { depositPolygonsShares, selectPolygons, withdrawPolygonsShares } from "app/games/polygons"
 import { clampEth } from "app/games/roulette/chips"
 import AppScreen from "app/components/AppScreen"
 import history from "app/core/history"
@@ -24,15 +24,15 @@ const AdminScreen = () => {
   const { account } = useSelector(() => selectAuth()) || {}
   const table = useSelector(() => selectTable(address))
   const roulette = useSelector(() => selectRoulette(address)) || {}
-  const lottery = useSelector(() => selectLottery(address)) || {}
+  const polygons = useSelector(() => selectPolygons(address)) || {}
   const { memberShares, lastWithdrawAt } = roulette
-  const lotteryShares = lottery.memberShares
-  const lotteryWithdrawAt = lottery.lastWithdrawAt
+  const polygonsShares = polygons.memberShares
+  const polygonsWithdrawAt = polygons.lastWithdrawAt
   const { type } = table || {}
   const isRoulette = type === TABLE_TYPES.Roulette
   const isPolygons = type === TABLE_TYPES.Polygons
-  const shareAmount = isPolygons ? lotteryShares : memberShares
-  const withdrawAt = isPolygons ? lotteryWithdrawAt : lastWithdrawAt
+  const shareAmount = isPolygons ? polygonsShares : memberShares
+  const withdrawAt = isPolygons ? polygonsWithdrawAt : lastWithdrawAt
   const hasShare = clampEth(shareAmount) > 0
 
   React.useEffect(() => {
@@ -44,7 +44,7 @@ const AdminScreen = () => {
     showModal(DepositModal, {
       onSubmit: async ({ balance }) => {
         if (isPolygons) {
-          await depositLotteryShares({ balance }, address)
+          await depositPolygonsShares({ balance }, address)
         } else {
           await buyTableShares({ balance }, address)
         }
@@ -58,7 +58,7 @@ const AdminScreen = () => {
       lastWithdrawAt: withdrawAt,
       onSubmit: async ({ balance }) => {
         if (isPolygons) {
-          await withdrawLotteryShares({ balance }, address)
+          await withdrawPolygonsShares({ balance }, address)
         } else {
           await withdrawTableShares({ balance }, address)
         }
@@ -102,7 +102,7 @@ const AdminScreen = () => {
           <RouletteAdmin address={address} />
         }
         {address && isPolygons &&
-          <LotteryAdmin address={address} />
+          <PolygonsAdmin address={address} />
         }
       </div>
     </AppScreen>

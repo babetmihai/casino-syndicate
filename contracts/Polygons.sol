@@ -1,12 +1,12 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-interface ILotteryFactory {
+interface IPolygonsFactory {
 	function principalOf(address account) external view returns (address);
 }
 
 
-contract Lottery {
+contract Polygons {
 	address public createdBy;
 	address public factory;
 	uint256 public createdAt;
@@ -82,7 +82,7 @@ contract Lottery {
 	}
 
 	function principal() private view returns (address) {
-		return ILotteryFactory(factory).principalOf(msg.sender);
+		return IPolygonsFactory(factory).principalOf(msg.sender);
 	}
 
 	function getTable() public view returns (TableDTO memory) {

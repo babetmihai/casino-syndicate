@@ -4,24 +4,24 @@ import { EMPTY_OBJECT } from "app/core"
 import { generateContract, getContract, sendTx, sendWalletTx } from "app/core/contracts"
 import { selectAuth } from "app/core/auth"
 import { formatEth, parseEth } from "app/games/roulette/chips"
-import LotteryArtifact from "artifacts/contracts/Lottery.sol/Lottery.json"
+import PolygonsArtifact from "artifacts/contracts/Polygons.sol/Polygons.json"
 import _ from "lodash"
 
 export const MIN_POLYGONS = 3
 export const MAX_POLYGONS = 48
 export const ticketGas = 3000000n
 
-const lotteryPath = (address) => `games.lottery.${ethers.getAddress(address)}`
+const polygonsPath = (address) => `games.polygons.${ethers.getAddress(address)}`
 
 
-export const selectLottery = (address) => {
+export const selectPolygons = (address) => {
   if (!address || !ethers.isAddress(address)) return EMPTY_OBJECT
-  return actions.get(lotteryPath(address), EMPTY_OBJECT)
+  return actions.get(polygonsPath(address), EMPTY_OBJECT)
 }
 
-export const fetchLottery = async (address) => {
+export const fetchPolygons = async (address) => {
   let contract = getContract(address)
-  if (!contract) contract = await generateContract(address, LotteryArtifact.abi)
+  if (!contract) contract = await generateContract(address, PolygonsArtifact.abi)
   const { account } = selectAuth() || {}
   let overrides = {}
   if (account) overrides = { from: account }
@@ -39,7 +39,7 @@ export const fetchLottery = async (address) => {
   if (ownerRaw && ownerRaw !== ethers.ZeroAddress) owner = ethers.getAddress(ownerRaw)
   const claimedCount = Number(row.claimedCount)
   const loseLit = Number(row.loseLit)
-  const prev = selectLottery(address) || {}
+  const prev = selectPolygons(address) || {}
   const occupied = claimedCount + loseLit
   let livePlayers = prev.livePlayers || []
   if (occupied > 0) livePlayers = _.uniq(_.compact([...owners, ...mates]))
@@ -55,7 +55,7 @@ export const fetchLottery = async (address) => {
       }
     }
   }
-  actions.update(lotteryPath(address), {
+  actions.update(polygonsPath(address), {
     polygonCount: Number(row.polygonCount),
     loseCount: Number(row.loseCount),
     ticketPrice: formatEth(await contract.ticketPrice()),
@@ -75,58 +75,58 @@ export const fetchLottery = async (address) => {
 }
 
 
-const lotteryWatches = {}
+const polygonsWatches = {}
 
-export const watchLottery = (address) => {
+export const watchPolygons = (address) => {
   if (!address || !ethers.isAddress(address)) return
   const key = ethers.getAddress(address)
-  if (lotteryWatches[key]) return
-  const refresh = _.debounce(() => fetchLottery(address), 200)
-  lotteryWatches[key] = { refresh, timer: setInterval(refresh, 1500) }
+  if (polygonsWatches[key]) return
+  const refresh = _.debounce(() => fetchPolygons(address), 200)
+  polygonsWatches[key] = { refresh, timer: setInterval(refresh, 1500) }
 }
 
-export const unwatchLottery = (address) => {
+export const unwatchPolygons = (address) => {
   if (!address || !ethers.isAddress(address)) return
   const key = ethers.getAddress(address)
-  const watch = lotteryWatches[key]
+  const watch = polygonsWatches[key]
   if (!watch) return
   const { refresh, timer } = watch || {}
   clearInterval(timer)
   refresh.cancel()
-  delete lotteryWatches[key]
+  delete polygonsWatches[key]
 }
 
-export const buyLotteryTicket = async (address) => {
-  const contract = await generateContract(address, LotteryArtifact.abi)
+export const buyPolygonsTicket = async (address) => {
+  const contract = await generateContract(address, PolygonsArtifact.abi)
   const price = await contract.ticketPrice()
   const receipt = await sendTx(contract.buyTicket, [], {
     value: price,
     gasLimit: ticketGas
   })
   const lastTicket = readTicket(contract, receipt)
-  if (lastTicket) actions.update(lotteryPath(address), { lastTicket })
+  if (lastTicket) actions.update(polygonsPath(address), { lastTicket })
   return lastTicket
 }
 
 
-export const withdrawLotteryPrize = async (address) => {
-  const contract = await generateContract(address, LotteryArtifact.abi)
+export const withdrawPolygonsPrize = async (address) => {
+  const contract = await generateContract(address, PolygonsArtifact.abi)
   await sendTx(contract.withdrawPrize, [])
-  await fetchLottery(address)
+  await fetchPolygons(address)
 }
 
-export const depositLotteryShares = async ({ balance }, address) => {
-  const contract = await generateContract(address, LotteryArtifact.abi)
+export const depositPolygonsShares = async ({ balance }, address) => {
+  const contract = await generateContract(address, PolygonsArtifact.abi)
   await sendWalletTx(contract.depositShares, [], {
     value: parseEth(balance)
   })
-  await fetchLottery(address)
+  await fetchPolygons(address)
 }
 
-export const withdrawLotteryShares = async ({ balance }, address) => {
-  const contract = await generateContract(address, LotteryArtifact.abi)
+export const withdrawPolygonsShares = async ({ balance }, address) => {
+  const contract = await generateContract(address, PolygonsArtifact.abi)
   await sendWalletTx(contract.withdrawShares, [parseEth(balance)])
-  await fetchLottery(address)
+  await fetchPolygons(address)
 }
 
 

@@ -8,6 +8,7 @@ import { fetchBalance, selectAuth } from "app/core/auth"
 import { showModal } from "app/core/modals"
 import { cn } from "app/core"
 import AuthModal from "app/core/auth/AuthModal"
+import SessionModal from "app/core/auth/SessionModal"
 import RouletteTable from "./RouletteTable"
 import { CHIP_VALUES, addEth, bankrollClass, chipLabel, clampEth, ethLabel, MIN_BET, tableMaxBet } from "../chips"
 import { BET_COUNT, BLACK_NUMBERS, betWins, maxPotentialPayout } from "../bets"
@@ -24,7 +25,8 @@ const RouletteGame = React.memo(({ address }) => {
   const historyRef = React.useRef(null)
   const holdTimer = React.useRef(null)
   const totalBet = clampEth(_.sum(bets))
-  const { account } = useSelector(() => selectAuth()) || {}
+  const { account, session, balance } = useSelector(() => selectAuth()) || {}
+  const { authorized } = session || {}
   const { lastSpin, history = [], minBet, maxBet, totalBalance } = useSelector(() => selectRoulette(address)) || {}
   const symbol = useSelector(() => selectNativeSymbol())
   const { number: winningNumber, winningAmount } = lastSpin || {}
@@ -32,8 +34,9 @@ const RouletteGame = React.memo(({ address }) => {
   const minBetAmount = clampEth(minBet) || MIN_BET
   const bankroll = clampEth(totalBalance)
   const maxBetAmount = tableMaxBet(maxBet)
+  const playBalance = clampEth(balance)
   const canCover = clampEth(maxPotentialPayout(bets)) <= bankroll + totalBet
-  const canSpin = totalBet > 0 && !revealing && !showBanner && canCover
+  const canSpin = totalBet > 0 && totalBet <= playBalance && !revealing && !showBanner && canCover
   let bannerColor = "red"
   if (winningNumber === 0) bannerColor = "green"
   if (_.includes(BLACK_NUMBERS, winningNumber)) bannerColor = "black"
@@ -46,7 +49,7 @@ const RouletteGame = React.memo(({ address }) => {
 
   React.useEffect(() => {
     if (!account) return
-    fetchBalance(account)
+    fetchBalance()
   }, [account])
 
   React.useEffect(() => {
@@ -66,6 +69,7 @@ const RouletteGame = React.memo(({ address }) => {
 
   const commitBets = (nextBets) => {
     const nextTotal = clampEth(_.sum(nextBets))
+    if (nextTotal > playBalance) return
     if (clampEth(maxPotentialPayout(nextBets)) > bankroll + nextTotal) return
     setBets(nextBets)
   }
@@ -112,6 +116,7 @@ const RouletteGame = React.memo(({ address }) => {
       setLandingNumber(null)
       try {
         const spin = await postRouletteBet(address, bets)
+        fetchBalance()
         if (!spin) {
           setRevealing(false)
           return
@@ -177,9 +182,6 @@ const RouletteGame = React.memo(({ address }) => {
         <Text className={cn("roulette-bankroll", "shrink-0 whitespace-nowrap", bankrollClass(bankroll, maxBet))} size="xs">
           {ethLabel(bankroll, symbol)}
         </Text>
-        <Text className={cn("roulette-total-bet", "shrink-0 whitespace-nowrap")} size="xs" c="dimmed">
-          {ethLabel(totalBet, symbol)}
-        </Text>
       </div>
       <Card className={cn("roulette-table-card", "flex min-h-0 w-full flex-1 flex-col overflow-hidden")} padding={0}>
         <div className={cn("roulette-table-frame", "flex min-h-0 w-full flex-1 flex-col touch-none p-1.5")}>
@@ -203,7 +205,7 @@ const RouletteGame = React.memo(({ address }) => {
               })
               setBets(nextBets)
               fetchRoulette(address)
-              if (account) fetchBalance(account)
+              fetchBalance()
             }}
           />
         </div>
@@ -214,7 +216,12 @@ const RouletteGame = React.memo(({ address }) => {
             Connect
           </Button>
         }
-        {account &&
+        {account && !authorized &&
+          <Button className={cn("roulette-deposit", "flex-1")} onClick={() => showModal(SessionModal)}>
+            Deposit
+          </Button>
+        }
+        {authorized &&
           <>
             <div className={cn("roulette-chips", "flex shrink-0 flex-row gap-1.5")}>
               {CHIP_VALUES.map((value) => {

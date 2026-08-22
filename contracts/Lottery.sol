@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 interface ILotteryFactory {
 	function setGameOwner(address owner) external;
+	function principalOf(address account) external view returns (address);
 }
 
 
@@ -92,10 +93,15 @@ contract Lottery {
 		emit Deposited(_createdBy, msg.value);
 	}
 
+	function principal() private view returns (address) {
+		return ILotteryFactory(factory).principalOf(msg.sender);
+	}
+
 	function getTable() public view returns (TableDTO memory) {
+		address account = principal();
 		uint256 total = polygonCount + loseCount;
-		uint256 held = heldSettle[msg.sender];
-		bool holding = prizes[msg.sender] > 0 && held != 0;
+		uint256 held = heldSettle[account];
+		bool holding = prizes[account] > 0 && held != 0;
 		address[] memory owners = new address[](total);
 		address[] memory mates = new address[](polygonCount);
 		uint256 shownWin = winLit;
@@ -123,7 +129,7 @@ contract Lottery {
 		uint256 bankroll = houseBankroll();
 		uint256 owned = 0;
 		if (totalShares > 0 && bankroll > 0) {
-			owned = (bankroll * shares[msg.sender]) / totalShares;
+			owned = (bankroll * shares[account]) / totalShares;
 		}
 		return TableDTO({
 			polygonCount: polygonCount,
@@ -132,10 +138,10 @@ contract Lottery {
 			claimedCount: shownWin,
 			loseLit: loseLit,
 			prize: shownPrize,
-			myPrize: prizes[msg.sender],
+			myPrize: prizes[account],
 			memberShares: owned,
 			totalBalance: bankroll,
-			lastWithdrawAt: lastWithdrawAt[msg.sender],
+			lastWithdrawAt: lastWithdrawAt[account],
 			owner: createdBy,
 			owners: owners,
 			mates: mates,
@@ -144,35 +150,37 @@ contract Lottery {
 	}
 
 	function setName(string calldata _name) external {
-		require(msg.sender == createdBy || msg.sender == factory, "Only owner");
+		require(principal() == createdBy || msg.sender == factory, "Only owner");
 		require(bytes(_name).length > 0, "Name required");
 		name = _name;
 	}
 
 	function depositShares() public payable {
 		require(msg.value > 0, "Send ETH");
+		address account = principal();
 		uint256 previousBalance = houseBankroll() - msg.value;
 		uint256 memberShares = msg.value;
-		bool ownsAll = totalShares > 0 && shares[msg.sender] == totalShares;
+		bool ownsAll = totalShares > 0 && shares[account] == totalShares;
 		if (totalShares > 0 && previousBalance > 0 && !ownsAll) {
 			memberShares = (msg.value * totalShares) / previousBalance;
 			require(memberShares > 0, "Share calculation resulted in zero");
 		}
 
 		totalShares += memberShares;
-		shares[msg.sender] += memberShares;
-		addHolder(msg.sender);
+		shares[account] += memberShares;
+		addHolder(account);
 		syncOwner();
-		emit Deposited(msg.sender, msg.value);
+		emit Deposited(account, msg.value);
 	}
 
 	function withdrawShares(uint256 amount) external {
 		require(amount > 0, "Must withdraw some Ether");
-		uint256 previous = lastWithdrawAt[msg.sender];
+		address account = principal();
+		uint256 previous = lastWithdrawAt[account];
 		if (previous != 0) {
 			require(block.timestamp >= previous + WITHDRAW_INTERVAL, "Once per day");
 		}
-		uint256 memberShares = shares[msg.sender];
+		uint256 memberShares = shares[account];
 		require(memberShares > 0, "Must have shares to withdraw");
 		uint256 bankroll = houseBankroll();
 		require(bankroll > 0, "Must have shares to withdraw");
@@ -187,23 +195,24 @@ contract Lottery {
 		}
 
 		totalShares -= burned;
-		shares[msg.sender] -= burned;
-		if (shares[msg.sender] == 0) {
-			delete shares[msg.sender];
-			removeHolder(msg.sender);
+		shares[account] -= burned;
+		if (shares[account] == 0) {
+			delete shares[account];
+			removeHolder(account);
 		}
 		syncOwner();
-		lastWithdrawAt[msg.sender] = block.timestamp;
+		lastWithdrawAt[account] = block.timestamp;
 		payable(msg.sender).transfer(amount);
 	}
 
 	function withdrawPrize() external {
-		uint256 amount = prizes[msg.sender];
+		address account = principal();
+		uint256 amount = prizes[account];
 		require(amount > 0, "No prize");
-		prizes[msg.sender] = 0;
+		prizes[account] = 0;
 		reserved -= amount;
-		uint256 id = heldSettle[msg.sender];
-		delete heldSettle[msg.sender];
+		uint256 id = heldSettle[account];
+		delete heldSettle[account];
 		if (id != 0) {
 			uint256 left = heldCount[id] - 1;
 			if (left == 0) {
@@ -216,15 +225,16 @@ contract Lottery {
 				heldCount[id] = left;
 			}
 		}
-		emit PrizePaid(msg.sender, amount);
+		emit PrizePaid(account, amount);
 		payable(msg.sender).transfer(amount);
 	}
 
 	function buyTicket() external payable {
-		require(prizes[msg.sender] == 0, "Claim first");
+		address player = principal();
+		require(prizes[player] == 0, "Claim first");
 		require(msg.value == ticketPrice, "Wrong price");
 		pot += msg.value;
-		uint8 outcome = drawTicket();
+		uint8 outcome = drawTicket(player);
 		if (outcome == 1) {
 			settlePlayers();
 		} else if (outcome == 2) {
@@ -232,47 +242,47 @@ contract Lottery {
 		}
 	}
 
-	function drawTicket() private returns (uint8 outcome) {
-		uint256 seed = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender, nonce)));
+	function drawTicket(address player) private returns (uint8 outcome) {
+		uint256 seed = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, player, nonce)));
 		nonce++;
 		uint256 total = polygonCount + loseCount;
 		uint256 cellId = seed % total;
 		address owner = cellOwner[cellId];
 		if (owner != address(0)) {
 			bool won = cellId < polygonCount;
-			if (won && cellMate[cellId] == address(0) && owner != msg.sender) {
-				cellMate[cellId] = msg.sender;
-				emit TicketBought(msg.sender, true, cellId, true, true, false);
+			if (won && cellMate[cellId] == address(0) && owner != player) {
+				cellMate[cellId] = player;
+				emit TicketBought(player, true, cellId, true, true, false);
 				return 0;
 			}
-			emit TicketBought(msg.sender, won, cellId, false, false, false);
+			emit TicketBought(player, won, cellId, false, false, false);
 			return 0;
 		}
 
-		cellOwner[cellId] = msg.sender;
+		cellOwner[cellId] = player;
 		if (cellId < polygonCount) {
-			bool bonus = rollBonus(cellId);
+			bool bonus = rollBonus(cellId, player);
 			winLit++;
-			emit TicketBought(msg.sender, true, cellId, true, false, bonus);
+			emit TicketBought(player, true, cellId, true, false, bonus);
 			if (winLit == polygonCount) {
 				return 1;
 			}
 			return 0;
 		}
 		loseLit++;
-		emit TicketBought(msg.sender, false, cellId, true, false, false);
+		emit TicketBought(player, false, cellId, true, false, false);
 		if (loseLit == loseCount) {
 			return 2;
 		}
 		return 0;
 	}
 
-	function rollBonus(uint256 cellId) private returns (bool) {
+	function rollBonus(uint256 cellId, address player) private returns (bool) {
 		uint256 extra = jackpot();
 		if (houseBankroll() < extra) {
 			return false;
 		}
-		uint256 jack = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, msg.sender, nonce)));
+		uint256 jack = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, player, nonce)));
 		nonce++;
 		if (jack % polygonCount != 0) {
 			return false;

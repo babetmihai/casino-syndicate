@@ -8,6 +8,7 @@ import { fetchBalance, selectAuth } from "app/core/auth"
 import { showModal } from "app/core/modals"
 import { cn } from "app/core"
 import AuthModal from "app/core/auth/AuthModal"
+import SessionModal, { requirePlayWallet } from "app/core/auth/SessionModal"
 import LotteryMap from "../LotteryMap"
 import { bankrollClass, clampEth, ethLabel } from "app/games/roulette/chips"
 import { selectNativeSymbol } from "app/core/chain"
@@ -39,7 +40,8 @@ const LotteryGame = React.memo(({ address }) => {
   const holdTimer = React.useRef()
   const bannerTimer = React.useRef()
   const knownBonuses = React.useRef()
-  const { account } = useSelector(() => selectAuth()) || {}
+  const { account, session, balance } = useSelector(() => selectAuth()) || {}
+  const { authorized } = session || {}
   const lottery = useSelector(() => selectLottery(address)) || {}
   const symbol = useSelector(() => selectNativeSymbol())
   const {
@@ -58,7 +60,7 @@ const LotteryGame = React.memo(({ address }) => {
   const jackpots = jackpotByPlayer(lottery) || {}
   let myJackpot
   if (account) myJackpot = jackpots[ethers.getAddress(account)]
-  const canSpin = account && !buying && roundOpen && !showBanner && !pending && !revealing
+  const canSpin = authorized && clampEth(balance) >= totalPrice && !buying && roundOpen && !showBanner && !pending && !revealing
   const isSplit = splitIds.length > 0 && !settled
   const isBonus = bonusIds.length > 0 && !settled
   const houseWon = settled && !playersWin
@@ -98,7 +100,7 @@ const LotteryGame = React.memo(({ address }) => {
   }).length
   let shownClaimed = claimedCount || 0
   if (account) shownClaimed = mineCount
-  let spinLabel = `Hold to spin · ${ethLabel(totalPrice, symbol)}`
+  let spinLabel = "Hold to spin"
   if (buying || revealing) spinLabel = "Spinning"
   if (!roundOpen) spinLabel = "Closed"
 
@@ -113,7 +115,7 @@ const LotteryGame = React.memo(({ address }) => {
 
   React.useEffect(() => {
     if (!account) return
-    fetchBalance(account)
+    fetchBalance()
   }, [account])
 
   React.useEffect(() => {
@@ -172,10 +174,11 @@ const LotteryGame = React.memo(({ address }) => {
 
   const onClaim = async () => {
     if (!hasPrize || claiming) return
+    if (!requirePlayWallet()) return
     setClaiming(true)
     try {
       await withdrawLotteryPrize(address)
-      if (account) fetchBalance(account)
+      fetchBalance()
     } finally {
       setClaiming(false)
     }
@@ -202,7 +205,7 @@ const LotteryGame = React.memo(({ address }) => {
       const bonusHit = (ticket.bonusIds || []).length > 0 && !ticket.settled
       const showResult = split || ticket.settled || (ticket.bonusIds || []).length
       await fetchLottery(address)
-      if (account) fetchBalance(account)
+      fetchBalance()
       keepLit = true
       setBuying(false)
       setRevealing(false)
@@ -331,7 +334,12 @@ const LotteryGame = React.memo(({ address }) => {
             Connect
           </Button>
         }
-        {account && !pending &&
+        {account && !authorized &&
+          <Button className={cn("lottery-deposit", "flex-1")} onClick={() => showModal(SessionModal)}>
+            Deposit
+          </Button>
+        }
+        {authorized && !pending &&
           <button
             type="button"
             className={cn(

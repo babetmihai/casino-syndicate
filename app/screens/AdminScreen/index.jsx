@@ -10,7 +10,7 @@ import { depositLotteryShares, selectLottery, withdrawLotteryShares } from "app/
 import { clampEth, MIN_BET, tableMaxBet } from "app/games/roulette/chips"
 import AppScreen from "app/components/AppScreen"
 import history from "app/core/history"
-import { fetchBalance, selectAuth } from "app/core/auth"
+import { selectAuth } from "app/core/auth"
 import { cn, labelClass, titleClass } from "app/core"
 import { Button } from "@mantine/core"
 import { showModal } from "app/core/modals"
@@ -67,29 +67,31 @@ const AdminScreen = () => {
     })
   }
 
-  const openDeposit = () => showModal(DepositModal, {
-    onSubmit: async ({ balance }) => {
-      if (isPolygons) {
-        await depositLotteryShares({ balance }, address)
-      } else {
-        await buyTableShares({ balance }, address)
+  const openDeposit = () => {
+    showModal(DepositModal, {
+      onSubmit: async ({ balance }) => {
+        if (isPolygons) {
+          await depositLotteryShares({ balance }, address)
+        } else {
+          await buyTableShares({ balance }, address)
+        }
       }
-      await fetchBalance(account)
-    }
-  })
+    })
+  }
 
-  const openWithdraw = () => showModal(WithdrawModal, {
-    max: clampEth(shareAmount),
-    lastWithdrawAt: withdrawAt,
-    onSubmit: async ({ balance }) => {
-      if (isPolygons) {
-        await withdrawLotteryShares({ balance }, address)
-      } else {
-        await withdrawTableShares({ balance }, address)
+  const openWithdraw = () => {
+    showModal(WithdrawModal, {
+      max: clampEth(shareAmount),
+      lastWithdrawAt: withdrawAt,
+      onSubmit: async ({ balance }) => {
+        if (isPolygons) {
+          await withdrawLotteryShares({ balance }, address)
+        } else {
+          await withdrawTableShares({ balance }, address)
+        }
       }
-      await fetchBalance(account)
-    }
-  })
+    })
+  }
 
   return (
     <AppScreen>

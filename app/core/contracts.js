@@ -2,9 +2,14 @@ import { ethers } from "ethers"
 import RouletteArtifact from "artifacts/contracts/Roulette.sol/Roulette.json"
 import FactoryArtifact from "artifacts/contracts/GameFactory.sol/GameFactory.json"
 import { chainFromId, isLocalChain, LOCAL_CHAIN_ID, setChain, targetChainId } from "./chain"
+import { actions } from "./store"
+import { EMPTY_OBJECT } from "."
+import _ from "lodash"
 
 const contracts = {}
 let provider
+let writeProvider
+let sessionWallet
 const LOCAL_HEAD_KEY = "casino-syndicate.localHead"
 
 const { VITE_FACTORY_ADDRESS } = import.meta.env
@@ -74,6 +79,45 @@ const syncLocalHead = async () => {
 
 export const resetProvider = () => {
   provider = undefined
+  writeProvider = undefined
+  sessionWallet = undefined
+  _.forEach(contracts, (_value, key) => {
+    delete contracts[key]
+  })
+}
+
+const getWriteProvider = () => {
+  if (writeProvider) return writeProvider
+  if (isLocalChain(targetChainId())) {
+    writeProvider = getLocalRpc()
+    return writeProvider
+  }
+  const { rpcUrl } = chainFromId(targetChainId())
+  if (!rpcUrl) throw new Error(`Unsupported chain ${targetChainId()}`)
+  writeProvider = new ethers.JsonRpcProvider(rpcUrl)
+  return writeProvider
+}
+
+const sessionRecord = () => {
+  const { account } = actions.get("auth", EMPTY_OBJECT)
+  if (!account) return EMPTY_OBJECT
+  const sessions = actions.get("sessions", EMPTY_OBJECT)
+  return sessions[ethers.getAddress(account)] || EMPTY_OBJECT
+}
+
+const walletFor = (privateKey) => {
+  if (sessionWallet && sessionWallet.privateKey === privateKey) return sessionWallet
+  sessionWallet = new ethers.Wallet(privateKey, getWriteProvider())
+  return sessionWallet
+}
+
+const getSessionSigner = () => {
+  const { session } = actions.get("auth", EMPTY_OBJECT)
+  const { authorized } = session || {}
+  if (!authorized) return
+  const { privateKey } = sessionRecord()
+  if (!privateKey) return
+  return walletFor(privateKey)
 }
 
 const getProvider = () => {
@@ -122,7 +166,7 @@ const ensureNetwork = async () => {
 }
 
 
-export const getSigner = async () => {
+export const getWalletSigner = async () => {
   if (!window.ethereum) throw new Error("Please install MetaMask!")
   await window.ethereum.request({ method: "eth_requestAccounts" })
   await ensureNetwork()
@@ -134,6 +178,12 @@ export const getSigner = async () => {
     await syncLocalHead()
   }
   return signer
+}
+
+export const getWriteSigner = async () => {
+  const session = getSessionSigner()
+  if (!session) throw new Error("Play wallet required")
+  return session
 }
 
 export const fundAccount = async (address) => {
@@ -161,7 +211,6 @@ export const getContract = (address) => {
 
 export const generateContract = async (address, abi = RouletteArtifact.abi) => {
   const checksummed = ethers.getAddress(address)
-  const signer = await getSigner()
   let retries = 5
   let code = "0x"
   while (retries > 0) {
@@ -171,7 +220,7 @@ export const generateContract = async (address, abi = RouletteArtifact.abi) => {
     retries -= 1
   }
   if (code === "0x") throw new Error("Contract is not deployed")
-  const contract = new ethers.Contract(checksummed, abi, signer)
+  const contract = new ethers.Contract(checksummed, abi, getReadProvider())
   contracts[checksummed] = contract
   return contract
 }
@@ -179,32 +228,53 @@ export const generateContract = async (address, abi = RouletteArtifact.abi) => {
 
 export const getFactory = async () => {
   if (!VITE_FACTORY_ADDRESS) throw new Error("Missing VITE_FACTORY_ADDRESS")
-  const signer = await getSigner()
   const code = await getReadProvider().getCode(VITE_FACTORY_ADDRESS)
   if (code === "0x") {
     const { name } = chainFromId(targetChainId())
     throw new Error(`Factory is not deployed on ${name}`)
   }
-  return new ethers.Contract(VITE_FACTORY_ADDRESS, FactoryArtifact.abi, signer)
+  return new ethers.Contract(VITE_FACTORY_ADDRESS, FactoryArtifact.abi, getReadProvider())
 }
 
-export const sendTx = async (method, args, overrides) => {
-  const params = args || []
-  const extra = { ...(overrides || {}) }
+const waitTx = async (signer, request) => {
+  const extra = { ...request }
   if (isLocalChain(targetChainId())) {
     await syncLocalHead()
-    const signer = await getSigner()
     extra.nonce = await getLocalRpc().getTransactionCount(await signer.getAddress(), "latest")
   }
-  let { gasLimit } = extra
-  if (!gasLimit) {
-    const gas = await method.estimateGas(...params, extra)
-    gasLimit = gas * 15n / 10n
-  }
-  const tx = await method(...params, { ...extra, gasLimit })
+  const tx = await signer.sendTransaction(extra)
   const receipt = await tx.wait()
   if (isLocalChain(targetChainId())) {
     writeHead(await getLocalRpc().getBlockNumber())
   }
   return receipt
+}
+
+const broadcast = async (signer, method, args, overrides) => {
+  const params = args || []
+  const extra = { ...(overrides || {}) }
+  extra.from = await signer.getAddress()
+  let { gasLimit } = extra
+  if (!gasLimit) {
+    const gas = await method.estimateGas(...params, extra)
+    gasLimit = gas * 15n / 10n
+  }
+  const populated = await method.populateTransaction(...params, { ...extra, gasLimit })
+  return waitTx(signer, populated)
+}
+
+export const sendTx = async (method, args, overrides) => {
+  return broadcast(await getWriteSigner(), method, args, overrides)
+}
+
+export const sendWalletTx = async (method, args, overrides) => {
+  return broadcast(await getWalletSigner(), method, args, overrides)
+}
+
+export const sendPayment = async (to, value) => {
+  return waitTx(await getWalletSigner(), { to, value })
+}
+
+export const sendSessionPayment = async (to, value) => {
+  return waitTx(await getWriteSigner(), { to, value })
 }

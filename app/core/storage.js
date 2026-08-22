@@ -5,7 +5,8 @@ import _ from "lodash"
 const VERSION = 1
 const PERSISTENT_PATHS = [
   "auth",
-  "language"
+  "language",
+  "sessions"
 ]
 
 localforage.config({

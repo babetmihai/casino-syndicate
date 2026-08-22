@@ -1,8 +1,9 @@
 import React from "react"
 import { Modal, Text, Button, Group } from "@mantine/core"
-import { hideModal } from "../../modals"
+import { showModal, hideModal } from "../../modals"
 import { useTranslation } from "react-i18next"
-import { login } from ".."
+import { login, selectAuth } from ".."
+import SessionModal from "../SessionModal"
 import { chainFromId, targetChainId } from "app/core/chain"
 import { cn } from "app/core"
 
@@ -35,6 +36,9 @@ const AuthModal = () => {
           onClick={async () => {
             await login()
             hideModal()
+            const { session } = selectAuth() || {}
+            const { authorized } = session || {}
+            if (!authorized) showModal(SessionModal)
           }}
         >
           MetaMask

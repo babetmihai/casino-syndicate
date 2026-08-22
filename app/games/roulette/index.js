@@ -1,7 +1,7 @@
 import { ethers } from "ethers"
 import { actions } from "app/core/store"
 import { EMPTY_OBJECT } from "app/core"
-import { generateContract, getContract, sendTx } from "app/core/contracts"
+import { generateContract, getContract, sendTx, sendWalletTx } from "app/core/contracts"
 import { selectAuth } from "app/core/auth"
 import { formatEth, parseEth } from "./chips"
 
@@ -50,7 +50,7 @@ export const fetchRoulette = async (address) => {
 export const buyTableShares = async ({ balance }, address) => {
   let contract = getContract(address)
   if (!contract) contract = await generateContract(address)
-  await sendTx(contract.depositShares, [], {
+  await sendWalletTx(contract.depositShares, [], {
     value: parseEth(balance)
   })
   await fetchRoulette(address)
@@ -59,14 +59,14 @@ export const buyTableShares = async ({ balance }, address) => {
 export const withdrawTableShares = async ({ balance }, address) => {
   let contract = getContract(address)
   if (!contract) contract = await generateContract(address)
-  await sendTx(contract.withdrawShares, [parseEth(balance)])
+  await sendWalletTx(contract.withdrawShares, [parseEth(balance)])
   await fetchRoulette(address)
 }
 
 export const setRouletteLimits = async (address, { minBet, maxBet }) => {
   let contract = getContract(address)
   if (!contract) contract = await generateContract(address)
-  await sendTx(contract.setLimits, [parseEth(minBet), parseEth(maxBet)])
+  await sendWalletTx(contract.setLimits, [parseEth(minBet), parseEth(maxBet)])
   await fetchRoulette(address)
 }
 

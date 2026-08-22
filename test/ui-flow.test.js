@@ -959,3 +959,124 @@ describe("UI flow: create, view, play lottery", () => {
   })
 })
 
+describe("session wallet acts as principal", () => {
+  const createdAddress = (factory, receipt) => {
+    const created = receipt.logs
+      .map((log) => {
+        try {
+          return factory.interface.parseLog(log)
+        } catch {
+          return null
+        }
+      })
+      .find((parsed) => parsed && parsed.name === "GameCreated")
+    return created.args.game
+  }
+
+  it("authorizes a session that plays and funds in the owner's name", async () => {
+    const [creator, player] = await ethers.getSigners()
+    const Factory = await ethers.getContractFactory("GameFactory")
+    const factory = await Factory.deploy()
+    await factory.waitForDeployment()
+    const session = ethers.Wallet.createRandom().connect(ethers.provider)
+    const deposit = ethers.parseEther("5")
+    await (await factory.connect(player).authorizeSession(session.address, { value: deposit })).wait()
+    expect(await factory.sessionOf(player.address)).to.equal(session.address)
+    expect(await factory.principalOf(session.address)).to.equal(player.address)
+    expect(await factory.principalOf(player.address)).to.equal(player.address)
+    expect(await ethers.provider.getBalance(session.address)).to.equal(deposit)
+
+    const createTx = await factory.connect(creator).createGame(
+      "Session Table",
+      TABLE_TYPE_IDS.Roulette,
+      ethers.parseEther("0.01"),
+      ethers.parseEther("1"),
+      0,
+      { value: ethers.parseEther("100") }
+    )
+    const roulette = await ethers.getContractAt("Roulette", createdAddress(factory, await createTx.wait()))
+    await (await roulette.connect(session).depositShares({ value: ethers.parseEther("2") })).wait()
+    const asPlayer = await roulette.connect(player).getTable()
+    const asSession = await roulette.connect(session).getTable()
+    expect(asPlayer.memberShares).to.equal(ethers.parseEther("2"))
+    expect(asSession.memberShares).to.equal(ethers.parseEther("2"))
+
+    const playerBefore = await ethers.provider.getBalance(player.address)
+    const bets = Array(157).fill(0n)
+    bets[0] = ethers.parseEther("1")
+    await (await roulette.connect(session).postBet(bets, { value: ethers.parseEther("1") })).wait()
+    expect(await ethers.provider.getBalance(player.address)).to.equal(playerBefore)
+
+    const next = ethers.Wallet.createRandom()
+    await (await factory.connect(player).authorizeSession(next.address)).wait()
+    expect(await factory.principalOf(session.address)).to.equal(session.address)
+    expect(await factory.principalOf(next.address)).to.equal(player.address)
+    await expect(
+      factory.connect(creator).authorizeSession(next.address)
+    ).to.be.revertedWith("Session taken")
+  })
+
+  it("creates games and lottery cells as the authorizing account", async () => {
+    const [player] = await ethers.getSigners()
+    const Factory = await ethers.getContractFactory("GameFactory")
+    const factory = await Factory.deploy()
+    await factory.waitForDeployment()
+    const session = ethers.Wallet.createRandom().connect(ethers.provider)
+    await (await factory.connect(player).authorizeSession(session.address, {
+      value: ethers.parseEther("10")
+    })).wait()
+
+    const createTx = await factory.connect(session).createGame(
+      "Owned By Me",
+      TABLE_TYPE_IDS.Roulette,
+      ethers.parseEther("0.01"),
+      ethers.parseEther("1"),
+      0,
+      { value: ethers.parseEther("2") }
+    )
+    const receipt = await createTx.wait()
+    const game = createdAddress(factory, receipt)
+    const rows = await factory.getGamesByCreator(player.address)
+    expect(rows.length).to.equal(1)
+    expect(rows[0].createdBy).to.equal(player.address)
+    await (await factory.connect(session).setGameName(game, "Renamed")).wait()
+    expect((await factory.getGame(game)).name).to.equal("Renamed")
+
+    const lotteryTx = await factory.connect(session).createGame(
+      "Session Map",
+      TABLE_TYPE_IDS.Polygons,
+      6,
+      0,
+      ethers.parseEther("0.01"),
+      { value: ethers.parseEther("2") }
+    )
+    const lottery = await ethers.getContractAt("Lottery", createdAddress(factory, await lotteryTx.wait()))
+    const price = ethers.parseEther("0.01")
+    let assigned
+    for (let i = 0; i < 40; i++) {
+      const table = await lottery.connect(session).getTable()
+      if (table.myPrize > 0n) {
+        await (await lottery.connect(session).withdrawPrize()).wait()
+      }
+      const tx = await lottery.connect(session).buyTicket({ value: price })
+      const tickets = (await tx.wait()).logs
+        .map((log) => {
+          try {
+            return lottery.interface.parseLog(log)
+          } catch {
+            return null
+          }
+        })
+        .filter((parsed) => parsed && parsed.name === "TicketBought")
+      assigned = tickets.find((ticket) => ticket.args.assigned)
+      if (assigned) break
+    }
+    expect(assigned).to.not.equal(undefined)
+    expect(assigned.args.player).to.equal(player.address)
+    const cellId = Number(assigned.args.polygonId)
+    if (assigned.args.won) {
+      expect(await lottery.cellOwner(cellId)).to.equal(player.address)
+    }
+  })
+})
+

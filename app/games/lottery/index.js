@@ -1,7 +1,7 @@
 import { ethers } from "ethers"
 import { actions } from "app/core/store"
 import { EMPTY_OBJECT } from "app/core"
-import { generateContract, getContract, sendTx } from "app/core/contracts"
+import { generateContract, getContract, sendTx, sendWalletTx } from "app/core/contracts"
 import { selectAuth } from "app/core/auth"
 import { clampEth, formatEth, parseEth } from "app/games/roulette/chips"
 import LotteryArtifact from "artifacts/contracts/Lottery.sol/Lottery.json"
@@ -137,7 +137,7 @@ export const withdrawLotteryPrize = async (address) => {
 
 export const depositLotteryShares = async ({ balance }, address) => {
   const contract = await generateContract(address, LotteryArtifact.abi)
-  await sendTx(contract.depositShares, [], {
+  await sendWalletTx(contract.depositShares, [], {
     value: parseEth(balance)
   })
   await fetchLottery(address)
@@ -145,7 +145,7 @@ export const depositLotteryShares = async ({ balance }, address) => {
 
 export const withdrawLotteryShares = async ({ balance }, address) => {
   const contract = await generateContract(address, LotteryArtifact.abi)
-  await sendTx(contract.withdrawShares, [parseEth(balance)])
+  await sendWalletTx(contract.withdrawShares, [parseEth(balance)])
   await fetchLottery(address)
 }
 

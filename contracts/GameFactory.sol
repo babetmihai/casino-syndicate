@@ -27,6 +27,8 @@ contract GameFactory {
 	mapping(address => uint256[]) private gameIndexesByCreator;
 	mapping(address => uint256) private gameIndexByAddress;
 	mapping(address => mapping(address => uint256)) private creatorGameSlot;
+	mapping(address => address) public sessionOf;
+	mapping(address => address) private sessionPrincipal;
 
 	event GameCreated(
 		address indexed game,
@@ -34,15 +36,42 @@ contract GameFactory {
 		GameType gameType,
 		string name
 	);
+	event SessionAuthorized(address indexed account, address indexed session);
+
+	function principalOf(address account) public view returns (address) {
+		address owner = sessionPrincipal[account];
+		if (owner != address(0)) {
+			return owner;
+		}
+		return account;
+	}
+
+	function authorizeSession(address session) external payable {
+		require(session != address(0), "Session required");
+		require(session != msg.sender, "Not self");
+		address current = sessionPrincipal[session];
+		require(current == address(0) || current == msg.sender, "Session taken");
+		address previous = sessionOf[msg.sender];
+		if (previous != address(0) && previous != session) {
+			delete sessionPrincipal[previous];
+		}
+		sessionOf[msg.sender] = session;
+		sessionPrincipal[session] = msg.sender;
+		if (msg.value > 0) {
+			payable(session).transfer(msg.value);
+		}
+		emit SessionAuthorized(msg.sender, session);
+	}
 
 	function createGame(string calldata name, GameType gameType, uint256 a, uint256 b, uint256 c) external payable returns (address game) {
 		require(bytes(name).length > 0, "Name required");
+		address creator = principalOf(msg.sender);
 		if (gameType == GameType.Roulette) {
 			require(msg.value >= 1 ether, "Min deposit 1");
-			game = address(new Roulette{value: msg.value}(name, msg.sender, a, b));
+			game = address(new Roulette{value: msg.value}(name, creator, a, b));
 		} else if (gameType == GameType.Polygons) {
 			require(msg.value >= 1 ether, "Min deposit 1");
-			game = address(new Lottery{value: msg.value}(name, msg.sender, a, c));
+			game = address(new Lottery{value: msg.value}(name, creator, a, c));
 		} else {
 			revert("Unsupported game type");
 		}
@@ -51,15 +80,15 @@ contract GameFactory {
 		uint256 index = games.length;
 		games.push(GameInfo({
 			game: game,
-			createdBy: msg.sender,
+			createdBy: creator,
 			name: name,
 			gameType: gameType,
 			createdAt: block.timestamp
 		}));
-		gameIndexesByCreator[msg.sender].push(index);
+		gameIndexesByCreator[creator].push(index);
 		gameIndexByAddress[game] = index + 1;
-		creatorGameSlot[msg.sender][game] = gameIndexesByCreator[msg.sender].length;
-		emit GameCreated(game, msg.sender, gameType, name);
+		creatorGameSlot[creator][game] = gameIndexesByCreator[creator].length;
+		emit GameCreated(game, creator, gameType, name);
 	}
 
 	function setGameOwner(address owner) external {
@@ -81,7 +110,7 @@ contract GameFactory {
 		uint256 stored = gameIndexByAddress[game];
 		require(stored > 0, "Unknown game");
 		GameInfo storage info = games[stored - 1];
-		require(info.createdBy == msg.sender, "Only owner");
+		require(info.createdBy == principalOf(msg.sender), "Only owner");
 		require(bytes(name).length > 0, "Name required");
 		info.name = name;
 		INamedGame(game).setName(name);

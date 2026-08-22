@@ -2,7 +2,7 @@ import { actions } from "../store"
 import { EMPTY_OBJECT } from ".."
 import { ethers } from "ethers"
 import { clearLoader, setLoader } from "../loaders"
-import { generateContract, getFactory, sendTx } from "../contracts"
+import { generateContract, getFactory, sendWalletTx } from "../contracts"
 import { selectAuth } from "../auth"
 import { fetchRoulette } from "app/games/roulette"
 import { fetchLottery } from "app/games/lottery"
@@ -86,7 +86,7 @@ export const createTable = async (values) => {
   if (isPolygons) {
     args = [name, gameType, polygonCount, 0, parseEth(ticketPrice)]
   }
-  const receipt = await sendTx(factory.createGame, args, { value })
+  const receipt = await sendWalletTx(factory.createGame, args, { value })
 
   let address
   for (const log of receipt.logs) {
@@ -110,7 +110,7 @@ export const createTable = async (values) => {
 
 export const setTableName = async (address, name) => {
   const factory = await getFactory()
-  await sendTx(factory.setGameName, [address, name])
+  await sendWalletTx(factory.setGameName, [address, name])
   await initTable(address)
 }
 

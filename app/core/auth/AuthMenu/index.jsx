@@ -1,23 +1,29 @@
 import React from "react"
 import { Menu, Text, UnstyledButton } from "@mantine/core"
-import { SignOutIcon, WalletIcon } from "@phosphor-icons/react"
+import { ArrowUpIcon, SignOutIcon, VaultIcon, WalletIcon } from "@phosphor-icons/react"
 import { selectAuth, logout, fetchBalance, requestTestEth } from "app/core/auth"
-import { ethLabel } from "app/games/roulette/chips"
+import SessionModal from "app/core/auth/SessionModal"
+import SessionWithdrawModal from "app/core/auth/SessionWithdrawModal"
+import { showModal } from "app/core/modals"
+import { clampEth, ethLabel } from "app/games/roulette/chips"
 import { cn } from "app/core"
 import { useSelector } from "react-redux"
 import { isLocalChain, selectChain } from "app/core/chain"
 
 
 const AuthMenu = () => {
-  const { account, balance } = useSelector(() => selectAuth()) || {}
+  const { account, balance, session } = useSelector(() => selectAuth()) || {}
   const { chainId, symbol } = useSelector(() => selectChain()) || {}
+  const { authorized } = session || {}
   const shortAccount = `${account.slice(0, 6)}…${account.slice(-4)}`
-  const balanceLabel = ethLabel(balance, symbol)
+  const playBalance = clampEth(balance)
+  const balanceLabel = ethLabel(playBalance, symbol)
   const showTestFunds = isLocalChain(chainId)
+  const showWithdraw = authorized && playBalance > 0
 
   React.useEffect(() => {
     if (!account) return
-    fetchBalance(account)
+    fetchBalance()
   }, [account, chainId])
 
   return (
@@ -46,6 +52,22 @@ const AuthMenu = () => {
       </Menu.Target>
       <Menu.Dropdown>
         <Menu.Label className={cn("auth-menu-label")}>{shortAccount}</Menu.Label>
+        <Menu.Item
+          className={cn("auth-menu-deposit")}
+          onClick={() => showModal(SessionModal)}
+          leftSection={<VaultIcon size={16} />}
+        >
+          Deposit
+        </Menu.Item>
+        {showWithdraw &&
+          <Menu.Item
+            className={cn("auth-menu-withdraw")}
+            onClick={() => showModal(SessionWithdrawModal)}
+            leftSection={<ArrowUpIcon size={16} />}
+          >
+            Withdraw
+          </Menu.Item>
+        }
         {showTestFunds &&
           <Menu.Item
             className={cn("auth-menu-test-funds")}

@@ -3,6 +3,7 @@ pragma solidity ^0.8.0;
 
 interface IGameFactory {
 	function setGameOwner(address owner) external;
+	function principalOf(address account) external view returns (address);
 }
 
 
@@ -56,32 +57,37 @@ contract Roulette {
 		emit Deposited(_createdBy, msg.value);
 	}
 
+	function principal() private view returns (address) {
+		return IGameFactory(factory).principalOf(msg.sender);
+	}
+
 	function getTable() public view returns (TableDTO memory) {
+		address account = principal();
 		uint256 bankroll = address(this).balance;
 		uint256 owned = 0;
 		if (totalShares > 0) {
-			owned = (bankroll * shares[msg.sender]) / totalShares;
+			owned = (bankroll * shares[account]) / totalShares;
 		}
 		return TableDTO({
 			memberShares: owned,
-			playerBalance: balances[msg.sender],
+			playerBalance: balances[account],
 			totalShares: bankroll,
 			totalBalance: bankroll,
 			minBet: minBet,
 			maxBet: maxBet,
-			lastWithdrawAt: lastWithdrawAt[msg.sender],
+			lastWithdrawAt: lastWithdrawAt[account],
 			owner: createdBy
 		});
 	}
 
 	function setName(string calldata _name) external {
-		require(msg.sender == createdBy || msg.sender == factory, "Only owner");
+		require(principal() == createdBy || msg.sender == factory, "Only owner");
 		require(bytes(_name).length > 0, "Name required");
 		name = _name;
 	}
 
 	function setLimits(uint256 _minBet, uint256 _maxBet) external {
-		require(msg.sender == createdBy, "Only owner");
+		require(principal() == createdBy, "Only owner");
 		require(_minBet >= CHIP, "Min too small");
 		require(_maxBet >= _minBet, "Max below min");
 		minBet = _minBet;
@@ -90,28 +96,30 @@ contract Roulette {
 
 	function depositShares() public payable {
 		require(msg.value > 0, "Must send some Ether");
+		address account = principal();
 		uint256 previousBalance = address(this).balance - msg.value;
 		uint256 memberShares = msg.value;
-		bool ownsAll = totalShares > 0 && shares[msg.sender] == totalShares;
+		bool ownsAll = totalShares > 0 && shares[account] == totalShares;
 		if (totalShares > 0 && previousBalance > 0 && !ownsAll) {
 			memberShares = (msg.value * totalShares) / previousBalance;
 			require(memberShares > 0, "Share calculation resulted in zero");
 		}
 
 		totalShares += memberShares;
-		shares[msg.sender] += memberShares;
-		addHolder(msg.sender);
+		shares[account] += memberShares;
+		addHolder(account);
 		syncOwner();
-		emit Deposited(msg.sender, msg.value);
+		emit Deposited(account, msg.value);
 	}
 
 	function withdrawShares(uint256 amount) external {
 		require(amount > 0, "Must withdraw some Ether");
-		uint256 previous = lastWithdrawAt[msg.sender];
+		address account = principal();
+		uint256 previous = lastWithdrawAt[account];
 		if (previous != 0) {
 			require(block.timestamp >= previous + WITHDRAW_INTERVAL, "Once per day");
 		}
-		uint256 memberShares = shares[msg.sender];
+		uint256 memberShares = shares[account];
 		require(memberShares > 0, "Must have shares to withdraw");
 		uint256 bankroll = address(this).balance;
 		uint256 owned = (bankroll * memberShares) / totalShares;
@@ -125,26 +133,28 @@ contract Roulette {
 		}
 
 		totalShares -= burned;
-		shares[msg.sender] -= burned;
-		if (shares[msg.sender] == 0) {
-			delete shares[msg.sender];
-			removeHolder(msg.sender);
+		shares[account] -= burned;
+		if (shares[account] == 0) {
+			delete shares[account];
+			removeHolder(account);
 		}
 		syncOwner();
-		lastWithdrawAt[msg.sender] = block.timestamp;
+		lastWithdrawAt[account] = block.timestamp;
 		payable(msg.sender).transfer(amount);
 	}
 
 	function depositBalance() external payable {
 		require(msg.value > 0, "Must send some Ether");
-		balances[msg.sender] += msg.value;
-		emit Deposited(msg.sender, msg.value);
+		address account = principal();
+		balances[account] += msg.value;
+		emit Deposited(account, msg.value);
 	}
 
 	function withdrawBalance() external {
-		require(balances[msg.sender] > 0, "Must have a balance to withdraw");
-		payable(msg.sender).transfer(balances[msg.sender]);
-		delete balances[msg.sender];
+		address account = principal();
+		require(balances[account] > 0, "Must have a balance to withdraw");
+		payable(msg.sender).transfer(balances[account]);
+		delete balances[account];
 	}
 
 	// 0-36 straight, 37-48 outside, 49-108 splits, 109-120 streets, 121-122 trios, 123-144 corners, 145 basket, 146-156 lines
@@ -182,7 +192,7 @@ contract Roulette {
 			payable(msg.sender).transfer(winningAmount);
 		}
 
-		emit WinningNumber(randomNumber, totalBetAmount, winningAmount, balances[msg.sender]);
+		emit WinningNumber(randomNumber, totalBetAmount, winningAmount, balances[principal()]);
 	}
 
 	function addHolder(address account) private {

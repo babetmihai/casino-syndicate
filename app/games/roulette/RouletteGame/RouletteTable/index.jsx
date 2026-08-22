@@ -15,8 +15,10 @@ const WIDTH = CELL_W * 3 + DOZEN_W + EVEN_W
 const HEIGHT = ZERO_H + CELL_H * 12 + COL_H
 const WHEEL = [0, 32, 15, 19, 4, 21, 2, 25, 17, 34, 6, 27, 13, 36, 11, 30, 8, 23, 10, 5, 24, 16, 33, 1, 20, 14, 31, 9, 22, 18, 29, 7, 28, 12, 35, 3, 26]
 const SPIN_MS = 45
+const WIND_MS = 200
 const SLOW_STEPS = 22
 const HOLD_MS = 700
+const HOLD_FILL_MS = 1000
 
 const COLORS = {
   red: "var(--mantine-color-red-6)",
@@ -214,16 +216,18 @@ const ChipMark = ({ value, className }) => {
 }
 
 
-const RouletteTable = React.memo(({ bets, winningNumber, landingNumber, spinning, disabled, onSpotClick, onChipMove, onChipRemove, onReveal }) => {
+const RouletteTable = React.memo(({ bets, winningNumber, landingNumber, spinning, holding, disabled, onSpotClick, onChipMove, onChipRemove, onReveal }) => {
   const svgRef = React.useRef(null)
   const dragRef = React.useRef(null)
   const landingRef = React.useRef(landingNumber)
   const onRevealRef = React.useRef(onReveal)
+  const holdingRef = React.useRef(holding)
   const litRef = React.useRef(winningNumber)
   const [litNumber, setLitNumber] = React.useState(winningNumber)
   const [drag, setDrag] = React.useState(null)
   landingRef.current = landingNumber
   onRevealRef.current = onReveal
+  holdingRef.current = holding
   litRef.current = litNumber
 
   const updateDrag = (next) => {
@@ -233,10 +237,16 @@ const RouletteTable = React.memo(({ bets, winningNumber, landingNumber, spinning
 
   React.useEffect(() => {
     if (!spinning) return
+    const holdStart = Date.now()
     let holdTimer
     const stopFlash = runNumberFlash({
       from: litRef.current,
       getWinner: () => landingRef.current,
+      getCruiseDelay: () => {
+        if (!holdingRef.current) return SPIN_MS
+        const t = _.clamp((Date.now() - holdStart) / HOLD_FILL_MS, 0, 1)
+        return WIND_MS + t * t * (SPIN_MS - WIND_MS)
+      },
       onTick: setLitNumber,
       onDone: (winner) => {
         setLitNumber(winner)
@@ -253,7 +263,6 @@ const RouletteTable = React.memo(({ bets, winningNumber, landingNumber, spinning
 
   React.useEffect(() => {
     if (spinning) return
-    if (winningNumber == null) return
     setLitNumber(winningNumber)
   }, [spinning, winningNumber])
 
@@ -366,7 +375,7 @@ const RouletteTable = React.memo(({ bets, winningNumber, landingNumber, spinning
       {SPOTS.map((spot) => {
         const { index, x, y, w, h, color, label, fontSize, labelFill = COLORS.text, rx = 8, inside } = spot
         let winner = false
-        if (!spinning && !inside) winner = betWins(index, litNumber)
+        if (!spinning && !inside) winner = betWins(index, winningNumber)
         const flash = spinning && index < 37 && litNumber === index
         const outside = !inside && index >= 37
         let fill = color
@@ -453,15 +462,16 @@ const RouletteTable = React.memo(({ bets, winningNumber, landingNumber, spinning
 export default RouletteTable
 
 
-const runNumberFlash = ({ from, getWinner, onTick, onDone }) => {
+const runNumberFlash = ({ from, getWinner, getCruiseDelay, onTick, onDone }) => {
   let timer
   let stopped = false
   let steps = 0
   let startIndex = _.indexOf(WHEEL, from)
   if (startIndex < 0) startIndex = 0
   let index = startIndex
+  let delay = getCruiseDelay()
 
-  onTick(WHEEL[index], SPIN_MS)
+  onTick(WHEEL[index], delay)
 
   const tick = () => {
     if (stopped) return
@@ -469,7 +479,7 @@ const runNumberFlash = ({ from, getWinner, onTick, onDone }) => {
     steps += 1
 
     const winner = getWinner()
-    let delay = SPIN_MS
+    delay = getCruiseDelay()
     if (winner != null) {
       const winnerIndex = _.indexOf(WHEEL, winner)
       const distance = (winnerIndex - startIndex + WHEEL.length) % WHEEL.length
@@ -491,7 +501,7 @@ const runNumberFlash = ({ from, getWinner, onTick, onDone }) => {
     timer = _.delay(tick, delay)
   }
 
-  timer = _.delay(tick, SPIN_MS)
+  timer = _.delay(tick, delay)
 
   return () => {
     stopped = true

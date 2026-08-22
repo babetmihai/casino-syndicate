@@ -14,6 +14,8 @@ import { CHIP_VALUES, addEth, bankrollClass, chipLabel, clampEth, ethLabel, MIN_
 import { BET_COUNT, BLACK_NUMBERS, betWins, maxPotentialPayout } from "../bets"
 import { selectNativeSymbol } from "app/core/chain"
 
+const HOLD_FILL_MS = 1000
+
 
 const RouletteGame = React.memo(({ address }) => {
   const [bets, setBets] = React.useState(_.range(BET_COUNT).fill(0))
@@ -22,26 +24,33 @@ const RouletteGame = React.memo(({ address }) => {
   const [landingNumber, setLandingNumber] = React.useState(null)
   const [showBanner, setShowBanner] = React.useState(false)
   const [holdingSpin, setHoldingSpin] = React.useState(false)
+  const [hideResult, setHideResult] = React.useState(false)
   const historyRef = React.useRef(null)
   const holdTimer = React.useRef(null)
+  const spinningRef = React.useRef(false)
   const totalBet = clampEth(_.sum(bets))
   const { account, session, balance } = useSelector(() => selectAuth()) || {}
   const { authorized } = session || {}
   const { lastSpin, history = [], minBet, maxBet, totalBalance } = useSelector(() => selectRoulette(address)) || {}
   const symbol = useSelector(() => selectNativeSymbol())
   const { number: winningNumber, winningAmount } = lastSpin || {}
-  const showResult = lastSpin && !revealing
+  const spinning = revealing || holdingSpin
+  const showResult = lastSpin && !spinning && !hideResult
   const minBetAmount = clampEth(minBet) || MIN_BET
   const bankroll = clampEth(totalBalance)
   const maxBetAmount = tableMaxBet(maxBet)
   const playBalance = clampEth(balance)
   const canCover = clampEth(maxPotentialPayout(bets)) <= bankroll + totalBet
-  const canSpin = totalBet > 0 && totalBet <= playBalance && !revealing && !showBanner && canCover
+  const canSpin = totalBet > 0 && totalBet <= playBalance && !spinning && !showBanner && canCover
   let bannerColor = "red"
   if (winningNumber === 0) bannerColor = "green"
   if (_.includes(BLACK_NUMBERS, winningNumber)) bannerColor = "black"
   let spinLabel = "Hold to spin"
   if (revealing) spinLabel = "Spinning"
+
+  React.useEffect(() => {
+    setHideResult(false)
+  }, [address])
 
   React.useEffect(() => {
     fetchRoulette(address)
@@ -53,9 +62,9 @@ const RouletteGame = React.memo(({ address }) => {
   }, [account])
 
   React.useEffect(() => {
-    if (revealing) return
+    if (spinning) return
     setPendingBet(totalBet)
-  }, [totalBet, revealing])
+  }, [totalBet, spinning])
 
   React.useEffect(() => {
     return () => setPendingBet(0)
@@ -84,7 +93,7 @@ const RouletteGame = React.memo(({ address }) => {
   }
 
   const changeBet = (index, amount) => {
-    if (revealing) return
+    if (spinning) return
     const nextBets = [...bets]
     let nextValue = addEth(nextBets[index], amount)
     if (amount > 0 && nextValue > 0 && nextValue < minBetAmount) nextValue = minBetAmount
@@ -94,7 +103,7 @@ const RouletteGame = React.memo(({ address }) => {
   }
 
   const moveChip = (fromIndex, toIndex, value) => {
-    if (revealing) return
+    if (spinning) return
     if (fromIndex === toIndex) return
     const nextBets = [...bets]
     const fromValue = addEth(nextBets[fromIndex], -value)
@@ -109,6 +118,8 @@ const RouletteGame = React.memo(({ address }) => {
     if (holdTimer.current) {
       clearTimeout(holdTimer.current)
       holdTimer.current = null
+      spinningRef.current = false
+      setLandingNumber(null)
     }
     setHoldingSpin(false)
   }
@@ -116,17 +127,21 @@ const RouletteGame = React.memo(({ address }) => {
   const startSpinHold = (event) => {
     if (!canSpin) return
     if (event.button > 0) return
+    if (holdTimer.current || spinningRef.current) return
     event.currentTarget.setPointerCapture(event.pointerId)
+    spinningRef.current = true
     setHoldingSpin(true)
+    setHideResult(true)
+    setLandingNumber(null)
     holdTimer.current = _.delay(async () => {
       holdTimer.current = null
       setHoldingSpin(false)
       setRevealing(true)
-      setLandingNumber(null)
       try {
         const spin = await postRouletteBet(address, bets)
         if (!spin) {
           setRevealing(false)
+          spinningRef.current = false
           return
         }
         await fetchBalance()
@@ -135,9 +150,9 @@ const RouletteGame = React.memo(({ address }) => {
       } catch {
         setRevealing(false)
         setLandingNumber(null)
-        return
+        spinningRef.current = false
       }
-    }, 1000)
+    }, HOLD_FILL_MS)
   }
 
   return (
@@ -199,13 +214,16 @@ const RouletteGame = React.memo(({ address }) => {
             bets={bets}
             winningNumber={showResult ? winningNumber : undefined}
             landingNumber={landingNumber}
-            spinning={revealing}
-            disabled={revealing}
+            spinning={spinning}
+            holding={holdingSpin}
+            disabled={spinning}
             onSpotClick={(index) => changeBet(index, chip)}
             onChipMove={moveChip}
             onChipRemove={(index, value) => changeBet(index, -value)}
             onReveal={() => {
+              spinningRef.current = false
               setRevealing(false)
+              setHideResult(false)
               setLandingNumber(null)
               setShowBanner(true)
               const nextBets = _.range(BET_COUNT).fill(0)
@@ -278,7 +296,7 @@ const RouletteGame = React.memo(({ address }) => {
               )}
               data-holding={holdingSpin}
               data-spinning={revealing}
-              disabled={!canSpin}
+              disabled={!canSpin && !holdingSpin && !revealing}
               onPointerDown={startSpinHold}
               onPointerUp={cancelSpinHold}
               onPointerCancel={cancelSpinHold}

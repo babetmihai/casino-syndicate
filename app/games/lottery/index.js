@@ -77,12 +77,30 @@ export const fetchLottery = async (address) => {
   const ownerRaw = row.owner
   let owner
   if (ownerRaw && ownerRaw !== ethers.ZeroAddress) owner = ethers.getAddress(ownerRaw)
+  const claimedCount = Number(row.claimedCount)
+  const loseLit = Number(row.loseLit)
+  const prev = selectLottery(address) || {}
+  const occupied = claimedCount + loseLit
+  let livePlayers = prev.livePlayers || []
+  if (occupied > 0) livePlayers = _.uniq(_.compact([...owners, ...mates]))
+  let lastSettle = prev.lastSettle
+  const wasOccupied = (prev.claimedCount || 0) + (prev.loseLit || 0) > 0
+  if (occupied === 0 && wasOccupied) {
+    const logs = await contract.queryFilter(contract.filters.Settled(), -32)
+    const latest = _.last(logs)
+    if (latest) {
+      lastSettle = {
+        id: latest.transactionHash,
+        playersWin: Boolean(latest.args.playersWin)
+      }
+    }
+  }
   actions.update(lotteryPath(address), {
     polygonCount: Number(row.polygonCount),
     loseCount: Number(row.loseCount),
     ticketPrice: formatEth(await contract.ticketPrice()),
-    claimedCount: Number(row.claimedCount),
-    loseLit: Number(row.loseLit),
+    claimedCount,
+    loseLit,
     prize: formatEth(row.prize),
     mates,
     bonuses: unpackBonus(row.bonusBits, Number(row.polygonCount) + Number(row.loseCount)),
@@ -91,7 +109,9 @@ export const fetchLottery = async (address) => {
     totalBalance: formatEth(row.totalBalance),
     lastWithdrawAt: Number(row.lastWithdrawAt),
     owner,
-    owners
+    owners,
+    livePlayers,
+    lastSettle
   })
 }
 

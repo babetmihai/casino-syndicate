@@ -48,17 +48,19 @@ const LotteryGame = React.memo(({ address }) => {
   const committed = React.useRef(false)
   const boardSnap = React.useRef()
   const spinningRef = React.useRef(false)
+  const seenHouseSettle = React.useRef()
   const { account, session, balance } = useSelector(() => selectAuth()) || {}
   const { authorized } = session || {}
   const lottery = useSelector(() => selectLottery(address)) || {}
   const symbol = useSelector(() => selectNativeSymbol())
   const {
     polygonCount, loseCount, ticketPrice, claimedCount, loseLit, prize, myPrize,
-    owners = [], mates = [], bonuses = [], lastTicket, totalBalance
+    owners = [], mates = [], bonuses = [], lastTicket, totalBalance, livePlayers = [], lastSettle
   } = lottery
   const { settled, playersWin, roundPrize, splitIds = [], bonusIds = [], roundMates, roundBonuses, bonus: ticketBonus } = lastTicket || {}
   const hasPrize = clampEth(myPrize) > 0
   const pending = hasPrize
+  const showClaim = Boolean(account && hasPrize && !revealing && !showBanner)
   const roundOpen = (claimedCount || 0) < (polygonCount || 0) && (loseLit || 0) < (loseCount || 0)
   const totalCells = (polygonCount || 0) + (loseCount || 0)
   const totalPrice = clampEth(ticketPrice)
@@ -72,12 +74,14 @@ const LotteryGame = React.memo(({ address }) => {
   const isSplit = splitIds.length > 0 && !settled
   const isBonus = bonusIds.length > 0 && !settled
   const bonusKind = Number(ticketBonus) || 0
-  const houseWon = settled && !playersWin
+  const houseFromWatch = lastSettle && !lastSettle.playersWin && account && _.includes(livePlayers, ethers.getAddress(account))
+  const houseWon = (settled && !playersWin) || houseFromWatch
   const playersWon = settled && playersWin
   let flashIds = []
   if (landed) flashIds = _.take(litIds, 1)
   if (jackpotPulse) flashIds = freshBonusIds
   if (showBanner && isBonus) flashIds = bonusIds
+  if (showClaim) flashIds = []
   let bannerLabel
   let bannerHero
   if (isBonus) {
@@ -190,6 +194,16 @@ const LotteryGame = React.memo(({ address }) => {
       if (bannerTimer.current) clearTimeout(bannerTimer.current)
     }
   }, [])
+
+  React.useEffect(() => {
+    const settleId = lastSettle && lastSettle.id
+    if (!settleId) return
+    if (settleId === seenHouseSettle.current) return
+    if (!houseFromWatch) return
+    seenHouseSettle.current = settleId
+    if (revealing || buying || holdingSpin) return
+    setShowBanner(true)
+  }, [lastSettle, houseFromWatch, revealing, buying, holdingSpin])
 
   React.useEffect(() => {
     if (!showBanner) return
@@ -371,11 +385,12 @@ const LotteryGame = React.memo(({ address }) => {
               loseCount={loseCount}
               account={account}
               flashIds={flashIds}
-              litIds={litIds}
-              splitIds={isSplit && !hideResult ? splitIds : []}
-              freshBonusIds={freshBonusIds}
+              litIds={showClaim ? [] : litIds}
+              splitIds={isSplit && !hideResult && !showClaim ? splitIds : []}
+              freshBonusIds={showClaim ? [] : freshBonusIds}
               spinning={revealing}
-              celebrate={pending && !revealing && playersWin !== false}
+              celebrate={showBanner && playersWon}
+              quiet={showClaim}
             />
             </div>
             <div className={cn("lottery-prize", "flex h-[2.25rem] shrink-0 flex-col items-center justify-start gap-0.5")}>
@@ -397,8 +412,8 @@ const LotteryGame = React.memo(({ address }) => {
               }
             </div>
           </div>
-          {account && hasPrize && !revealing &&
-            <div className={cn("lottery-claim-wrap", "absolute inset-0 z-10 flex items-center justify-center bg-cs-bg/60 animate-overlay-in")}>
+          {showClaim &&
+            <div className={cn("lottery-claim-wrap", "absolute inset-0 z-10 flex items-center justify-center bg-cs-bg")}>
               <Button
                 className={cn("lottery-claim", "animate-claim min-w-36")}
                 loading={claiming}

@@ -262,7 +262,8 @@
   }
 
   .lottery-map-card,
-  .lottery-map-frame {
+  .lottery-map-frame,
+  .lottery-claim-wrap {
     contain: paint;
   }
 

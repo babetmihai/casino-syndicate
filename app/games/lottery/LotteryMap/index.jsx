@@ -31,7 +31,8 @@ const LotteryMap = ({
   splitIds = [],
   freshBonusIds = [],
   spinning,
-  celebrate
+  celebrate,
+  quiet
 }) => {
   const winCount = polygonCount || 0
   const count = winCount + (loseCount || 0)
@@ -100,7 +101,7 @@ const LotteryMap = ({
               isSplitFlash,
               celebrate
             }))}
-            {isBonus && paintNucleus(nucleus, _.includes(freshBonusIds, polygon.id), bonusKind)}
+            {isBonus && paintNucleus(nucleus, !quiet && _.includes(freshBonusIds, polygon.id), bonusKind, quiet)}
           </g>
         )
       })}
@@ -186,7 +187,7 @@ const paintPiece = ({
   )
 }
 
-const paintNucleus = (polygon, isFresh, kind) => {
+const paintNucleus = (polygon, isFresh, kind, quiet) => {
   const { id, x, y, path, points, raw } = polygon || {}
   const source = raw || points || []
   let inner
@@ -242,7 +243,7 @@ const paintNucleus = (polygon, isFresh, kind) => {
             isSpark && "lottery-map-nucleus-spark",
             isNova && "lottery-map-nucleus-nova",
             isFresh && "lottery-map-nucleus-fresh",
-            !isFresh && "animate-nucleus"
+            !quiet && !isFresh && "animate-nucleus"
           )}
           cx={x}
           cy={y}

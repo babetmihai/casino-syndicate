@@ -15,13 +15,13 @@ import { selectNativeSymbol } from "app/core/chain"
 import { buildPolygons, seedFromAddress } from "../polygons"
 import { ethers } from "ethers"
 
-const SPIN_MS = 28
-const WIND_MS = 200
-const SLOW_STEPS = 10
-const SLOW_EXTRA = 280
-const HOLD_MS = 220
+const SPIN_MS = 24
+const WIND_MS = 140
+const SLOW_STEPS = 7
+const SLOW_EXTRA = 180
+const HOLD_MS = 160
 const HOLD_FILL_MS = 1000
-const CLEAR_MS = 280
+const CLEAR_MS = 180
 const BANNER_MS = 2500
 const BANNER_LONG_MS = 4500
 const TRAIL = 4

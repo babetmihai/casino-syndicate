@@ -190,7 +190,7 @@
   }
 
   .lottery-map-spinning .lottery-map-cell {
-    transition: fill 0.06s linear;
+    transition: fill 0.04s linear;
   }
 
   .lottery-map-cell-glow {

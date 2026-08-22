@@ -13,7 +13,7 @@ const PolygonsAdmin = ({ address }) => {
   const polygons = useSelector(() => selectPolygons(address)) || {}
   const symbol = useSelector(() => selectNativeSymbol())
   const { polygonCount, loseCount, ticketPrice, claimedCount, loseLit, prize, memberShares, totalBalance } = polygons
-  const pot = clampEth(prize)
+  const pot = clampEth(prize / 2)
   const tableUrl = `${window.location.origin}/#/tables/${address}`
   const numberClass = cn("polygons-admin-stat-value", "font-headings text-base font-extrabold leading-[1.15] text-cs-accent")
 

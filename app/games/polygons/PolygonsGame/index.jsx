@@ -60,7 +60,7 @@ const PolygonsGame = React.memo(({ address }) => {
   const totalCells = (polygonCount || 0) + (loseCount || 0)
   const totalPrice = clampEth(ticketPrice)
   const bankroll = clampEth(totalBalance)
-  const pot = clampEth(prize)
+  const pot = clampEth(prize / 2)
   const canSpin = authorized && clampEth(balance) >= totalPrice && !buying && roundOpen && !showBanner && !pending && !revealing
   const isSplit = splitIds.length > 0 && !settled
   const houseFromWatch = lastSettle && !lastSettle.playersWin && account && _.includes(livePlayers, ethers.getAddress(account))

@@ -84,7 +84,6 @@ const BlackjackSeat = ({
   dropping,
   liftedChip,
   prize = 0,
-  result = "",
   settled = false,
   dealerTotal = 0,
   dealerCount = 0,
@@ -163,10 +162,26 @@ const BlackjackSeat = ({
           const bust = status === STATUS.Bust
           const bj = status === STATUS.Blackjack
           const label = statusLabel(status)
-          const showStatus = bust || bj || status === STATUS.Doubled || result
-          const resultWin = result === "Win"
-          const resultLose = result === "Lose"
           const dealerBj = dealerCount === 2 && dealerTotal === 21
+          let outcome = ""
+          if (settled && !bust) {
+            if (bj) {
+              if (dealerBj) outcome = "Push"
+              else outcome = "Win"
+            } else if (dealerBj) {
+              outcome = "Lose"
+            } else if (dealerTotal > 21 || total > dealerTotal) {
+              outcome = "Win"
+            } else if (total === dealerTotal) {
+              outcome = "Push"
+            } else {
+              outcome = "Lose"
+            }
+          }
+          const handLabel = outcome || label
+          const showStatus = bust || bj || status === STATUS.Doubled || outcome
+          const resultWin = outcome === "Win"
+          const resultLose = outcome === "Lose"
           let won = false
           let handPrize = 0
           if (settled && !bust) {
@@ -248,7 +263,7 @@ const BlackjackSeat = ({
                 {cards.length > 0 && total}
                 {showStatus &&
                   <span className={cn("blackjack-hand-status", "ml-0.5 font-sans text-[0.6rem] font-medium tracking-[0.04em]")}>
-                    {result || label}
+                    {handLabel}
                   </span>
                 }
               </span>

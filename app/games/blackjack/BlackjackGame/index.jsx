@@ -501,7 +501,6 @@ const BlackjackGame = React.memo(({ address }) => {
                   dropping={hoverSpot === index}
                   liftedChip={dragging && drag.fromIndex === index ? drag.chipIndex : undefined}
                   prize={seatPrize(paidSeats, index, seatSettled)}
-                  result={seatResult(paidSeats, index, seatSettled).label}
                   settled={seatSettled}
                   dealerTotal={dealerTotal}
                   dealerCount={dealerLanded}

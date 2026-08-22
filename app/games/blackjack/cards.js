@@ -1,6 +1,7 @@
 import _ from "lodash"
 
-export const SEAT_COUNT = 5
+export const SEAT_COUNT = 3
+export const HAND_COUNT = 4
 
 export const RANKS = ["A", "2", "3", "4", "5", "6", "7", "8", "9", "10", "J", "Q", "K"]
 
@@ -70,13 +71,11 @@ export const canSplitCards = (cards = []) => {
   return isTenOrFace(cards[0]) && isTenOrFace(cards[1])
 }
 
-export const isAce = (card) => card % 13 === 0
-
 export const statusLabel = (status) => {
   if (status === STATUS.Blackjack) return "Blackjack"
   if (status === STATUS.Bust) return "Bust"
   if (status === STATUS.Doubled) return "Double"
-  if (status === STATUS.Stand) return "Stand"
+  if (status === STATUS.Stand) return "Pass"
   if (status === STATUS.Playing) return "Playing"
   return ""
 }

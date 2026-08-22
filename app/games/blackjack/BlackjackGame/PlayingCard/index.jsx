@@ -11,7 +11,7 @@ const PlayingCard = ({ card, hidden, small, delay = 0, empty }) => {
           "playing-card-empty",
           small && "playing-card-small",
           "relative flex shrink-0 rounded-[0.5rem] border border-dashed border-cs-border bg-transparent",
-          small ? "h-[3rem] w-[2.1rem]" : "h-[4.5rem] w-[3.1rem]"
+          small ? "h-[3.25rem] w-[2.25rem]" : "h-[4.5rem] w-[3.1rem]"
         )}
       />
     )
@@ -31,7 +31,7 @@ const PlayingCard = ({ card, hidden, small, delay = 0, empty }) => {
         id && `playing-card-${id}`,
         "relative flex shrink-0 flex-col justify-between overflow-hidden rounded-[0.5rem] border border-cs-border",
         "font-headings font-extrabold tracking-[-0.02em] leading-none select-none animate-card-deal",
-        small ? "h-[3rem] w-[2.1rem] px-1 py-0.5" : "h-[4.5rem] w-[3.1rem] px-1.5 py-1",
+        small ? "h-[3.25rem] w-[2.25rem] px-1 py-0.5" : "h-[4.5rem] w-[3.1rem] px-1.5 py-1",
         faceDown && "bg-cs-elevated",
         !faceDown && "bg-cs-surface"
       )}

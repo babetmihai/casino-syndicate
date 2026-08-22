@@ -27,7 +27,8 @@ export const fetchBlackjack = async (address) => {
   let owner
   if (ownerRaw && ownerRaw !== ethers.ZeroAddress) owner = ethers.getAddress(ownerRaw)
   const seats = _.map(row.seats || [], toSeat)
-  const dealerCount = Number(row.dealerCount)
+  let dealerCount = Number(row.dealerCount)
+  let dealerCards = _.take(row.dealerCards || [], dealerCount).map(Number)
   const prev = selectBlackjack(address) || {}
   let lastRound = prev.lastRound
   const phase = Number(row.phase)
@@ -43,21 +44,31 @@ export const fetchBlackjack = async (address) => {
       })
       const payoutWei = mine.reduce((sum, log) => sum + log.args.payout, 0n)
       const wageredWei = mine.reduce((sum, log) => sum + log.args.wagered, 0n)
+      const settledCards = _.take(latest.args.dealerCards || [], Number(latest.args.dealerCount)).map(Number)
+      let roundSeats = seats
+      if (!hasSeatCards(roundSeats) && hasSeatCards(prev.seats)) roundSeats = prev.seats
+      if (!hasSeatCards(roundSeats)) roundSeats = (lastRound || {}).seats
       lastRound = {
         id: latest.transactionHash,
         dealerTotal: Number(latest.args.dealerTotal),
         dealerCount: Number(latest.args.dealerCount),
-        dealerCards: _.take(latest.args.dealerCards || [], Number(latest.args.dealerCount)).map(Number),
+        dealerCards: settledCards,
         payout: formatEth(payoutWei),
         wagered: formatEth(wageredWei),
         paidSeats: _.map(mine, (log) => ({
           seat: Number(log.args.seat),
           payout: formatEth(log.args.payout),
           wagered: formatEth(log.args.wagered)
-        }))
+        })),
+        seats: roundSeats
+      }
+      if (dealerCount === 0 && settledCards.length > 0) {
+        dealerCount = settledCards.length
+        dealerCards = settledCards
       }
     }
   }
+  const shownSeats = hasSeatCards(seats) ? seats : ((lastRound || {}).seats || seats)
   actions.update(blackjackPath(address), {
     memberShares: formatEth(row.memberShares),
     totalBalance: formatEth(row.totalBalance),
@@ -69,8 +80,8 @@ export const fetchBlackjack = async (address) => {
     currentSeat: Number(row.currentSeat),
     currentHand: Number(row.currentHand),
     dealerCount,
-    dealerCards: _.take(row.dealerCards || [], dealerCount).map(Number),
-    seats,
+    dealerCards,
+    seats: shownSeats,
     lastRound
   })
 }
@@ -112,13 +123,6 @@ export const splitBlackjack = async (address, amount) => {
   return readRound(contract, receipt)
 }
 
-export const insureBlackjack = async (address, amount) => {
-  const contract = await generateContract(address, BlackjackArtifact.abi)
-  const receipt = await sendTx(contract.insure, [], { value: parseEth(amount) })
-  await fetchBlackjack(address)
-  return readRound(contract, receipt)
-}
-
 export const depositBlackjackShares = async ({ balance }, address) => {
   const contract = await generateContract(address, BlackjackArtifact.abi)
   await sendWalletTx(contract.depositShares, [], {
@@ -140,10 +144,13 @@ const toSeat = (row) => {
   if (playerRaw && playerRaw !== ethers.ZeroAddress) player = ethers.getAddress(playerRaw)
   return {
     player,
-    insurance: formatEth(row.insurance),
     hands: _.map(row.hands || [], toHand)
   }
 }
+
+const hasSeatCards = (seats) => _.some(seats || [], (seat) => {
+  return _.some((seat || {}).hands || [], (hand) => Number((hand || {}).count) > 0)
+})
 
 const toHand = (row) => {
   const count = Number(row.count)

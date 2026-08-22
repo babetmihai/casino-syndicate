@@ -1052,14 +1052,13 @@ describe("UI flow: create, view, play blackjack", () => {
     return total
   }
 
-  const expectedPayout = (hand, dealerCards, insurance) => {
+  const expectedPayout = (hand, dealerCards) => {
     const cards = takeCards(hand)
     const bet = hand.bet
     const dealerTotal = handValue(dealerCards)
     const dealerBj = dealerCards.length === 2 && dealerTotal === 21
     const dealerBust = dealerTotal > 21
     let pay = 0n
-    if (insurance > 0n && dealerBj) pay += insurance * 3n
     if (bet === 0n || Number(hand.status) === 3) return pay
     const playerBj = Number(hand.status) === 4
     if (dealerBj) {
@@ -1073,7 +1072,7 @@ describe("UI flow: create, view, play blackjack", () => {
     return pay
   }
 
-  const emptyBets = () => [0n, 0n, 0n, 0n, 0n]
+  const emptyBets = () => [0n, 0n, 0n]
 
   const dealSeat = (game, player, seat, amount = BET) => {
     const bets = emptyBets()
@@ -1102,7 +1101,7 @@ describe("UI flow: create, view, play blackjack", () => {
     expect(afterCreate.totalBalance).to.equal(DEPOSIT)
     expect(afterCreate.minBet).to.equal(MIN_BET)
     expect(afterCreate.maxBet).to.equal(MAX_BET)
-    expect(afterCreate.seats.length).to.equal(5)
+    expect(afterCreate.seats.length).to.equal(3)
     expect(afterCreate.owner).to.equal(creator.address)
 
     await (await game.connect(creator).depositShares({ value: ethers.parseEther("2") })).wait()
@@ -1129,9 +1128,9 @@ describe("UI flow: create, view, play blackjack", () => {
 
     table = await game.connect(player).getTable()
     expect(table.phase).to.equal(0n)
-    expect(table.dealerCount).to.equal(0n)
-    expect(table.seats[2].player).to.equal(ethers.ZeroAddress)
-    expect(table.seats[2].hands[0].bet).to.equal(0n)
+    expect(Number(table.dealerCount)).to.be.greaterThan(0)
+    expect(table.seats[2].player).to.equal(player.address)
+    expect(Number(table.seats[2].hands[0].count)).to.be.greaterThan(0)
   })
 
   it("lets the house deposit and withdraw shares", async () => {
@@ -1157,13 +1156,13 @@ describe("UI flow: create, view, play blackjack", () => {
     const game = await ethers.getContractAt("Blackjack", createdAddress(factory, await createTx.wait()))
     const bets = emptyBets()
     bets[0] = BET
-    bets[3] = BET
+    bets[2] = BET
     await (await game.connect(player).deal(bets, { value: BET * 2n })).wait()
     const table = await game.connect(player).getTable()
     expect(table.seats[0].player).to.equal(player.address)
-    expect(table.seats[3].player).to.equal(player.address)
+    expect(table.seats[2].player).to.equal(player.address)
     expect(table.seats[0].hands[0].bet).to.equal(BET)
-    expect(table.seats[3].hands[0].bet).to.equal(BET)
+    expect(table.seats[2].hands[0].bet).to.equal(BET)
     expect(table.seats[1].player).to.equal(ethers.ZeroAddress)
     if (Number(table.phase) === 1) {
       while (Number((await game.connect(player).getTable()).phase) === 1) {
@@ -1272,6 +1271,45 @@ describe("UI flow: create, view, play blackjack", () => {
     expect(Number(split.args.kind)).to.equal(3)
   })
 
+  it("resplits a pair and doubles after a split", async () => {
+    const [creator, player] = await ethers.getSigners()
+    const factory = await deployFactory()
+    const createTx = await createBlackjack(factory, creator)
+    const game = await ethers.getContractAt("Blackjack", createdAddress(factory, await createTx.wait()))
+    let splits = 0
+    let doubled
+    for (let i = 0; i < 200; i++) {
+      await (await dealSeat(game, player, 0)).wait()
+      let table = await game.connect(player).getTable()
+      while (Number(table.phase) === 1 && table.seats[0].player === player.address) {
+        const handIndex = Number(table.currentHand)
+        const hand = table.seats[0].hands[handIndex]
+        const cards = takeCards(hand)
+        const playing = Number(hand.status) === 1
+        if (!playing) break
+        const open = table.seats[0].hands.some((row) => Number(row.status) === 0)
+        if (open && cards.length === 2 && canSplitCards(cards[0], cards[1]) && splits < 3) {
+          await (await game.connect(player).split({ value: hand.bet })).wait()
+          splits += 1
+          table = await game.connect(player).getTable()
+          continue
+        }
+        if (!doubled && splits > 0 && cards.length === 2) {
+          const receipt = await (await game.connect(player).doubleDown({ value: hand.bet })).wait()
+          doubled = parseEvent(game, receipt, "Acted")
+          table = await game.connect(player).getTable()
+          continue
+        }
+        await (await game.connect(player).stand()).wait()
+        table = await game.connect(player).getTable()
+      }
+      if (splits >= 2 && doubled) break
+    }
+    expect(splits).to.be.at.least(2)
+    expect(doubled, "double after split not found").to.not.equal(undefined)
+    expect(Number(doubled.args.kind)).to.equal(2)
+  })
+
   it("splits mixed tens and picture cards", async () => {
     const [creator, player] = await ethers.getSigners()
     const factory = await deployFactory()
@@ -1314,10 +1352,10 @@ describe("UI flow: create, view, play blackjack", () => {
     const game = await ethers.getContractAt("Blackjack", createdAddress(factory, await createTx.wait()))
     let hit
     for (let i = 0; i < 120; i++) {
-      const receipt = await (await dealSeat(game, player, 4)).wait()
+      const receipt = await (await dealSeat(game, player, 2)).wait()
       let used = receipt
       let table = await game.connect(player).getTable()
-      if (Number(table.phase) === 1 && Number(table.seats[4].hands[0].status) === 1) {
+      if (Number(table.phase) === 1 && Number(table.seats[2].hands[0].status) === 1) {
         used = await (await game.connect(player).stand()).wait()
         table = await game.connect(player).getTable()
       }
@@ -1334,30 +1372,6 @@ describe("UI flow: create, view, play blackjack", () => {
     }
     expect(hit, "blackjack payout not found").to.not.equal(undefined)
     expect(hit.wagered).to.equal(BET)
-  })
-
-  it("offers insurance when the dealer shows an ace", async () => {
-    const [creator, player] = await ethers.getSigners()
-    const factory = await deployFactory()
-    const createTx = await createBlackjack(factory, creator)
-    const game = await ethers.getContractAt("Blackjack", createdAddress(factory, await createTx.wait()))
-    let insured
-    for (let i = 0; i < 80; i++) {
-      await (await dealSeat(game, player, 3)).wait()
-      const table = await game.connect(player).getTable()
-      const up = Number(table.dealerCards[0])
-      const playing = Number(table.seats[3].hands[0].status) === 1
-      if (playing && rankOf(up) === 0) {
-        const cover = BET / 2n
-        const receipt = await (await game.connect(player).insure({ value: cover })).wait()
-        insured = parseEvent(game, receipt, "Acted")
-        await (await game.connect(player).stand()).wait()
-        break
-      }
-      if (playing) await (await game.connect(player).stand()).wait()
-    }
-    expect(insured, "insurance not found").to.not.equal(undefined)
-    expect(Number(insured.args.kind)).to.equal(4)
   })
 })
 

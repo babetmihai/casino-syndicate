@@ -9,7 +9,6 @@ import {
   doubleBlackjack,
   fetchBlackjack,
   hitBlackjack,
-  insureBlackjack,
   selectBlackjack,
   splitBlackjack,
   standBlackjack
@@ -30,43 +29,38 @@ import {
   tableMaxBet
 } from "app/games/roulette/chips"
 import { selectNativeSymbol } from "app/core/chain"
-import { canSplitCards, handValue, isAce, takeCards, PHASE, SEAT_COUNT, STATUS } from "../cards"
+import { canSplitCards, handValue, takeCards, HAND_COUNT, PHASE, SEAT_COUNT, STATUS } from "../cards"
 import BlackjackSeat from "../BlackjackSeat"
 import PlayingCard from "./PlayingCard"
 import ChipMark from "./ChipMark"
 
-const HOLD_FILL_MS = 1000
 const DRAG_THRESHOLD = 8
 const emptyBets = () => _.range(SEAT_COUNT).fill(0)
-
-const originalBet = (hands) => clampEth((hands[0] || {}).bet)
 
 
 const BlackjackGame = React.memo(({ address }) => {
   const [chip, setChip] = React.useState(CHIP_VALUES[0])
   const [bets, setBets] = React.useState(emptyBets)
   const [busy, setBusy] = React.useState(false)
-  const [holdingDeal, setHoldingDeal] = React.useState(false)
-  const [showBanner, setShowBanner] = React.useState(false)
   const [drag, setDrag] = React.useState(null)
-  const holdTimer = React.useRef(null)
-  const dealingRef = React.useRef(false)
   const dragRef = React.useRef(null)
-  const primedRound = React.useRef(false)
-  const seenRound = React.useRef()
+  const tableRef = React.useRef(null)
   const { account, session, balance } = useSelector(() => selectAuth()) || {}
   const { authorized } = session || {}
   const table = useSelector(() => selectBlackjack(address)) || {}
   const symbol = useSelector(() => selectNativeSymbol())
   const {
     lastRound, minBet, maxBet, totalBalance, phase, currentSeat, currentHand,
-    dealerCount, dealerCards = [], seats = []
+    dealerCards = [], seats = []
   } = table
   const minBetAmount = clampEth(minBet) || MIN_BET
   const maxBetAmount = tableMaxBet(maxBet)
   const bankroll = clampEth(totalBalance)
   const playBalance = clampEth(balance)
   const betting = phase !== PHASE.Acting
+  const roundDealerCards = dealerCards.length > 0 ? dealerCards : ((lastRound || {}).dealerCards || [])
+  const roundDealerCount = roundDealerCards.length
+  const settled = betting && roundDealerCount > 0
   const totalBet = clampEth(_.sum(bets))
   const canCover = totalBet * 8 <= bankroll + totalBet
   const myTurn = !betting && currentPlaying(seats, currentSeat, account)
@@ -75,27 +69,20 @@ const BlackjackGame = React.memo(({ address }) => {
   const liveHand = liveHands[currentHand] || {}
   const liveCards = takeCards(liveHand)
   const livePlaying = myTurn && liveHand.status === STATUS.Playing
-  const canDouble = livePlaying && liveCards.length === 2 && clampEth(liveHand.bet) > 0
-  const canAffordDouble = canDouble && playBalance >= clampEth(liveHand.bet)
-  const canSplitShow = livePlaying && liveCards.length === 2 && currentHand === 0
-    && (liveHands[1] || {}).status === STATUS.Empty
-  const canSplit = canSplitShow && canSplitCards(liveCards) && playBalance >= clampEth(liveHand.bet)
-  const dealerUp = dealerCards[0]
-  const canInsure = livePlaying && liveCards.length === 2 && isAce(dealerUp) && clampEth(liveSeat.insurance) === 0
-    && (liveHands[1] || {}).status === STATUS.Empty && playBalance >= clampEth(originalBet(liveHands) / 2)
-  const canDeal = authorized && betting && totalBet > 0 && totalBet <= playBalance && canCover
-    && !busy && !holdingDeal && !showBanner
-  const { total: dealerTotal } = handValue(dealerCards)
-  const { payout = 0, wagered = 0, dealerTotal: roundDealer } = lastRound || {}
-  const won = clampEth(payout) > clampEth(wagered)
-  const pushed = clampEth(payout) === clampEth(wagered) && clampEth(wagered) > 0
-  let dealLabel = "Hold to deal"
-  if (holdingDeal || busy) dealLabel = "Dealing"
-  let loadLabel = "Wait"
-  if (holdingDeal) loadLabel = "Dealing"
-  let bannerLabel = "Dealer"
-  if (won) bannerLabel = "You win"
-  if (pushed) bannerLabel = "Push"
+  const twoCards = livePlaying && liveCards.length === 2 && clampEth(liveHand.bet) > 0
+  const canAffordSide = playBalance >= clampEth(liveHand.bet)
+  const canDouble = twoCards && canAffordSide
+  const openHand = _.some(_.take(liveHands, HAND_COUNT), (hand) => (hand || {}).status === STATUS.Empty)
+  const canSplit = twoCards && openHand && canSplitCards(liveCards) && canAffordSide
+  const showDouble = twoCards
+  const showSplit = twoCards && openHand && canSplitCards(liveCards)
+  const canDeal = authorized && betting && totalBet > 0 && totalBet <= playBalance && canCover && !busy
+  const { total: dealerTotal } = handValue(roundDealerCards)
+  const dealerBust = dealerTotal > 21
+  const dealerBj = roundDealerCount === 2 && dealerTotal === 21
+  const { paidSeats = [] } = lastRound || {}
+  let dealLabel = "Deal"
+  if (busy) dealLabel = "Dealing"
   const shownBets = betting ? bets : onchainBets(seats)
   let dragging = false
   if (drag && drag.moved && drag.value) dragging = true
@@ -121,33 +108,6 @@ const BlackjackGame = React.memo(({ address }) => {
     return () => setPendingBet(0)
   }, [])
 
-  React.useEffect(() => {
-    const { id, paidSeats = [] } = lastRound || {}
-    if (!primedRound.current) {
-      if (id) primedRound.current = true
-      seenRound.current = id
-      return
-    }
-    if (!id || id === seenRound.current) return
-    seenRound.current = id
-    if (clampEth(wagered) <= 0) return
-    setBets((current) => {
-      const next = [...current]
-      _.forEach(paidSeats, (paid) => {
-        const { seat, payout: paidOut } = paid || {}
-        if (clampEth(paidOut) <= 0) next[seat] = 0
-      })
-      return next
-    })
-    setShowBanner(true)
-  }, [lastRound])
-
-  React.useEffect(() => {
-    if (!showBanner) return
-    const timer = _.delay(() => setShowBanner(false), 2500)
-    return () => clearTimeout(timer)
-  }, [showBanner])
-
   const commitBets = (nextBets) => {
     const nextTotal = clampEth(_.sum(nextBets))
     if (nextTotal > playBalance) return
@@ -156,7 +116,7 @@ const BlackjackGame = React.memo(({ address }) => {
   }
 
   const changeBet = (index, amount) => {
-    if (!betting || !authorized || busy || holdingDeal) return
+    if (!betting || !authorized || busy) return
     const nextBets = [...bets]
     let nextValue = addEth(nextBets[index], amount)
     if (amount > 0 && nextValue > 0 && nextValue < minBetAmount) nextValue = minBetAmount
@@ -166,7 +126,7 @@ const BlackjackGame = React.memo(({ address }) => {
   }
 
   const moveChip = (fromIndex, toIndex, value) => {
-    if (!betting || !authorized || busy || holdingDeal) return
+    if (!betting || !authorized || busy) return
     if (fromIndex === toIndex) return
     const nextBets = [...bets]
     const fromValue = addEth(nextBets[fromIndex], -value)
@@ -182,11 +142,24 @@ const BlackjackGame = React.memo(({ address }) => {
     setDrag(next)
   }
 
+  const captureTable = (event) => {
+    const table = tableRef.current
+    if (!table) return
+    table.setPointerCapture(event.pointerId)
+  }
+
+  const releaseTable = (event) => {
+    const table = tableRef.current
+    if (!table) return
+    if (!table.hasPointerCapture(event.pointerId)) return
+    table.releasePointerCapture(event.pointerId)
+  }
+
   const onSpotPointerDown = (event, index) => {
-    if (!betting || !authorized || busy || holdingDeal) return
+    if (!betting || !authorized || busy) return
     if (event.button > 0) return
     event.preventDefault()
-    event.currentTarget.setPointerCapture(event.pointerId)
+    captureTable(event)
     updateDrag({
       pointerId: event.pointerId,
       fromIndex: index,
@@ -199,11 +172,11 @@ const BlackjackGame = React.memo(({ address }) => {
   }
 
   const onChipPointerDown = (event, index, value, chipIndex) => {
-    if (!betting || !authorized || busy || holdingDeal) return
+    if (!betting || !authorized || busy) return
     if (event.button > 0) return
     event.preventDefault()
     event.stopPropagation()
-    event.currentTarget.setPointerCapture(event.pointerId)
+    captureTable(event)
     updateDrag({
       pointerId: event.pointerId,
       fromIndex: index,
@@ -236,6 +209,7 @@ const BlackjackGame = React.memo(({ address }) => {
     const current = dragRef.current
     if (!current) return
     if (current.pointerId !== event.pointerId) return
+    releaseTable(event)
     updateDrag(null)
     if (!current.moved) {
       changeBet(current.fromIndex, chip)
@@ -251,8 +225,16 @@ const BlackjackGame = React.memo(({ address }) => {
     moveChip(current.fromIndex, toIndex, current.value)
   }
 
+  const onPointerCancel = (event) => {
+    const current = dragRef.current
+    if (!current) return
+    if (current.pointerId !== event.pointerId) return
+    releaseTable(event)
+    updateDrag(null)
+  }
+
   const run = async (fn) => {
-    if (busy || dealingRef.current) return
+    if (busy) return
     setBusy(true)
     try {
       await fn()
@@ -262,63 +244,32 @@ const BlackjackGame = React.memo(({ address }) => {
     }
   }
 
-  const cancelDealHold = () => {
-    if (holdTimer.current) {
-      clearTimeout(holdTimer.current)
-      holdTimer.current = null
-      dealingRef.current = false
-    }
-    setHoldingDeal(false)
-  }
-
-  const startDealHold = (event) => {
-    if (!canDeal) return
-    if (event.button > 0) return
-    if (holdTimer.current || dealingRef.current) return
-    event.currentTarget.setPointerCapture(event.pointerId)
-    dealingRef.current = true
-    setHoldingDeal(true)
-    holdTimer.current = _.delay(async () => {
-      holdTimer.current = null
-      setHoldingDeal(false)
-      setBusy(true)
-      try {
-        await dealBlackjack(address, bets)
-        await fetchBalance()
-      } finally {
-        dealingRef.current = false
-        setBusy(false)
-      }
-    }, HOLD_FILL_MS)
-  }
-
   return (
     <div
+      ref={tableRef}
       className={cn(
         "blackjack-game",
         "flex min-h-0 w-full flex-1 flex-col overflow-hidden px-3 pt-2 select-none",
         "pb-[max(0.75rem,env(safe-area-inset-bottom))] gap-2",
-        dragging && "touch-none"
+        betting && "touch-none",
+        dragging && "cursor-grabbing"
       )}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
-      onPointerCancel={() => updateDrag(null)}
+      onPointerCancel={onPointerCancel}
     >
-      <div className={cn("blackjack-status", "flex w-full shrink-0 items-center justify-between gap-2")}>
-        <div className={cn("blackjack-heading", "min-w-0")}>
-          <div className={cn("blackjack-kicker", labelClass)}>01 — Blackjack</div>
-          <p className={cn("blackjack-rules", "mt-0.5 mb-0 truncate text-[0.7rem] text-cs-muted")}>
-            European · S17 · 3:2
-          </p>
-        </div>
-        <div className={cn("blackjack-bankroll", titleClass, "shrink-0 text-[0.95rem]", bankrollClass(bankroll, maxBet))}>
+      <div className={cn("blackjack-status", "flex w-full shrink-0 items-center gap-2")}>
+        <Text className={cn("blackjack-rules", "min-w-0 flex-1 truncate text-cs-muted")} size="xs">
+          European · S17 · 3:2
+        </Text>
+        <Text className={cn("blackjack-bankroll", "shrink-0 whitespace-nowrap", bankrollClass(bankroll, maxBet))} size="xs">
           {ethLabel(bankroll, symbol)}
-        </div>
+        </Text>
       </div>
       <Card
         className={cn(
           "blackjack-table-card",
-          (busy || holdingDeal) && "blackjack-table-card-busy",
+          busy && "blackjack-table-card-busy",
           "flex min-h-0 w-full flex-1 flex-col overflow-hidden"
         )}
         padding={0}
@@ -334,17 +285,17 @@ const BlackjackGame = React.memo(({ address }) => {
             <div
               className={cn(
                 "blackjack-dealer-tray",
-                "flex items-end rounded-[0.75rem] border border-cs-border bg-cs-elevated/80 px-1.5 py-1"
+                "flex items-end overflow-visible rounded-[0.75rem] border border-cs-border bg-cs-elevated/80 px-1.5 py-1"
               )}
             >
-              {dealerCount === 0 &&
+              {roundDealerCount === 0 &&
                 <PlayingCard empty />
               }
-              {_.map(dealerCards, (card, cardIndex) => (
+              {_.map(roundDealerCards, (card, cardIndex) => (
                 <div
                   key={`${card}-${cardIndex}`}
-                  className={cn("blackjack-dealer-card", cardIndex > 0 && "-ml-4")}
-                  style={{ zIndex: cardIndex }}
+                  className={cn("blackjack-dealer-card", "relative", cardIndex > 0 && "-ml-2")}
+                  style={{ zIndex: cardIndex + 1 }}
                 >
                   <PlayingCard
                     card={card}
@@ -353,11 +304,30 @@ const BlackjackGame = React.memo(({ address }) => {
                 </div>
               ))}
             </div>
-            <span className={cn("blackjack-dealer-total", titleClass, "h-[1.15rem] text-[1rem] text-cs-accent")}>
-              {dealerCount > 0 && dealerTotal}
+            <span
+              className={cn(
+                "blackjack-dealer-total",
+                titleClass,
+                "h-[1.15rem] text-[1rem]",
+                dealerBust && "text-red-500",
+                dealerBj && "text-cs-accent",
+                !dealerBust && !dealerBj && "text-cs-accent"
+              )}
+            >
+              {roundDealerCount > 0 && dealerTotal}
+              {dealerBust &&
+                <span className={cn("blackjack-dealer-status", "ml-1 font-sans text-[0.6rem] font-medium tracking-[0.04em]")}>
+                  Bust
+                </span>
+              }
+              {dealerBj &&
+                <span className={cn("blackjack-dealer-status", "ml-1 font-sans text-[0.6rem] font-medium tracking-[0.04em]")}>
+                  Blackjack
+                </span>
+              }
             </span>
           </div>
-          <div className={cn("blackjack-spots", "grid w-full shrink-0 grid-cols-5 items-end gap-1 px-1.5 pb-2")}>
+          <div className={cn("blackjack-spots", "grid w-full shrink-0 grid-cols-3 items-end gap-2 px-2 pb-2")}>
             {_.map(_.range(SEAT_COUNT), (index) => {
               const current = !betting && currentSeat === index
               return (
@@ -372,13 +342,15 @@ const BlackjackGame = React.memo(({ address }) => {
                   busy={busy}
                   dropping={hoverSpot === index}
                   liftedChip={dragging && drag.fromIndex === index ? drag.chipIndex : undefined}
+                  prize={seatPrize(paidSeats, index, settled)}
+                  result={seatResult(paidSeats, index, settled)}
                   onSpotPointerDown={onSpotPointerDown}
                   onChipPointerDown={onChipPointerDown}
                 />
               )
             })}
           </div>
-          {(busy || holdingDeal) &&
+          {busy &&
             <div className={cn("blackjack-loading", "pointer-events-none absolute inset-0 z-[4] flex items-center justify-center")}>
               <div className={cn("blackjack-loading-body", "flex flex-col items-center gap-2")}>
                 <div
@@ -387,26 +359,29 @@ const BlackjackGame = React.memo(({ address }) => {
                     "size-8 rounded-full border border-cs-border border-t-cs-accent animate-bj-load"
                   )}
                 />
-                <span className={cn("blackjack-loading-label", labelClass)}>{loadLabel}</span>
+                <span className={cn("blackjack-loading-label", labelClass)}>
+                  {betting && "Dealing"}
+                  {!betting && "Wait"}
+                </span>
               </div>
             </div>
           }
         </div>
       </Card>
-      <div className={cn("blackjack-controls", "flex w-full shrink-0 flex-col gap-2")}>
+      <div className={cn("blackjack-controls", "flex w-full shrink-0 flex-nowrap items-center gap-2")}>
         {!account &&
-          <Button className={cn("blackjack-connect", "min-h-11 w-full")} onClick={() => showModal(AuthModal)}>
+          <Button className={cn("blackjack-connect", "flex-1")} onClick={() => showModal(AuthModal)}>
             Connect
           </Button>
         }
         {account && !authorized &&
-          <Button className={cn("blackjack-deposit", "min-h-11 w-full")} onClick={() => showModal(SessionModal)}>
+          <Button className={cn("blackjack-deposit", "flex-1")} onClick={() => showModal(SessionModal)}>
             Deposit
           </Button>
         }
         {authorized && betting &&
           <>
-            <div className={cn("blackjack-chips", "flex w-full flex-row justify-between gap-1.5")}>
+            <div className={cn("blackjack-chips", "flex shrink-0 flex-row gap-1.5")}>
               {CHIP_VALUES.map((value) => {
                 const isCurrent = value === chip
                 if (value > maxBetAmount && !isCurrent) return null
@@ -417,7 +392,7 @@ const BlackjackGame = React.memo(({ address }) => {
                     className={cn(
                       "blackjack-chip",
                       isCurrent && "blackjack-chip-selected",
-                      "size-10 appearance-none rounded-full border-2 border-transparent font-sans text-[0.75rem] font-medium",
+                      "size-8 appearance-none rounded-full border-2 border-transparent font-sans text-[0.75rem] font-medium",
                       "transition-[border-color,box-shadow,transform] duration-200",
                       isCurrent && "border-cs-accent shadow-[0_0_0.75rem_var(--color-cs-accent-glow)] scale-[1.06]",
                       value === 0.01 && "bg-gray-50 text-dark-900 outline outline-gray-500",
@@ -436,74 +411,47 @@ const BlackjackGame = React.memo(({ address }) => {
                 )
               })}
             </div>
-            <button
-              type="button"
-              className={cn(
-                "blackjack-deal",
-                "group relative inline-flex min-h-11 w-full appearance-none items-center justify-center overflow-hidden",
-                "rounded-[0.75rem] border border-cs-border bg-transparent px-3 py-2 font-sans text-[0.75rem]",
-                "leading-normal tracking-[0.06em] uppercase text-cs-text",
-                "cursor-pointer touch-manipulation touch-none select-none [-webkit-touch-callout:none]",
-                "enabled:hover:border-cs-border-hover enabled:hover:text-cs-accent",
-                "disabled:cursor-default",
-                !busy && "disabled:opacity-40",
-                "data-[holding=true]:border-cs-accent data-[holding=true]:text-cs-bg",
-                "data-[spinning=true]:border-cs-accent data-[spinning=true]:text-cs-bg"
-              )}
-              data-holding={holdingDeal}
-              data-spinning={busy && !holdingDeal}
-              disabled={!canDeal && !holdingDeal}
-              onPointerDown={startDealHold}
-              onPointerUp={cancelDealHold}
-              onPointerCancel={cancelDealHold}
-              onLostPointerCapture={cancelDealHold}
-              onContextMenu={(event) => event.preventDefault()}
+            <Button
+              className={cn("blackjack-deal", "flex-1")}
+              disabled={!canDeal}
+              onClick={() => run(() => dealBlackjack(address, bets))}
             >
-              <span
-                className={cn(
-                  "blackjack-deal-fill",
-                  "absolute inset-0 w-0 bg-cs-accent transition-[width] duration-150",
-                  "group-data-[holding=true]:w-full group-data-[holding=true]:duration-1000",
-                  "group-data-[holding=true]:ease-linear",
-                  "group-data-[spinning=true]:w-full group-data-[spinning=true]:duration-200"
-                )}
-              />
-              <span className={cn("blackjack-deal-label", "relative z-[1] truncate")}>{dealLabel}</span>
-            </button>
+              {dealLabel}
+            </Button>
           </>
         }
         {authorized && livePlaying &&
-          <div className={cn("blackjack-actions", "grid w-full grid-cols-2 gap-2")}>
+          <>
             <Button
-              className={cn("blackjack-hit", "min-h-11")}
+              className={cn("blackjack-hit", "flex-1")}
               disabled={busy}
               onClick={() => run(() => hitBlackjack(address))}
             >
               Hit
             </Button>
             <Button
-              className={cn("blackjack-stand", "min-h-11")}
+              className={cn("blackjack-stand", "flex-1")}
               variant="outline"
               color="gray"
               disabled={busy}
               onClick={() => run(() => standBlackjack(address))}
             >
-              Stand
+              Pass
             </Button>
-            {canDouble &&
+            {showDouble &&
               <Button
-                className={cn("blackjack-double", "min-h-11")}
+                className={cn("blackjack-double")}
                 variant="outline"
                 color="gray"
-                disabled={busy || !canAffordDouble}
+                disabled={busy || !canDouble}
                 onClick={() => run(() => doubleBlackjack(address, liveHand.bet))}
               >
                 Double
               </Button>
             }
-            {canSplitShow &&
+            {showSplit &&
               <Button
-                className={cn("blackjack-split", "min-h-11")}
+                className={cn("blackjack-split")}
                 variant="outline"
                 color="gray"
                 disabled={busy || !canSplit}
@@ -512,60 +460,19 @@ const BlackjackGame = React.memo(({ address }) => {
                 Split
               </Button>
             }
-            {canInsure &&
-              <Button
-                className={cn("blackjack-insure", "min-h-11 col-span-2")}
-                variant="outline"
-                color="gray"
-                disabled={busy}
-                onClick={() => run(() => insureBlackjack(address, clampEth(originalBet(liveHands) / 2)))}
-              >
-                Insure
-              </Button>
-            }
-          </div>
+          </>
         }
       </div>
-      {dragging &&
-        <div
-          className={cn("blackjack-chip-drag", "pointer-events-none fixed z-[180]")}
-          style={{ left: drag.x - 16, top: drag.y - 16 }}
-        >
-          <ChipMark
-            value={drag.value}
-            className={cn("blackjack-chip-ghost", "animate-none", removing && "blackjack-chip-removing opacity-45")}
-          />
-        </div>
-      }
       {createPortal(
-        showBanner &&
-          <div className={cn("blackjack-banner", "pointer-events-none fixed inset-0 z-[200] flex items-center justify-center bg-cs-bg/72 animate-banner")}>
-            <Card
-              className={cn(
-                "blackjack-banner-card",
-                won && "blackjack-banner-win",
-                !won && pushed && "blackjack-banner-push",
-                !won && !pushed && "blackjack-banner-house",
-                "flex min-w-36 flex-col items-center gap-1 text-center animate-banner-card",
-                won && "border-transparent bg-cs-accent text-cs-bg",
-                pushed && "border-cs-border bg-cs-elevated text-cs-text",
-                !won && !pushed && "border-transparent bg-cs-accent-2 text-white"
-              )}
-              shadow="md"
-              withBorder={false}
-            >
-              <Text className={cn("blackjack-banner-label", "text-[0.75rem] tracking-[0.15em] uppercase opacity-80")}>
-                {bannerLabel}
-              </Text>
-              <Text className={cn("blackjack-banner-number", titleClass, "text-[2.75rem] leading-none font-extrabold")}>
-                {roundDealer}
-              </Text>
-              <Text className={cn("blackjack-banner-win", "tracking-[0.04em]")} size="sm">
-                {won && `Won ${ethLabel(payout, symbol)}`}
-                {pushed && `Returned ${ethLabel(payout, symbol)}`}
-                {!won && !pushed && `Lost ${ethLabel(wagered, symbol)}`}
-              </Text>
-            </Card>
+        dragging &&
+          <div
+            className={cn("blackjack-chip-drag", "pointer-events-none fixed z-[180]")}
+            style={{ left: drag.x - 16, top: drag.y - 16 }}
+          >
+            <ChipMark
+              value={drag.value}
+              className={cn("blackjack-chip-ghost", "animate-none", removing && "blackjack-chip-removing opacity-45")}
+            />
           </div>,
         document.body
       )}
@@ -574,21 +481,13 @@ const BlackjackGame = React.memo(({ address }) => {
 })
 
 const spotAt = (x, y) => {
-  const nodes = document.querySelectorAll(".blackjack-spot-circle")
-  let match
-  let best = Infinity
-  _.forEach(nodes, (node) => {
-    const box = node.getBoundingClientRect()
-    const dx = x - (box.left + box.width / 2)
-    const dy = y - (box.top + box.height / 2)
-    const reach = Math.max(box.width, box.height) * 0.75
-    const dist = Math.hypot(dx, dy)
-    if (dist > reach) return
-    if (dist >= best) return
-    best = dist
-    match = Number(node.dataset.spot)
-  })
-  return match
+  const node = document.elementFromPoint(x, y)
+  if (!node || !node.closest) return
+  const spot = node.closest(".blackjack-spot")
+  if (!spot) return
+  const index = Number(spot.dataset.spot)
+  if (!_.isFinite(index)) return
+  return index
 }
 
 const currentPlaying = (seats, currentSeat, account) => {
@@ -601,5 +500,21 @@ const onchainBets = (seats) => _.map(seats, (seat) => {
   const { hands = [] } = seat || {}
   return clampEth(_.sumBy(hands, (hand) => clampEth(hand.bet)))
 })
+
+const seatPrize = (paidSeats, index, settled) => {
+  const { prize } = seatResult(paidSeats, index, settled)
+  return prize
+}
+
+const seatResult = (paidSeats, index, settled) => {
+  if (!settled) return { prize: 0, label: "" }
+  const paid = _.find(paidSeats, (row) => row.seat === index) || {}
+  const paidOut = clampEth(paid.payout)
+  const spent = clampEth(paid.wagered)
+  if (paidOut > spent) return { prize: clampEth(paidOut - spent), label: "Win" }
+  if (paidOut === spent && spent > 0) return { prize: 0, label: "Push" }
+  if (spent > 0) return { prize: 0, label: "Lose" }
+  return { prize: 0, label: "" }
+}
 
 export default BlackjackGame

@@ -15,10 +15,12 @@ import { selectNativeSymbol } from "app/core/chain"
 import { buildPolygons, seedFromAddress } from "../polygons"
 import { ethers } from "ethers"
 
-const FAST_MS = 32
-const SLOW_MS = 220
-const SLOW_STEPS = 14
-const HOLD_MS = 560
+const SPIN_MS = 28
+const WIND_MS = 200
+const SLOW_STEPS = 10
+const SLOW_EXTRA = 280
+const HOLD_MS = 220
+const HOLD_FILL_MS = 1000
 const CLEAR_MS = 280
 const NUCLEUS_MS = 780
 const BANNER_MS = 2500
@@ -40,6 +42,10 @@ const LotteryGame = React.memo(({ address }) => {
   const holdTimer = React.useRef()
   const bannerTimer = React.useRef()
   const knownBonuses = React.useRef()
+  const pendingWinner = React.useRef()
+  const spinDone = React.useRef()
+  const holdStart = React.useRef()
+  const committed = React.useRef(false)
   const { account, session, balance } = useSelector(() => selectAuth()) || {}
   const { authorized } = session || {}
   const lottery = useSelector(() => selectLottery(address)) || {}
@@ -203,26 +209,25 @@ const LotteryGame = React.memo(({ address }) => {
   }
 
   const onBuy = async () => {
-    if (!canSpin) return
     setBuying(true)
     setRevealing(true)
-    setLanded(false)
     unwatchLottery(address)
-    let winner
     let keepLit = false
-    const spinning = flashAll(address, totalCells, polygonCount || 0, setLitIds, setLanded, stopFlash, () => winner)
     try {
       const ticket = await buyLotteryTicket(address)
       if (!ticket) return
       const draws = ticket.draws || []
-      winner = _.last(_.map(draws, "polygonId"))
-      if (_.isNumber(winner)) await spinning
+      const winner = _.last(_.map(draws, "polygonId"))
+      pendingWinner.current = winner
+      const refresh = fetchLottery(address)
+      if (_.isNumber(winner) && spinDone.current) await spinDone.current
       if (stopFlash.current) stopFlash.current()
       stopFlash.current = undefined
+      spinDone.current = undefined
       const split = (ticket.splitIds || []).length > 0
       const bonusHit = (ticket.bonusIds || []).length > 0 && !ticket.settled
       const showResult = split || ticket.settled || (ticket.bonusIds || []).length
-      await fetchLottery(address)
+      await refresh
       fetchBalance()
       keepLit = true
       setBuying(false)
@@ -238,6 +243,7 @@ const LotteryGame = React.memo(({ address }) => {
     } finally {
       if (stopFlash.current) stopFlash.current()
       stopFlash.current = undefined
+      spinDone.current = undefined
       setRevealing(false)
       setBuying(false)
       if (!keepLit) {
@@ -252,6 +258,13 @@ const LotteryGame = React.memo(({ address }) => {
     if (holdTimer.current) {
       clearTimeout(holdTimer.current)
       holdTimer.current = null
+      if (stopFlash.current) stopFlash.current()
+      stopFlash.current = undefined
+      spinDone.current = undefined
+      committed.current = false
+      setRevealing(false)
+      setLitIds([])
+      setLanded(false)
     }
     setHoldingSpin(false)
   }
@@ -261,11 +274,24 @@ const LotteryGame = React.memo(({ address }) => {
     if (event.button > 0) return
     event.currentTarget.setPointerCapture(event.pointerId)
     setHoldingSpin(true)
+    setLanded(false)
+    pendingWinner.current = undefined
+    committed.current = false
+    holdStart.current = Date.now()
+    spinDone.current = flashAll(address, totalCells, polygonCount || 0, setLitIds, setLanded, stopFlash, {
+      getWinner: () => pendingWinner.current,
+      getCruiseDelay: () => {
+        if (committed.current) return SPIN_MS
+        const t = _.clamp((Date.now() - holdStart.current) / HOLD_FILL_MS, 0, 1)
+        return WIND_MS + t * t * (SPIN_MS - WIND_MS)
+      }
+    })
     holdTimer.current = _.delay(() => {
       holdTimer.current = null
+      committed.current = true
       setHoldingSpin(false)
       onBuy()
-    }, 1000)
+    }, HOLD_FILL_MS)
   }
 
   return (
@@ -449,7 +475,7 @@ const LotteryGame = React.memo(({ address }) => {
 export default LotteryGame
 
 
-const flashAll = (address, count, winCount, setLitIds, setLanded, stopFlash, getWinner) => {
+const flashAll = (address, count, winCount, setLitIds, setLanded, stopFlash, { getWinner, getCruiseDelay }) => {
   return new Promise((resolve) => {
     if (!count) {
       resolve()
@@ -457,32 +483,36 @@ const flashAll = (address, count, winCount, setLitIds, setLanded, stopFlash, get
     }
     const polygons = buildPolygons(seedFromAddress(address), count, winCount)
     const wheel = _.map(_.sortBy(polygons, (cell) => Math.atan2(cell.y - 0.5, cell.x - 0.5)), "id")
-    let position = wheel[_.random(0, count - 1)]
+    const from = wheel[_.random(0, count - 1)]
     const publish = (id) => {
-      position = id
       setLanded(false)
       setLitIds((prev) => {
         if (prev[0] === id) return prev
         return _.take([id, ...prev], TRAIL)
       })
     }
+    const finish = (winner) => {
+      setLitIds([winner])
+      setLanded(true)
+      _.delay(resolve, HOLD_MS)
+    }
     const stop = runPolygonFlash({
-      from: position,
+      from,
       wheel,
       getWinner,
+      getCruiseDelay,
       onTick: publish,
-      onDone: (winner) => {
-        setLitIds([winner])
-        setLanded(true)
-        _.delay(resolve, HOLD_MS)
-      }
+      onDone: finish
     })
-    stopFlash.current = stop
+    stopFlash.current = () => {
+      stop()
+      resolve()
+    }
   })
 }
 
-const runPolygonFlash = ({ from, wheel, getWinner, onTick, onDone }) => {
-  let raf
+const runPolygonFlash = ({ from, wheel, getWinner, getCruiseDelay, onTick, onDone }) => {
+  let timer
   let stopped = false
   let steps = 0
   let endStep
@@ -491,61 +521,52 @@ const runPolygonFlash = ({ from, wheel, getWinner, onTick, onDone }) => {
   let startIndex = _.indexOf(wheel, from)
   if (startIndex < 0) startIndex = 0
   let index = startIndex
-  let delay = FAST_MS
-  let lastAt = 0
-  onTick(wheel[index])
+  let delay = getCruiseDelay()
 
-  const frame = (now) => {
+  onTick(wheel[index], delay)
+
+  const tick = () => {
     if (stopped) return
-    if (!lastAt) {
-      lastAt = now
-      raf = requestAnimationFrame(frame)
-      return
-    }
-    if (now - lastAt < delay) {
-      raf = requestAnimationFrame(frame)
-      return
-    }
-    lastAt = now
     index = (index + 1) % n
     steps += 1
 
     const winner = getWinner()
-    delay = FAST_MS + _.random(-5, 6)
+    delay = getCruiseDelay()
     if (_.isNumber(winner)) {
       const winnerIndex = _.indexOf(wheel, winner)
       if (!_.isNumber(endStep)) {
-        const distance = (winnerIndex - index + n) % n
-        let more = distance
-        if (more < 1) more = n
-        while (more < SLOW_STEPS + 4) more += n
-        endStep = steps + more
-        landSpan = more
+        let distance = (winnerIndex - index + n) % n
+        if (distance < 1) distance = n
+        const want = _.min([SLOW_STEPS + 4, n])
+        if (distance > want) {
+          index = (winnerIndex - want + n) % n
+          distance = want
+        }
+        endStep = steps + distance
+        landSpan = distance
       }
       if (steps >= endStep && index === winnerIndex) {
-        onTick(wheel[index])
+        onTick(wheel[index], delay)
         onDone(winner)
         return
       }
       let remaining = endStep - steps
       if (remaining < 0) remaining = 0
-      const slowSteps = Math.min(SLOW_STEPS, landSpan)
+      const slowSteps = _.min([SLOW_STEPS, landSpan])
       if (remaining <= slowSteps) {
         const t = 1 - remaining / slowSteps
-        delay = FAST_MS + t * t * t * (SLOW_MS - FAST_MS)
-      } else {
-        delay = FAST_MS
+        delay = SPIN_MS + t * t * t * SLOW_EXTRA
       }
     }
 
-    onTick(wheel[index])
-    raf = requestAnimationFrame(frame)
+    onTick(wheel[index], delay)
+    timer = _.delay(tick, delay)
   }
 
-  raf = requestAnimationFrame(frame)
+  timer = _.delay(tick, delay)
 
   return () => {
     stopped = true
-    cancelAnimationFrame(raf)
+    clearTimeout(timer)
   }
 }

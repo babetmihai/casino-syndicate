@@ -16,11 +16,13 @@ module.exports = {
   },
   networks: {
     hardhat: {
-      chainId: 1337
+      chainId: 1337,
+      allowUnlimitedContractSize: true
     },
     localhost: {
       url: process.env.RPC_URL,
-      chainId: 1337
+      chainId: 1337,
+      allowUnlimitedContractSize: true
     }
   }
 }

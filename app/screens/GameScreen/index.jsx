@@ -5,6 +5,7 @@ import { useParams } from "react-router-dom"
 import AppScreen from "app/components/AppScreen"
 import RouletteGame from "app/games/roulette/RouletteGame"
 import PolygonsGame from "app/games/polygons/PolygonsGame"
+import BlackjackGame from "app/games/blackjack/BlackjackGame"
 
 
 const GameScreen = () => {
@@ -25,6 +26,9 @@ const GameScreen = () => {
       }
       {type === TABLE_TYPES.Polygons &&
         <PolygonsGame address={address} />
+      }
+      {type === TABLE_TYPES.Blackjack &&
+        <BlackjackGame address={address} />
       }
     </AppScreen>
   )

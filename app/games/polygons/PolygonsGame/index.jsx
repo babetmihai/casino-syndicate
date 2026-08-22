@@ -71,7 +71,7 @@ const PolygonsGame = React.memo(({ address }) => {
   if (showClaim) flashIds = []
   let bannerLabel
   let bannerHero
-  if (houseWon) bannerLabel = "House"
+  if (houseWon) bannerLabel = "House wins"
   if (playersWon) {
     bannerLabel = "Players"
     bannerHero = ethLabel(roundPrize, symbol)

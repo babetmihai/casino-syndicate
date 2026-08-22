@@ -12,6 +12,7 @@ import { cn, labelClass, titleClass } from "app/core"
 import { selectAuth } from "app/core/auth"
 import { selectRoulette } from "app/games/roulette"
 import { selectPolygons } from "app/games/polygons"
+import { selectBlackjack } from "app/games/blackjack"
 import { bankrollClass, clampEth, ethLabel, MIN_BET, tableMaxBet } from "app/games/roulette/chips"
 import { ethers } from "ethers"
 import { selectNativeSymbol } from "app/core/chain"
@@ -106,9 +107,13 @@ const TableCard = React.memo(({ table, index }) => {
   const { address, type } = table || {}
   const roulette = useSelector(() => selectRoulette(address)) || {}
   const polygons = useSelector(() => selectPolygons(address)) || {}
+  const blackjack = useSelector(() => selectBlackjack(address)) || {}
   const symbol = useSelector(() => selectNativeSymbol())
   const isPolygons = type === TABLE_TYPES.Polygons
-  const { minBet, maxBet, totalBalance } = roulette
+  const isBlackjack = type === TABLE_TYPES.Blackjack
+  let limits = roulette
+  if (isBlackjack) limits = blackjack
+  const { minBet, maxBet, totalBalance } = limits
   const { claimedCount, polygonCount, ticketPrice, totalBalance: polygonsBalance } = polygons
   const shortAddress = `${address.slice(0, 6)}…${address.slice(-4)}`
   const bankroll = clampEth(totalBalance)
@@ -117,6 +122,7 @@ const TableCard = React.memo(({ table, index }) => {
   const maxBetAmount = tableMaxBet(maxBet)
   let stats = roulette
   if (isPolygons) stats = polygons
+  if (isBlackjack) stats = blackjack
   const hasStats = !_.isEmpty(stats)
   const order = String(index + 1).padStart(2, "0")
 

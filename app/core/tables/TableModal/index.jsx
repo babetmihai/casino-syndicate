@@ -28,12 +28,12 @@ const TableModal = ({ onSubmit }) => {
     validationSchema: Yup.object({
       balance: Yup.number().min(MIN_TABLE_DEPOSIT, t("balance_required")),
       minBet: Yup.number().when("type", {
-        is: TABLE_TYPES.Roulette,
+        is: (type) => type !== TABLE_TYPES.Polygons,
         then: (schema) => schema.min(MIN_BET, t("balance_required")),
         otherwise: (schema) => schema.notRequired()
       }),
       maxBet: Yup.number().when("type", {
-        is: TABLE_TYPES.Roulette,
+        is: (type) => type !== TABLE_TYPES.Polygons,
         then: (schema) => schema.min(Yup.ref("minBet"), t("balance_required")),
         otherwise: (schema) => schema.notRequired()
       }),
@@ -87,6 +87,7 @@ const TableModal = ({ onSubmit }) => {
         }}
         data={[
           { label: "Roulette", value: TABLE_TYPES.Roulette },
+          { label: "Blackjack", value: TABLE_TYPES.Blackjack },
           { label: "Polygons", value: TABLE_TYPES.Polygons }
         ]}
       />

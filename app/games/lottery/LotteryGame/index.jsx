@@ -46,6 +46,7 @@ const LotteryGame = React.memo(({ address }) => {
   const spinDone = React.useRef()
   const holdStart = React.useRef()
   const committed = React.useRef(false)
+  const boardSnap = React.useRef()
   const { account, session, balance } = useSelector(() => selectAuth()) || {}
   const { authorized } = session || {}
   const lottery = useSelector(() => selectLottery(address)) || {}
@@ -108,21 +109,33 @@ const LotteryGame = React.memo(({ address }) => {
     bannerAnim = "animate-banner-long"
     cardAnim = "animate-banner-card-long"
   }
+  const hideResult = holdingSpin || revealing
+  let mapOwners = owners
   let mapMates = mates
   let mapBonuses = bonuses
   if (pending && roundMates && roundMates.length) mapMates = roundMates
   if (pending && roundBonuses && roundBonuses.length) mapBonuses = roundBonuses
+  if (hideResult && boardSnap.current) {
+    mapOwners = boardSnap.current.owners
+    mapMates = boardSnap.current.mates
+    mapBonuses = boardSnap.current.bonuses
+  }
   const boardKinds = _.uniq(_.filter(_.take(mapBonuses, polygonCount || 0), (kind) => kind > 0))
   let jackpotLabel = "jackpot"
   if (boardKinds.length === 1 && boardKinds[0] === BONUS_SPARK) jackpotLabel = "spark"
   if (boardKinds.length === 1 && boardKinds[0] === BONUS_NUCLEUS) jackpotLabel = "nucleus"
   if (boardKinds.length === 1 && boardKinds[0] === BONUS_NOVA) jackpotLabel = "nova"
-  const mineCount = _.filter(_.take(owners, polygonCount || 0), (owner) => {
+  const mineCount = _.filter(_.take(mapOwners, polygonCount || 0), (owner) => {
     return owner && account && ethers.getAddress(owner) === ethers.getAddress(account)
   }).length + _.filter(mapMates, (mate) => {
     return mate && account && ethers.getAddress(mate) === ethers.getAddress(account)
   }).length
   let shownClaimed = claimedCount || 0
+  let shownLose = loseLit || 0
+  if (hideResult && boardSnap.current) {
+    shownClaimed = boardSnap.current.claimedCount || 0
+    shownLose = boardSnap.current.loseLit || 0
+  }
   if (account) shownClaimed = mineCount
   let spinLabel = `Hold to spin · ${ethLabel(totalPrice, symbol)}`
   if (buying || revealing) spinLabel = "Spinning"
@@ -219,7 +232,6 @@ const LotteryGame = React.memo(({ address }) => {
       const draws = ticket.draws || []
       const winner = _.last(_.map(draws, "polygonId"))
       pendingWinner.current = winner
-      const refresh = fetchLottery(address)
       if (_.isNumber(winner) && spinDone.current) await spinDone.current
       if (stopFlash.current) stopFlash.current()
       stopFlash.current = undefined
@@ -227,7 +239,7 @@ const LotteryGame = React.memo(({ address }) => {
       const split = (ticket.splitIds || []).length > 0
       const bonusHit = (ticket.bonusIds || []).length > 0 && !ticket.settled
       const showResult = split || ticket.settled || (ticket.bonusIds || []).length
-      await refresh
+      await fetchLottery(address)
       fetchBalance()
       keepLit = true
       setBuying(false)
@@ -262,6 +274,7 @@ const LotteryGame = React.memo(({ address }) => {
       stopFlash.current = undefined
       spinDone.current = undefined
       committed.current = false
+      boardSnap.current = undefined
       setRevealing(false)
       setLitIds([])
       setLanded(false)
@@ -277,6 +290,13 @@ const LotteryGame = React.memo(({ address }) => {
     setLanded(false)
     pendingWinner.current = undefined
     committed.current = false
+    boardSnap.current = {
+      owners,
+      mates,
+      bonuses,
+      claimedCount,
+      loseLit
+    }
     holdStart.current = Date.now()
     spinDone.current = flashAll(address, totalCells, polygonCount || 0, setLitIds, setLanded, stopFlash, {
       getWinner: () => pendingWinner.current,
@@ -314,7 +334,7 @@ const LotteryGame = React.memo(({ address }) => {
           /{polygonCount || 0} claimed
           <span className={cn("lottery-lose")}>
             {" · "}
-            <span className={cn("lottery-lose-count", "text-cs-accent-2 tabular-nums")}>{loseLit || 0}</span>
+            <span className={cn("lottery-lose-count", "text-cs-accent-2 tabular-nums")}>{shownLose}</span>
             /{loseCount || 0} house
           </span>
         </Text>
@@ -334,7 +354,7 @@ const LotteryGame = React.memo(({ address }) => {
           <div className={cn("lottery-map-stack", "flex max-h-full w-full flex-col items-center gap-1")}>
             <LotteryMap
               address={address}
-              owners={owners}
+              owners={mapOwners}
               mates={mapMates}
               bonuses={mapBonuses}
               polygonCount={polygonCount}
@@ -342,7 +362,7 @@ const LotteryGame = React.memo(({ address }) => {
               account={account}
               flashIds={flashIds}
               litIds={litIds}
-              splitIds={isSplit ? splitIds : []}
+              splitIds={isSplit && !hideResult ? splitIds : []}
               freshBonusIds={freshBonusIds}
               spinning={revealing}
               celebrate={pending && !revealing && playersWin !== false}

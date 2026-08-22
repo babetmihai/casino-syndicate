@@ -267,17 +267,6 @@ const BlackjackSeat = ({
         )}
         onPointerDown={(event) => onSpotPointerDown(event, index)}
       >
-        {showWagers && split &&
-          <div className={cn("blackjack-spot-splits", "absolute bottom-[10%] left-1/2 z-[2] flex -translate-x-1/2 items-end gap-1")}>
-            {_.map(liveWagers, (hand, handIndex) => (
-              <HandWager
-                key={`${index}-wager-${handIndex}`}
-                amount={(hand || {}).bet}
-                doubled={(hand || {}).status === STATUS.Doubled}
-              />
-            ))}
-          </div>
-        }
         <div
           className={cn(
             "blackjack-spot-box",
@@ -305,6 +294,17 @@ const BlackjackSeat = ({
           }
           {showWagers && !split &&
             <HandWager amount={primaryStake} />
+          }
+          {showWagers && split &&
+            <div className={cn("blackjack-spot-splits", "absolute bottom-[10%] left-1/2 z-[2] flex -translate-x-1/2 items-end gap-1")}>
+              {_.map(liveWagers, (hand, handIndex) => (
+                <HandWager
+                  key={`${index}-wager-${handIndex}`}
+                  amount={(hand || {}).bet}
+                  doubled={(hand || {}).status === STATUS.Doubled}
+                />
+              ))}
+            </div>
           }
         </div>
         <div className={cn("blackjack-spot-double-slot", "flex h-[1.85rem] w-full items-start justify-center")}>

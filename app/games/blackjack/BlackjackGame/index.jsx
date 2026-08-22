@@ -98,8 +98,6 @@ const BlackjackGame = React.memo(({ address }) => {
   const canDouble = twoCards && canAffordSide
   const openHand = _.some(_.take(liveHands, HAND_COUNT), (hand) => (hand || {}).status === STATUS.Empty)
   const canSplit = twoCards && openHand && canSplitCards(liveCards) && canAffordSide
-  const showDouble = twoCards
-  const showSplit = twoCards && openHand && canSplitCards(liveCards)
   const canDeal = authorized && betting && totalBet > 0 && totalBet <= playBalance && canCover && !busy && !settling
   const locked = busy || settling
   const waitingDeal = busy && betting
@@ -625,14 +623,20 @@ const BlackjackGame = React.memo(({ address }) => {
         {authorized && livePlaying && !closing && !dealPending &&
           <>
             <Button
-              className={cn("blackjack-hit", "flex-1")}
+              className={cn(
+                "blackjack-hit",
+                "min-w-0 flex-1 disabled:cursor-default disabled:opacity-30 disabled:text-cs-muted"
+              )}
               disabled={locked}
               onClick={() => play(() => hitBlackjack(address))}
             >
               Hit
             </Button>
             <Button
-              className={cn("blackjack-stand", "flex-1")}
+              className={cn(
+                "blackjack-stand",
+                "min-w-0 flex-1 disabled:cursor-default disabled:opacity-30 disabled:text-cs-muted"
+              )}
               variant="outline"
               color="gray"
               disabled={locked}
@@ -640,28 +644,30 @@ const BlackjackGame = React.memo(({ address }) => {
             >
               Pass
             </Button>
-            {showDouble &&
-              <Button
-                className={cn("blackjack-double")}
-                variant="outline"
-                color="gray"
-                disabled={locked || !canDouble}
-                onClick={() => play(() => doubleBlackjack(address))}
-              >
-                Double
-              </Button>
-            }
-            {showSplit &&
-              <Button
-                className={cn("blackjack-split")}
-                variant="outline"
-                color="gray"
-                disabled={locked || !canSplit}
-                onClick={() => play(() => splitBlackjack(address))}
-              >
-                Split
-              </Button>
-            }
+            <Button
+              className={cn(
+                "blackjack-double",
+                "min-w-0 flex-1 disabled:cursor-default disabled:opacity-30 disabled:text-cs-muted"
+              )}
+              variant="outline"
+              color="gray"
+              disabled={locked || !canDouble}
+              onClick={() => play(() => doubleBlackjack(address))}
+            >
+              Double
+            </Button>
+            <Button
+              className={cn(
+                "blackjack-split",
+                "min-w-0 flex-1 disabled:cursor-default disabled:opacity-30 disabled:text-cs-muted"
+              )}
+              variant="outline"
+              color="gray"
+              disabled={locked || !canSplit}
+              onClick={() => play(() => splitBlackjack(address))}
+            >
+              Split
+            </Button>
           </>
         }
       </div>

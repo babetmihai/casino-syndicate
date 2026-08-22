@@ -13,6 +13,7 @@ import {
   SPIN_LOSE_FILL,
   splitLobes
 } from "../polygons"
+import { BONUS_NOVA, BONUS_SPARK } from ".."
 import { ethers } from "ethers"
 
 
@@ -44,7 +45,7 @@ const LotteryMap = ({
       className={cn(
         "lottery-map",
         spinning && "lottery-map-spinning",
-        "block size-full overflow-visible"
+        "block aspect-square h-auto overflow-visible"
       )}
       viewBox="0 0 1 1"
       preserveAspectRatio="xMidYMid meet"
@@ -53,7 +54,8 @@ const LotteryMap = ({
         const isLose = polygon.id >= winCount
         const owner = owners[polygon.id]
         const mate = mates[polygon.id]
-        const isBonus = Boolean(bonuses[polygon.id])
+        const bonusKind = bonuses[polygon.id] || 0
+        const isBonus = bonusKind > 0
         const split = Boolean(mate) && !isLose
         const trailRank = _.indexOf(litIds, polygon.id)
         const isLit = trailRank === 0
@@ -98,7 +100,7 @@ const LotteryMap = ({
               isSplitFlash,
               celebrate
             }))}
-            {isBonus && paintNucleus(nucleus, _.includes(freshBonusIds, polygon.id))}
+            {isBonus && paintNucleus(nucleus, _.includes(freshBonusIds, polygon.id), bonusKind)}
           </g>
         )
       })}
@@ -184,7 +186,7 @@ const paintPiece = ({
   )
 }
 
-const paintNucleus = (polygon, isFresh) => {
+const paintNucleus = (polygon, isFresh, kind) => {
   const { id, x, y, path, points, raw } = polygon || {}
   const source = raw || points || []
   let inner
@@ -199,9 +201,21 @@ const paintNucleus = (polygon, isFresh) => {
   })
   if (!inner) return
   const pad = BORDER_WIDTH / 2 + 0.006
+  const isSpark = kind === BONUS_SPARK
+  const isNova = kind === BONUS_NOVA
   let radius = inner * 0.4
+  if (isSpark) radius = inner * 0.22
+  if (isNova) radius = inner * 0.55
   if (radius > inner - pad) radius = inner - pad
   if (radius <= 0) return
+  let fill = "var(--cs-text)"
+  if (isSpark) fill = "var(--cs-accent-2)"
+  if (isNova) fill = "var(--cs-accent)"
+  let glowR = radius * 1.7
+  if (isNova) glowR = radius * 2.2
+  let glowOpacity = 0.22
+  if (isSpark) glowOpacity = 0.14
+  if (isNova) glowOpacity = 0.4
   const clipId = `lottery-nucleus-${id}`
   return (
     <g className={cn("lottery-map-nucleus-wrap", "pointer-events-none")}>
@@ -212,24 +226,28 @@ const paintNucleus = (polygon, isFresh) => {
         <circle
           className={cn(
             "lottery-map-nucleus-glow",
+            isSpark && "lottery-map-nucleus-glow-spark",
+            isNova && "lottery-map-nucleus-glow-nova",
             isFresh && "lottery-map-nucleus-glow-fresh"
           )}
           cx={x}
           cy={y}
-          r={radius * 1.7}
-          fill="var(--cs-text)"
-          opacity={0.22}
+          r={glowR}
+          fill={fill}
+          opacity={glowOpacity}
         />
         <circle
           className={cn(
             "lottery-map-nucleus",
+            isSpark && "lottery-map-nucleus-spark",
+            isNova && "lottery-map-nucleus-nova",
             isFresh && "lottery-map-nucleus-fresh",
             !isFresh && "animate-nucleus"
           )}
           cx={x}
           cy={y}
           r={radius}
-          fill="var(--cs-text)"
+          fill={fill}
           stroke="var(--cs-bg)"
           strokeWidth={0.008}
         />

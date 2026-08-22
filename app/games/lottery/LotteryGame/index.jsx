@@ -2,7 +2,7 @@ import React from "react"
 import { createPortal } from "react-dom"
 import _ from "lodash"
 import { Button, Card, Text } from "@mantine/core"
-import { buyLotteryTicket, fetchLottery, jackpotByPlayer, jackpotQuote, selectLottery, unwatchLottery, watchLottery, withdrawLotteryPrize } from ".."
+import { buyLotteryTicket, fetchLottery, BONUS_NOVA, BONUS_NUCLEUS, BONUS_SPARK, bonusPayout, jackpotByPlayer, jackpotQuote, selectLottery, unwatchLottery, watchLottery, withdrawLotteryPrize } from ".."
 import { useSelector } from "react-redux"
 import { fetchBalance, selectAuth } from "app/core/auth"
 import { showModal } from "app/core/modals"
@@ -48,7 +48,7 @@ const LotteryGame = React.memo(({ address }) => {
     polygonCount, loseCount, ticketPrice, claimedCount, loseLit, prize, myPrize,
     owners = [], mates = [], bonuses = [], lastTicket, totalBalance
   } = lottery
-  const { settled, playersWin, roundPrize, splitIds = [], bonusIds = [], roundMates, roundBonuses } = lastTicket || {}
+  const { settled, playersWin, roundPrize, splitIds = [], bonusIds = [], roundMates, roundBonuses, bonus: ticketBonus } = lastTicket || {}
   const hasPrize = clampEth(myPrize) > 0
   const pending = hasPrize
   const roundOpen = (claimedCount || 0) < (polygonCount || 0) && (loseLit || 0) < (loseCount || 0)
@@ -60,9 +60,12 @@ const LotteryGame = React.memo(({ address }) => {
   const jackpots = jackpotByPlayer(lottery) || {}
   let myJackpot
   if (account) myJackpot = jackpots[ethers.getAddress(account)]
+  const mineJackpot = myJackpot > 0
+  const hasJackpot = tableJackpot > 0
   const canSpin = authorized && clampEth(balance) >= totalPrice && !buying && roundOpen && !showBanner && !pending && !revealing
   const isSplit = splitIds.length > 0 && !settled
   const isBonus = bonusIds.length > 0 && !settled
+  const bonusKind = Number(ticketBonus) || 0
   const houseWon = settled && !playersWin
   const playersWon = settled && playersWin
   let flashIds = []
@@ -73,8 +76,16 @@ const LotteryGame = React.memo(({ address }) => {
   let bannerHero
   if (isSplit) bannerLabel = "Split"
   if (isBonus) {
-    bannerLabel = "Jackpot"
-    bannerHero = ethLabel(totalPrice * ((polygonCount || 0) + (loseCount || 0)), symbol)
+    bannerLabel = "Nucleus"
+    bannerHero = ethLabel(bonusPayout(BONUS_NUCLEUS, totalPrice, polygonCount, loseCount), symbol)
+    if (bonusKind === BONUS_SPARK) {
+      bannerLabel = "Spark"
+      bannerHero = ethLabel(bonusPayout(BONUS_SPARK, totalPrice, polygonCount, loseCount), symbol)
+    }
+    if (bonusKind === BONUS_NOVA) {
+      bannerLabel = "Nova"
+      bannerHero = ethLabel(bonusPayout(BONUS_NOVA, totalPrice, polygonCount, loseCount), symbol)
+    }
   }
   if (houseWon) bannerLabel = "House"
   if (playersWon) {
@@ -83,9 +94,11 @@ const LotteryGame = React.memo(({ address }) => {
   }
   let heroClass = "text-[3.5rem]"
   if (playersWon || isBonus) heroClass = "text-[1.75rem]"
+  if (bonusKind === BONUS_NOVA) heroClass = "text-[2.25rem]"
   let bannerAnim = "animate-banner"
   let cardAnim = "animate-banner-card"
-  if (playersWon || isBonus) {
+  const longBanner = playersWon || bonusKind === BONUS_NUCLEUS || bonusKind === BONUS_NOVA
+  if (longBanner) {
     bannerAnim = "animate-banner-long"
     cardAnim = "animate-banner-card-long"
   }
@@ -93,6 +106,11 @@ const LotteryGame = React.memo(({ address }) => {
   let mapBonuses = bonuses
   if (pending && roundMates && roundMates.length) mapMates = roundMates
   if (pending && roundBonuses && roundBonuses.length) mapBonuses = roundBonuses
+  const boardKinds = _.uniq(_.filter(_.take(mapBonuses, polygonCount || 0), (kind) => kind > 0))
+  let jackpotLabel = "jackpot"
+  if (boardKinds.length === 1 && boardKinds[0] === BONUS_SPARK) jackpotLabel = "spark"
+  if (boardKinds.length === 1 && boardKinds[0] === BONUS_NUCLEUS) jackpotLabel = "nucleus"
+  if (boardKinds.length === 1 && boardKinds[0] === BONUS_NOVA) jackpotLabel = "nova"
   const mineCount = _.filter(_.take(owners, polygonCount || 0), (owner) => {
     return owner && account && ethers.getAddress(owner) === ethers.getAddress(account)
   }).length + _.filter(mapMates, (mate) => {
@@ -100,7 +118,7 @@ const LotteryGame = React.memo(({ address }) => {
   }).length
   let shownClaimed = claimedCount || 0
   if (account) shownClaimed = mineCount
-  let spinLabel = "Hold to spin"
+  let spinLabel = `Hold to spin · ${ethLabel(totalPrice, symbol)}`
   if (buying || revealing) spinLabel = "Spinning"
   if (!roundOpen) spinLabel = "Closed"
 
@@ -150,7 +168,7 @@ const LotteryGame = React.memo(({ address }) => {
   React.useEffect(() => {
     if (!showBanner) return
     let wait = BANNER_MS
-    if (playersWon || isBonus) wait = BANNER_LONG_MS
+    if (playersWon || bonusKind === BONUS_NUCLEUS || bonusKind === BONUS_NOVA) wait = BANNER_LONG_MS
     if (!bannerLabel) wait = HOLD_MS
     const timer = _.delay(() => {
       setShowBanner(false)
@@ -274,19 +292,6 @@ const LotteryGame = React.memo(({ address }) => {
             /{loseCount || 0} house
           </span>
         </Text>
-        <span className={cn("lottery-prize", "whitespace-nowrap")}>
-          <span className={cn("lottery-prize-value", "font-headings text-[1.125rem] font-extrabold leading-none tabular-nums text-cs-accent")}>
-            {ethLabel(pot, symbol)}
-          </span>
-          {myJackpot > 0 &&
-            <span
-              key={myJackpot}
-              className={cn("lottery-prize-jackpot", "ml-1 inline-block text-[0.75rem] font-normal text-cs-accent-2 animate-jackpot-in")}
-            >
-              +{ethLabel(myJackpot, symbol)}
-            </span>
-          }
-        </span>
         <Text className={cn("lottery-bankroll", "whitespace-nowrap", bankrollClass(bankroll, ticketPrice))} size="xs">
           {ethLabel(bankroll, symbol)}
         </Text>
@@ -299,22 +304,44 @@ const LotteryGame = React.memo(({ address }) => {
         )}
         padding={0}
       >
-        <div className={cn("lottery-map-frame", "relative flex min-h-0 w-full flex-1 p-1.5")}>
-          <LotteryMap
-            address={address}
-            owners={owners}
-            mates={mapMates}
-            bonuses={mapBonuses}
-            polygonCount={polygonCount}
-            loseCount={loseCount}
-            account={account}
-            flashIds={flashIds}
-            litIds={litIds}
-            splitIds={isSplit ? splitIds : []}
-            freshBonusIds={freshBonusIds}
-            spinning={revealing}
-            celebrate={pending && !revealing && playersWin !== false}
-          />
+        <div className={cn("lottery-map-frame", "relative flex min-h-0 w-full flex-1 flex-col items-center justify-center p-1.5")}>
+          <div className={cn("lottery-map-stack", "flex max-h-full w-full flex-col items-center gap-1")}>
+            <LotteryMap
+              address={address}
+              owners={owners}
+              mates={mapMates}
+              bonuses={mapBonuses}
+              polygonCount={polygonCount}
+              loseCount={loseCount}
+              account={account}
+              flashIds={flashIds}
+              litIds={litIds}
+              splitIds={isSplit ? splitIds : []}
+              freshBonusIds={freshBonusIds}
+              spinning={revealing}
+              celebrate={pending && !revealing && playersWin !== false}
+            />
+            <div className={cn("lottery-prize", "flex h-[2.25rem] shrink-0 flex-col items-center justify-start gap-0.5")}>
+              <span className={cn("lottery-prize-value", "font-headings text-[1rem] font-extrabold leading-none tabular-nums text-cs-accent")}>
+                {ethLabel(pot, symbol)}
+              </span>
+              {hasJackpot &&
+                <span
+                  key={tableJackpot}
+                  className={cn(
+                    "lottery-prize-jackpot",
+                    "flex items-baseline gap-1 font-mono text-[0.75rem] leading-none tabular-nums",
+                    mineJackpot && "text-cs-accent",
+                    !mineJackpot && "text-cs-accent-2",
+                    jackpotPulse && "animate-jackpot-in"
+                  )}
+                >
+                  <span className={cn("lottery-prize-jackpot-label", "text-cs-muted")}>{jackpotLabel}</span>
+                  <span className={cn("lottery-prize-jackpot-value")}>+{ethLabel(tableJackpot, symbol)}</span>
+                </span>
+              }
+            </div>
+          </div>
           {account && hasPrize && !revealing &&
             <div className={cn("lottery-claim-wrap", "absolute inset-0 z-10 flex items-center justify-center bg-cs-bg/60 animate-overlay-in")}>
               <Button
@@ -388,13 +415,17 @@ const LotteryGame = React.memo(({ address }) => {
                 "lottery-banner-card",
                 houseWon && "lottery-banner-house",
                 isSplit && "lottery-banner-split",
-                isBonus && "lottery-banner-jackpot",
+                isBonus && bonusKind === BONUS_SPARK && "lottery-banner-spark",
+                isBonus && bonusKind === BONUS_NUCLEUS && "lottery-banner-jackpot",
+                isBonus && bonusKind === BONUS_NOVA && "lottery-banner-nova",
                 "flex min-w-36 flex-col items-center gap-1 rounded-[0.75rem] px-6 py-4 text-center",
                 cardAnim,
                 playersWon && "border-transparent bg-cs-accent text-cs-bg",
                 houseWon && "border-transparent bg-cs-accent-2 text-white",
                 isSplit && "border-transparent bg-cs-accent text-cs-bg",
-                isBonus && "border-cs-border bg-cs-elevated text-cs-accent"
+                isBonus && bonusKind === BONUS_SPARK && "border-transparent bg-cs-accent-2 text-white",
+                isBonus && bonusKind === BONUS_NUCLEUS && "border-cs-border bg-cs-elevated text-cs-accent",
+                isBonus && bonusKind === BONUS_NOVA && "border-transparent bg-cs-accent text-cs-bg"
               )}
               shadow="md"
               withBorder={false}

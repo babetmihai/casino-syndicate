@@ -261,6 +261,14 @@
     animation: nucleus-glow-in 0.7s ease-out both;
   }
 
+  .lottery-map-frame {
+    container-type: size;
+  }
+
+  .lottery-map {
+    width: min(100cqw, calc(100cqh - 2.5rem));
+  }
+
   .lottery-map-card {
     transition: border-color 0.35s ease;
   }
@@ -275,8 +283,13 @@
   }
 
   .lottery-banner-house,
+  .lottery-banner-spark,
   .roulette-banner-black {
     box-shadow: 0 0 2.5rem rgb(129 140 248 / 0.24);
+  }
+
+  .lottery-banner-nova {
+    box-shadow: 0 0 3.5rem rgb(45 212 191 / 0.4);
   }
 
   .roulette-spot-rect {

@@ -10,22 +10,34 @@ import _ from "lodash"
 export const MIN_POLYGONS = 3
 export const MAX_POLYGONS = 48
 export const ticketGas = 3000000n
+export const BONUS_SPARK = 1
+export const BONUS_NUCLEUS = 2
+export const BONUS_NOVA = 3
 
-const unpackBits = (bits, count) => {
+const unpackBonus = (bits, count) => {
   const raw = BigInt(bits || 0)
-  return _.times(count || 0, (index) => ((raw >> BigInt(index)) & 1n) === 1n)
+  return _.times(count || 0, (index) => Number((raw >> BigInt(index * 2)) & 3n))
+}
+
+export const bonusPayout = (kind, ticketPrice, polygonCount, loseCount) => {
+  const price = clampEth(ticketPrice)
+  const cells = (polygonCount || 0) + (loseCount || 0)
+  if (kind === BONUS_SPARK) return price
+  if (kind === BONUS_NUCLEUS) return price * cells
+  if (kind === BONUS_NOVA) return price * cells * (polygonCount || 0)
+  return 0
 }
 
 export const jackpotByPlayer = (lottery) => {
   const { ticketPrice, polygonCount, loseCount, owners = [], mates = [], bonuses = [] } = lottery || {}
-  const extra = clampEth(ticketPrice) * ((polygonCount || 0) + (loseCount || 0))
   const amounts = {}
   _.forEach(_.take(owners, polygonCount || 0), (owner, index) => {
     if (!owner) return
     if (!amounts[owner]) amounts[owner] = 0
     const mate = mates[index]
     if (mate && !amounts[mate]) amounts[mate] = 0
-    if (!bonuses[index]) return
+    const extra = bonusPayout(bonuses[index], ticketPrice, polygonCount, loseCount)
+    if (!extra) return
     if (!mate) {
       amounts[owner] += extra
       return
@@ -81,7 +93,7 @@ export const fetchLottery = async (address) => {
     loseLit: Number(row.loseLit),
     prize: formatEth(row.prize),
     mates,
-    bonuses: unpackBits(row.bonusBits, Number(row.polygonCount) + Number(row.loseCount)),
+    bonuses: unpackBonus(row.bonusBits, Number(row.polygonCount) + Number(row.loseCount)),
     myPrize: formatEth(row.myPrize),
     memberShares: formatEth(row.memberShares),
     totalBalance: formatEth(row.totalBalance),
@@ -175,7 +187,7 @@ const readTicket = (contract, receipt) => {
           if (!item || item === ethers.ZeroAddress) return null
           return ethers.getAddress(item)
         })
-        roundBonuses = unpackBits(args.bonusBits, roundOwners.length)
+        roundBonuses = unpackBonus(args.bonusBits, roundOwners.length)
       }
       if (name !== "TicketBought") continue
       draws.push({
@@ -183,7 +195,7 @@ const readTicket = (contract, receipt) => {
         polygonId: Number(args.polygonId),
         assigned: args.assigned,
         split: Boolean(args.split),
-        bonus: Boolean(args.bonus)
+        bonus: Number(args.bonus)
       })
     } catch {
       // ignore logs from other contracts

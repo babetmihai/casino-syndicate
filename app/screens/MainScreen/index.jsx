@@ -109,7 +109,7 @@ const TableCard = React.memo(({ table, index }) => {
   const symbol = useSelector(() => selectNativeSymbol())
   const isPolygons = type === TABLE_TYPES.Polygons
   const { minBet, maxBet, totalBalance } = roulette
-  const { prize, claimedCount, polygonCount, ticketPrice, totalBalance: lotteryBalance } = lottery
+  const { claimedCount, polygonCount, ticketPrice, totalBalance: lotteryBalance } = lottery
   const shortAddress = `${address.slice(0, 6)}…${address.slice(-4)}`
   const bankroll = clampEth(totalBalance)
   const lotteryBankroll = clampEth(lotteryBalance)
@@ -143,7 +143,7 @@ const TableCard = React.memo(({ table, index }) => {
             {ethLabel(lotteryBankroll, symbol)}
           </span>
           <Text className={cn("table-card-limits")} size="xs" c="dimmed">
-            {claimedCount || 0}/{polygonCount || 0} · {ethLabel(prize, symbol)} · {ethLabel(ticketPrice, symbol)}
+            {claimedCount || 0}/{polygonCount || 0}
           </Text>
         </div>
       }

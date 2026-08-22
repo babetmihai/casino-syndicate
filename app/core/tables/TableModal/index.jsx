@@ -102,21 +102,6 @@ const TableModal = ({ onSubmit }) => {
           { label: "Polygons", value: TABLE_TYPES.Polygons }
         ]}
       />
-      <NumberInput
-        className={cn("table-modal-amount")}
-        label={`Amount (${symbol})`}
-        min={MIN_TABLE_DEPOSIT}
-        step={0.01}
-        decimalScale={2}
-        allowDecimal
-        allowNegative={false}
-        clampBehavior="strict"
-        mt="md"
-        value={formik.values.balance}
-        onChange={(value) => {
-          formik.setFieldValue("balance", value)
-        }}
-      />
       {!isPolygons &&
         <Group className={cn("table-modal-limits")} grow align="flex-start" mt="md">
           <NumberInput
@@ -180,16 +165,24 @@ const TableModal = ({ onSubmit }) => {
           />
         </Group>
       }
-      {!isPolygons &&
-        <Text className={cn("table-modal-hint")} size="sm" c="dimmed" mt="xs">
-          Minimum {MIN_TABLE_DEPOSIT} {symbol}. Bankroll under {LOW_BANKROLL_MULTIPLIER}× max is shown as low.
-        </Text>
-      }
-      {isPolygons &&
-        <Text className={cn("table-modal-hint")} size="sm" c="dimmed" mt="xs">
-          Minimum {MIN_TABLE_DEPOSIT} {symbol}. House cells are n−1. Greens fill splits the ticket pot. A taken green has a 1/n chance of a nucleus and pays (2n−1) × ticket if players fill.
-        </Text>
-      }
+      <NumberInput
+        className={cn("table-modal-amount")}
+        label={`Amount (${symbol})`}
+        min={MIN_TABLE_DEPOSIT}
+        step={0.01}
+        decimalScale={2}
+        allowDecimal
+        allowNegative={false}
+        clampBehavior="strict"
+        mt="md"
+        value={formik.values.balance}
+        onChange={(value) => {
+          formik.setFieldValue("balance", value)
+        }}
+      />
+      <Text className={cn("table-modal-hint")} size="sm" c="dimmed" mt="xs">
+        Minimum {MIN_TABLE_DEPOSIT} {symbol}. Bankroll under {LOW_BANKROLL_MULTIPLIER}× max is shown as low.
+      </Text>
       <Group className={cn("table-modal-actions")} justify="flex-end" gap="sm" mt="md">
         <Button
           className={cn("table-modal-cancel")}

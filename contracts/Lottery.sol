@@ -18,7 +18,7 @@ contract Lottery {
 	uint256 public ticketPrice;
 	uint256 public winLit;
 	uint256 public loseLit;
-	uint256 public bonusLit;
+	uint256 public bonusLocked;
 	uint256 public pot;
 	uint256 public reserved;
 
@@ -30,7 +30,7 @@ contract Lottery {
 
 	mapping(uint256 => address) public cellOwner;
 	mapping(uint256 => address) private cellMate;
-	mapping(uint256 => bool) private cellBonus;
+	mapping(uint256 => uint8) private cellBonus;
 	mapping(address => uint256) public prizes;
 	uint256 private settleCount;
 	mapping(uint256 => address[]) private settledOwners;
@@ -45,6 +45,9 @@ contract Lottery {
 	uint256 public constant CHIP = 0.01 ether;
 	uint256 public constant MIN_DEPOSIT = 1 ether;
 	uint256 public constant WITHDRAW_INTERVAL = 1 days;
+	uint8 public constant SPARK = 1;
+	uint8 public constant NUCLEUS = 2;
+	uint8 public constant NOVA = 3;
 
 	uint256 private nonce;
 
@@ -65,7 +68,7 @@ contract Lottery {
 		uint256 bonusBits;
 	}
 
-	event TicketBought(address indexed player, bool won, uint256 polygonId, bool assigned, bool split, bool bonus);
+	event TicketBought(address indexed player, bool won, uint256 polygonId, bool assigned, bool split, uint8 bonus);
 	event PrizePaid(address indexed player, uint256 amount);
 	event Settled(uint256 prize, address[] owners, bool playersWin, address[] mates, uint256 bonusBits);
 	event Deposited(address indexed user, uint256 amount);
@@ -105,7 +108,7 @@ contract Lottery {
 		address[] memory owners = new address[](total);
 		address[] memory mates = new address[](polygonCount);
 		uint256 shownWin = winLit;
-		uint256 shownPrize = pot + bonusLit * jackpot();
+		uint256 shownPrize = pot + bonusLocked;
 		uint256 bonusBits = 0;
 		for (uint256 i = 0; i < total; i++) {
 			if (holding && i < polygonCount) {
@@ -116,8 +119,9 @@ contract Lottery {
 				if (i < polygonCount) {
 					mates[i] = cellMate[i];
 				}
-				if (cellBonus[i]) {
-					bonusBits |= uint256(1) << i;
+				uint8 kind = cellBonus[i];
+				if (kind != 0) {
+					bonusBits |= uint256(kind) << (2 * i);
 				}
 			}
 		}
@@ -252,16 +256,16 @@ contract Lottery {
 			bool won = cellId < polygonCount;
 			if (won && cellMate[cellId] == address(0) && owner != player) {
 				cellMate[cellId] = player;
-				emit TicketBought(player, true, cellId, true, true, false);
+				emit TicketBought(player, true, cellId, true, true, 0);
 				return 0;
 			}
-			emit TicketBought(player, won, cellId, false, false, false);
+			emit TicketBought(player, won, cellId, false, false, 0);
 			return 0;
 		}
 
 		cellOwner[cellId] = player;
 		if (cellId < polygonCount) {
-			bool bonus = rollBonus(cellId, player);
+			uint8 bonus = rollBonus(cellId, player);
 			winLit++;
 			emit TicketBought(player, true, cellId, true, false, bonus);
 			if (winLit == polygonCount) {
@@ -270,26 +274,37 @@ contract Lottery {
 			return 0;
 		}
 		loseLit++;
-		emit TicketBought(player, false, cellId, true, false, false);
+		emit TicketBought(player, false, cellId, true, false, 0);
 		if (loseLit == loseCount) {
 			return 2;
 		}
 		return 0;
 	}
 
-	function rollBonus(uint256 cellId, address player) private returns (bool) {
-		uint256 extra = jackpot();
-		if (houseBankroll() < extra) {
-			return false;
-		}
+	function rollBonus(uint256 cellId, address player) private returns (uint8) {
+		uint256 n = polygonCount;
+		uint256 den = n * n * 3;
 		uint256 jack = uint256(keccak256(abi.encodePacked(block.timestamp, block.prevrandao, player, nonce)));
 		nonce++;
-		if (jack % polygonCount != 0) {
-			return false;
+		uint256 roll = jack % den;
+		uint8 kind = 0;
+		if (roll < 3) {
+			kind = NOVA;
+		} else if (roll < 3 + 3 * n) {
+			kind = NUCLEUS;
+		} else if (roll < 3 + 3 * n + n * n) {
+			kind = SPARK;
 		}
-		cellBonus[cellId] = true;
-		bonusLit++;
-		return true;
+		if (kind == 0) {
+			return 0;
+		}
+		uint256 extra = payoutOf(kind);
+		if (houseBankroll() < extra) {
+			return 0;
+		}
+		cellBonus[cellId] = kind;
+		bonusLocked += extra;
+		return kind;
 	}
 
 	function settlePlayers() private {
@@ -297,7 +312,6 @@ contract Lottery {
 		address[] memory roundMates = new address[](polygonCount);
 		uint256 pieces = 0;
 		uint256 bonusBits = 0;
-		uint256 extra = jackpot();
 		for (uint256 i = 0; i < polygonCount; i++) {
 			roundOwners[i] = cellOwner[i];
 			pieces++;
@@ -306,8 +320,9 @@ contract Lottery {
 				roundMates[i] = mate;
 				pieces++;
 			}
-			if (cellBonus[i]) {
-				bonusBits |= uint256(1) << i;
+			uint8 kind = cellBonus[i];
+			if (kind != 0) {
+				bonusBits |= uint256(kind) << (2 * i);
 			}
 		}
 		uint256 share = pot / pieces;
@@ -315,23 +330,25 @@ contract Lottery {
 		for (uint256 i = 0; i < polygonCount; i++) {
 			prizes[roundOwners[i]] += share;
 			payout += share;
-			uint256 bonusPay = 0;
-			if (cellBonus[i]) {
-				bonusPay = extra;
+			uint8 kind = cellBonus[i];
+			uint256 extraPay = 0;
+			if (kind != 0) {
+				extraPay = payoutOf(kind);
 				if (roundMates[i] != address(0)) {
-					bonusPay = extra / 2;
+					extraPay = extraPay / 2;
 				}
-				prizes[roundOwners[i]] += bonusPay;
-				payout += bonusPay;
+				prizes[roundOwners[i]] += extraPay;
+				payout += extraPay;
 			}
 			if (roundMates[i] == address(0)) {
 				continue;
 			}
 			prizes[roundMates[i]] += share;
 			payout += share;
-			if (bonusPay > 0) {
-				prizes[roundMates[i]] += extra - bonusPay;
-				payout += extra - bonusPay;
+			if (extraPay > 0) {
+				uint256 rest = payoutOf(kind) - extraPay;
+				prizes[roundMates[i]] += rest;
+				payout += rest;
 			}
 		}
 		pot = 0;
@@ -380,7 +397,20 @@ contract Lottery {
 		}
 		winLit = 0;
 		loseLit = 0;
-		bonusLit = 0;
+		bonusLocked = 0;
+	}
+
+	function payoutOf(uint8 kind) private view returns (uint256) {
+		if (kind == SPARK) {
+			return ticketPrice;
+		}
+		if (kind == NUCLEUS) {
+			return jackpot();
+		}
+		if (kind == NOVA) {
+			return jackpot() * polygonCount;
+		}
+		return 0;
 	}
 
 	function jackpot() private view returns (uint256) {
@@ -388,7 +418,7 @@ contract Lottery {
 	}
 
 	function houseBankroll() private view returns (uint256) {
-		uint256 locked = reserved + pot + bonusLit * jackpot();
+		uint256 locked = reserved + pot + bonusLocked;
 		uint256 bal = address(this).balance;
 		if (bal <= locked) {
 			return 0;

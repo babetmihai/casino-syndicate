@@ -313,12 +313,8 @@ contract Lottery {
 			prizes[roundOwners[i]] += share;
 			payout += share;
 			uint8 kind = cellBonus[i];
-			uint256 extraPay = 0;
 			if (kind != 0) {
-				extraPay = payoutOf(kind);
-				if (roundMates[i] != address(0)) {
-					extraPay = extraPay / 2;
-				}
+				uint256 extraPay = payoutOf(kind);
 				prizes[roundOwners[i]] += extraPay;
 				payout += extraPay;
 			}
@@ -327,11 +323,6 @@ contract Lottery {
 			}
 			prizes[roundMates[i]] += share;
 			payout += share;
-			if (extraPay > 0) {
-				uint256 rest = payoutOf(kind) - extraPay;
-				prizes[roundMates[i]] += rest;
-				payout += rest;
-			}
 		}
 		pot = 0;
 		resetBoard();

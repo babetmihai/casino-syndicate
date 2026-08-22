@@ -29,21 +29,14 @@ export const bonusPayout = (kind, ticketPrice, polygonCount, loseCount) => {
 }
 
 export const jackpotByPlayer = (lottery) => {
-  const { ticketPrice, polygonCount, loseCount, owners = [], mates = [], bonuses = [] } = lottery || {}
+  const { ticketPrice, polygonCount, loseCount, owners = [], bonuses = [] } = lottery || {}
   const amounts = {}
   _.forEach(_.take(owners, polygonCount || 0), (owner, index) => {
     if (!owner) return
     if (!amounts[owner]) amounts[owner] = 0
-    const mate = mates[index]
-    if (mate && !amounts[mate]) amounts[mate] = 0
     const extra = bonusPayout(bonuses[index], ticketPrice, polygonCount, loseCount)
     if (!extra) return
-    if (!mate) {
-      amounts[owner] += extra
-      return
-    }
-    amounts[owner] += extra / 2
-    amounts[mate] += extra / 2
+    amounts[owner] += extra
   })
   return amounts
 }

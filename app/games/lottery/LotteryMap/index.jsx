@@ -45,7 +45,7 @@ const LotteryMap = ({
       className={cn(
         "lottery-map",
         spinning && "lottery-map-spinning",
-        "block aspect-square h-auto overflow-visible"
+        "block aspect-square h-auto overflow-hidden"
       )}
       viewBox="0 0 1 1"
       preserveAspectRatio="xMidYMid meet"

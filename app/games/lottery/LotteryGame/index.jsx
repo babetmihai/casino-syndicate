@@ -2,7 +2,7 @@ import React from "react"
 import { createPortal } from "react-dom"
 import _ from "lodash"
 import { Button, Card, Text } from "@mantine/core"
-import { buyLotteryTicket, fetchLottery, BONUS_NOVA, BONUS_NUCLEUS, BONUS_SPARK, bonusPayout, jackpotByPlayer, jackpotQuote, selectLottery, unwatchLottery, watchLottery, withdrawLotteryPrize } from ".."
+import { buyLotteryTicket, fetchLottery, BONUS_NOVA, BONUS_NUCLEUS, BONUS_SPARK, bonusPayout, jackpotQuote, selectLottery, unwatchLottery, watchLottery, withdrawLotteryPrize } from ".."
 import { useSelector } from "react-redux"
 import { fetchBalance, selectAuth } from "app/core/auth"
 import { showModal } from "app/core/modals"
@@ -65,11 +65,9 @@ const LotteryGame = React.memo(({ address }) => {
   const bankroll = clampEth(totalBalance)
   const tableJackpot = jackpotQuote(lottery)
   const pot = clampEth(prize) - tableJackpot
-  const jackpots = jackpotByPlayer(lottery) || {}
-  let myJackpot
-  if (account) myJackpot = jackpots[ethers.getAddress(account)]
-  const mineJackpot = myJackpot > 0
-  const hasJackpot = tableJackpot > 0
+  let myJackpot = 0
+  if (account) myJackpot = jackpotQuote(lottery, account)
+  const hasJackpot = myJackpot > 0
   const canSpin = authorized && clampEth(balance) >= totalPrice && !buying && roundOpen && !showBanner && !pending && !revealing
   const isSplit = splitIds.length > 0 && !settled
   const isBonus = bonusIds.length > 0 && !settled
@@ -82,7 +80,6 @@ const LotteryGame = React.memo(({ address }) => {
   if (showBanner && isBonus) flashIds = bonusIds
   let bannerLabel
   let bannerHero
-  if (isSplit) bannerLabel = "Split"
   if (isBonus) {
     bannerLabel = "Nucleus"
     bannerHero = ethLabel(bonusPayout(BONUS_NUCLEUS, totalPrice, polygonCount, loseCount), symbol)
@@ -103,11 +100,8 @@ const LotteryGame = React.memo(({ address }) => {
   let heroClass = "text-[3.5rem]"
   if (playersWon || isBonus) heroClass = "text-[1.75rem]"
   if (bonusKind === BONUS_NOVA) heroClass = "text-[2.25rem]"
-  let bannerAnim = "animate-banner"
   let cardAnim = "animate-banner-card"
-  const longBanner = playersWon || bonusKind === BONUS_NUCLEUS || bonusKind === BONUS_NOVA
-  if (longBanner) {
-    bannerAnim = "animate-banner-long"
+  if (playersWon || bonusKind === BONUS_NUCLEUS || bonusKind === BONUS_NOVA) {
     cardAnim = "animate-banner-card-long"
   }
   const hideResult = holdingSpin || revealing
@@ -121,11 +115,16 @@ const LotteryGame = React.memo(({ address }) => {
     mapMates = boardSnap.current.mates
     mapBonuses = boardSnap.current.bonuses
   }
-  const boardKinds = _.uniq(_.filter(_.take(mapBonuses, polygonCount || 0), (kind) => kind > 0))
+  const myKinds = _.uniq(_.filter(_.take(mapBonuses, polygonCount || 0), (kind, index) => {
+    if (!kind || !account) return false
+    const owner = mapOwners[index]
+    if (owner && ethers.getAddress(owner) === ethers.getAddress(account)) return true
+    return false
+  }))
   let jackpotLabel = "jackpot"
-  if (boardKinds.length === 1 && boardKinds[0] === BONUS_SPARK) jackpotLabel = "spark"
-  if (boardKinds.length === 1 && boardKinds[0] === BONUS_NUCLEUS) jackpotLabel = "nucleus"
-  if (boardKinds.length === 1 && boardKinds[0] === BONUS_NOVA) jackpotLabel = "nova"
+  if (myKinds.length === 1 && myKinds[0] === BONUS_SPARK) jackpotLabel = "spark"
+  if (myKinds.length === 1 && myKinds[0] === BONUS_NUCLEUS) jackpotLabel = "nucleus"
+  if (myKinds.length === 1 && myKinds[0] === BONUS_NOVA) jackpotLabel = "nova"
   const mineCount = _.filter(_.take(mapOwners, polygonCount || 0), (owner) => {
     return owner && account && ethers.getAddress(owner) === ethers.getAddress(account)
   }).length + _.filter(mapMates, (mate) => {
@@ -243,9 +242,8 @@ const LotteryGame = React.memo(({ address }) => {
       if (stopFlash.current) stopFlash.current()
       stopFlash.current = undefined
       spinDone.current = undefined
-      const split = (ticket.splitIds || []).length > 0
       const bonusHit = (ticket.bonusIds || []).length > 0 && !ticket.settled
-      const showResult = split || ticket.settled || (ticket.bonusIds || []).length
+      const showResult = ticket.settled || (ticket.bonusIds || []).length
       await fetchLottery(address)
       fetchBalance()
       keepLit = true
@@ -362,7 +360,8 @@ const LotteryGame = React.memo(({ address }) => {
         padding={0}
       >
         <div className={cn("lottery-map-frame", "relative flex min-h-0 w-full flex-1 flex-col items-center justify-center p-1.5")}>
-          <div className={cn("lottery-map-stack", "flex max-h-full w-full flex-col items-center gap-1")}>
+          <div className={cn("lottery-map-stack", "flex min-h-0 max-h-full w-full flex-1 flex-col items-center gap-1")}>
+            <div className={cn("lottery-map-wrap", "flex min-h-0 w-full flex-1 items-center justify-center")}>
             <LotteryMap
               address={address}
               owners={mapOwners}
@@ -378,23 +377,22 @@ const LotteryGame = React.memo(({ address }) => {
               spinning={revealing}
               celebrate={pending && !revealing && playersWin !== false}
             />
+            </div>
             <div className={cn("lottery-prize", "flex h-[2.25rem] shrink-0 flex-col items-center justify-start gap-0.5")}>
               <span className={cn("lottery-prize-value", "font-headings text-[1rem] font-extrabold leading-none tabular-nums text-cs-accent")}>
                 {ethLabel(pot, symbol)}
               </span>
               {hasJackpot &&
                 <span
-                  key={tableJackpot}
+                  key={myJackpot}
                   className={cn(
                     "lottery-prize-jackpot",
-                    "flex items-baseline gap-1 font-mono text-[0.75rem] leading-none tabular-nums",
-                    mineJackpot && "text-cs-accent",
-                    !mineJackpot && "text-cs-accent-2",
+                    "flex items-baseline gap-1 font-mono text-[0.75rem] leading-none tabular-nums text-cs-accent",
                     jackpotPulse && "animate-jackpot-in"
                   )}
                 >
                   <span className={cn("lottery-prize-jackpot-label", "text-cs-muted")}>{jackpotLabel}</span>
-                  <span className={cn("lottery-prize-jackpot-value")}>+{ethLabel(tableJackpot, symbol)}</span>
+                  <span className={cn("lottery-prize-jackpot-value")}>+{ethLabel(myJackpot, symbol)}</span>
                 </span>
               }
             </div>
@@ -464,22 +462,20 @@ const LotteryGame = React.memo(({ address }) => {
         showBanner && !revealing && bannerLabel &&
           <div className={cn(
             "lottery-banner",
-            "pointer-events-none fixed inset-0 z-[200] flex items-center justify-center bg-cs-bg/72",
-            bannerAnim
+            "pointer-events-none fixed inset-0 z-[200] flex items-center justify-center"
           )}>
+            <div className={cn("lottery-banner-dim", "absolute inset-0 bg-cs-bg/72")} />
             <Card
               className={cn(
                 "lottery-banner-card",
                 houseWon && "lottery-banner-house",
-                isSplit && "lottery-banner-split",
                 isBonus && bonusKind === BONUS_SPARK && "lottery-banner-spark",
                 isBonus && bonusKind === BONUS_NUCLEUS && "lottery-banner-jackpot",
                 isBonus && bonusKind === BONUS_NOVA && "lottery-banner-nova",
-                "flex min-w-36 flex-col items-center gap-1 rounded-[0.75rem] px-6 py-4 text-center",
+                "relative z-[1] flex min-w-36 flex-col items-center gap-1 rounded-[0.75rem] px-6 py-4 text-center",
                 cardAnim,
                 playersWon && "border-transparent bg-cs-accent text-cs-bg",
                 houseWon && "border-transparent bg-cs-accent-2 text-white",
-                isSplit && "border-transparent bg-cs-accent text-cs-bg",
                 isBonus && bonusKind === BONUS_SPARK && "border-transparent bg-cs-accent-2 text-white",
                 isBonus && bonusKind === BONUS_NUCLEUS && "border-cs-border bg-cs-elevated text-cs-accent",
                 isBonus && bonusKind === BONUS_NOVA && "border-transparent bg-cs-accent text-cs-bg"

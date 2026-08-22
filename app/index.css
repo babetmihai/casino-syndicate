@@ -261,12 +261,16 @@
     animation: nucleus-glow-in 0.7s ease-out both;
   }
 
+  .lottery-map-card,
   .lottery-map-frame {
-    container-type: size;
+    contain: paint;
   }
 
   .lottery-map {
-    width: min(100cqw, calc(100cqh - 2.5rem));
+    width: auto;
+    height: auto;
+    max-width: 100%;
+    max-height: 100%;
   }
 
   .lottery-map-card {

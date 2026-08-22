@@ -47,6 +47,7 @@ const LotteryGame = React.memo(({ address }) => {
   const holdStart = React.useRef()
   const committed = React.useRef(false)
   const boardSnap = React.useRef()
+  const spinningRef = React.useRef(false)
   const { account, session, balance } = useSelector(() => selectAuth()) || {}
   const { authorized } = session || {}
   const lottery = useSelector(() => selectLottery(address)) || {}
@@ -142,13 +143,20 @@ const LotteryGame = React.memo(({ address }) => {
   if (!roundOpen) spinLabel = "Closed"
 
   React.useEffect(() => {
-    fetchLottery(address)
-    watchLottery(address)
     knownBonuses.current = undefined
     setFreshBonusIds([])
     setJackpotPulse(false)
-    return () => unwatchLottery(address)
   }, [address, account])
+
+  React.useEffect(() => {
+    if (holdingSpin || revealing || buying) {
+      unwatchLottery(address)
+      return
+    }
+    fetchLottery(address)
+    watchLottery(address)
+    return () => unwatchLottery(address)
+  }, [address, account, holdingSpin, revealing, buying])
 
   React.useEffect(() => {
     if (!account) return
@@ -224,7 +232,6 @@ const LotteryGame = React.memo(({ address }) => {
   const onBuy = async () => {
     setBuying(true)
     setRevealing(true)
-    unwatchLottery(address)
     let keepLit = false
     try {
       const ticket = await buyLotteryTicket(address)
@@ -262,7 +269,7 @@ const LotteryGame = React.memo(({ address }) => {
         setLitIds([])
         setLanded(false)
       }
-      watchLottery(address)
+      spinningRef.current = false
     }
   }
 
@@ -275,6 +282,7 @@ const LotteryGame = React.memo(({ address }) => {
       spinDone.current = undefined
       committed.current = false
       boardSnap.current = undefined
+      spinningRef.current = false
       setRevealing(false)
       setLitIds([])
       setLanded(false)
@@ -285,7 +293,10 @@ const LotteryGame = React.memo(({ address }) => {
   const startSpinHold = (event) => {
     if (!canSpin) return
     if (event.button > 0) return
+    if (holdTimer.current || spinningRef.current) return
     event.currentTarget.setPointerCapture(event.pointerId)
+    spinningRef.current = true
+    unwatchLottery(address)
     setHoldingSpin(true)
     setLanded(false)
     pendingWinner.current = undefined
@@ -429,7 +440,7 @@ const LotteryGame = React.memo(({ address }) => {
             )}
             data-holding={holdingSpin}
             data-spinning={revealing}
-            disabled={!canSpin}
+            disabled={!canSpin && !holdingSpin && !revealing}
             onPointerDown={startSpinHold}
             onPointerUp={cancelSpinHold}
             onPointerCancel={cancelSpinHold}
@@ -557,11 +568,6 @@ const runPolygonFlash = ({ from, wheel, getWinner, getCruiseDelay, onTick, onDon
       if (!_.isNumber(endStep)) {
         let distance = (winnerIndex - index + n) % n
         if (distance < 1) distance = n
-        const want = _.min([SLOW_STEPS + 4, n])
-        if (distance > want) {
-          index = (winnerIndex - want + n) % n
-          distance = want
-        }
         endStep = steps + distance
         landSpan = distance
       }

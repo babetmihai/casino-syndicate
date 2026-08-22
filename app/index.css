@@ -24,10 +24,6 @@
   --animate-map-pass: map-pass 0.22s ease-out;
   --animate-map-glow-flash: map-glow-flash 0.5s ease-out forwards;
   --animate-map-glow-win: map-glow-win 1.15s ease-in-out infinite;
-  --animate-nucleus: nucleus-pulse 1.8s ease-in-out infinite;
-  --animate-nucleus-in: nucleus-in 0.62s cubic-bezier(0.22, 1, 0.36, 1) both;
-  --animate-nucleus-glow-in: nucleus-glow-in 0.7s ease-out both;
-  --animate-jackpot-in: jackpot-in 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
   --animate-claim: claim-pulse 1.8s ease-in-out infinite;
   --animate-overlay-in: overlay-in 0.32s ease-out;
 }
@@ -86,29 +82,6 @@
 @keyframes map-glow-win {
   0%, 100% { opacity: 0.2; transform: scale(1.1); }
   50% { opacity: 0.42; transform: scale(1.2); }
-}
-
-@keyframes nucleus-pulse {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(0.84); opacity: 0.78; }
-}
-
-@keyframes nucleus-in {
-  0% { transform: scale(0); opacity: 0; }
-  58% { transform: scale(1.28); opacity: 1; }
-  100% { transform: scale(1); opacity: 1; }
-}
-
-@keyframes nucleus-glow-in {
-  0% { transform: scale(0.2); opacity: 0; }
-  42% { transform: scale(2.35); opacity: 0.5; }
-  100% { transform: scale(1.7); opacity: 0.22; }
-}
-
-@keyframes jackpot-in {
-  0% { opacity: 0; transform: translateY(0.35rem) scale(0.72); }
-  68% { opacity: 1; transform: translateY(-0.08rem) scale(1.08); }
-  100% { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 @keyframes claim-pulse {
@@ -207,9 +180,7 @@
   }
 
   .lottery-map-cell,
-  .lottery-map-cell-glow,
-  .lottery-map-nucleus,
-  .lottery-map-nucleus-glow {
+  .lottery-map-cell-glow {
     transform-box: fill-box;
     transform-origin: center;
   }
@@ -253,14 +224,6 @@
     transform: scale(1.08);
   }
 
-  .lottery-map-nucleus-fresh {
-    animation: nucleus-in 0.62s cubic-bezier(0.22, 1, 0.36, 1) both, nucleus-pulse 1.8s ease-in-out 0.62s infinite;
-  }
-
-  .lottery-map-nucleus-glow-fresh {
-    animation: nucleus-glow-in 0.7s ease-out both;
-  }
-
   .lottery-map-card,
   .lottery-map-frame,
   .lottery-claim-wrap {
@@ -288,13 +251,8 @@
   }
 
   .lottery-banner-house,
-  .lottery-banner-spark,
   .roulette-banner-black {
     box-shadow: 0 0 2.5rem rgb(129 140 248 / 0.24);
-  }
-
-  .lottery-banner-nova {
-    box-shadow: 0 0 3.5rem rgb(45 212 191 / 0.4);
   }
 
   .roulette-spot-rect {
@@ -314,15 +272,12 @@
   @media (prefers-reduced-motion: reduce) {
     .lottery-map-cell,
     .lottery-map-cell-glow,
-    .lottery-map-nucleus,
-    .lottery-map-nucleus-glow,
     .lottery-banner,
     .lottery-banner-card,
     .roulette-banner,
     .roulette-banner-card,
     .lottery-claim,
     .lottery-claim-wrap,
-    .lottery-prize-jackpot,
     .roulette-spot-rect {
       animation: none !important;
       transition: none !important;

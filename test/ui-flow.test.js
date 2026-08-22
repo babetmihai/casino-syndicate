@@ -517,22 +517,6 @@ describe("UI flow: create, view, play lottery", () => {
       .find((parsed) => parsed && parsed.name === "Settled")
   }
 
-  const bonusKind = (bits, index) => {
-    return Number((BigInt(bits) >> (BigInt(index) * 2n)) & 3n)
-  }
-
-  const extrasFromBits = (bits, polygons, price) => {
-    const nucleus = price * BigInt(polygons * 2 - 1)
-    let extra = 0n
-    for (let i = 0; i < polygons; i++) {
-      const kind = bonusKind(bits, i)
-      if (kind === 1) extra += price
-      if (kind === 2) extra += nucleus
-      if (kind === 3) extra += nucleus * BigInt(polygons)
-    }
-    return extra
-  }
-
   const playUntilSettled = async (lottery, signer, price, wantPlayers) => {
     for (let i = 0; i < 200; i++) {
       const table = await lottery.connect(signer).getTable()
@@ -622,6 +606,8 @@ describe("UI flow: create, view, play lottery", () => {
     const bought = await lottery.connect(player).buyTicket({ value: ethers.parseEther("0.01") })
     const boughtReceipt = await bought.wait()
     expect(parseTicket(lottery, boughtReceipt).length).to.equal(1)
+    const live = await lottery.connect(player).getTable()
+    expect(live.prize).to.equal(ethers.parseEther("0.02"))
   })
 
   it("splits the ticket pot when greens fill", async () => {
@@ -645,10 +631,9 @@ describe("UI flow: create, view, play lottery", () => {
     expect(live.prize).to.equal(0n)
     expect(live.owners.filter((owner) => owner !== ethers.ZeroAddress).length).to.equal(0)
     if (settled.args.playersWin) {
-      const extras = extrasFromBits(settled.args.bonusBits, 3, price)
+      const matched = price * used * 2n
       expect(settled.args.owners.length).to.equal(3)
-      expect(settled.args.prize).to.be.greaterThan(0n)
-      expect(settled.args.prize).to.be.lte(price * used + extras)
+      expect(settled.args.prize).to.equal(matched - (matched % 3n))
       const held = await lottery.connect(player).getTable()
       expect(held.claimedCount).to.equal(3n)
       expect(held.prize).to.equal(settled.args.prize)
@@ -664,69 +649,6 @@ describe("UI flow: create, view, play lottery", () => {
       expect(held.myPrize).to.equal(0n)
       expect(live.totalBalance).to.equal(DEPOSIT + price * used)
     }
-  })
-
-  it("pays spark, nucleus, and nova from the house when players fill", async () => {
-    const [creator, player] = await ethers.getSigners()
-    const factory = await deployFactory()
-    const price = ethers.parseEther("0.01")
-    const polygons = 3
-    const createTx = await createLottery(factory, creator, polygons, price)
-    const lottery = await ethers.getContractAt("Lottery", createdAddress(factory, await createTx.wait()))
-    const found = { 1: false, 2: false, 3: false }
-    let bonus
-    for (let i = 0; i < 400; i++) {
-      const open = await lottery.connect(player).getTable()
-      if (open.myPrize > 0n) {
-        await (await lottery.connect(player).withdrawPrize()).wait()
-      }
-      const tx = await lottery.connect(player).buyTicket({ value: price })
-      const receipt = await tx.wait()
-      const tickets = parseTicket(lottery, receipt)
-      const kind = Number(tickets[0].bonus)
-      if (!kind) continue
-      const settled = parseSettled(lottery, receipt)
-      if (settled) continue
-      found[kind] = true
-      bonus = tickets[0]
-      const live = await lottery.connect(player).getTable()
-      const extras = extrasFromBits(live.bonusBits, polygons, price)
-      expect(live.myPrize).to.equal(0n)
-      expect(live.bonusBits).to.not.equal(0n)
-      expect(live.prize).to.be.gte(extras + price)
-      if (found[1] && found[2] && found[3]) break
-    }
-    expect(bonus).to.not.equal(undefined)
-    expect(bonus.assigned).to.equal(true)
-    expect(found[1]).to.equal(true)
-    expect(found[2]).to.equal(true)
-    expect(found[3]).to.equal(true)
-
-    const paid = { 1: false, 2: false, 3: false }
-    let hit
-    for (let i = 0; i < 200; i++) {
-      const result = await playUntilSettled(lottery, player, price, true)
-      const extras = extrasFromBits(result.settled.args.bonusBits, polygons, price)
-      if (extras === 0n) {
-        await (await lottery.connect(player).withdrawPrize()).wait()
-        continue
-      }
-      expect(result.settled.args.prize).to.be.gte(extras)
-      const held = await lottery.connect(player).getTable()
-      expect(held.myPrize).to.equal(result.settled.args.prize)
-      expect(held.bonusBits).to.equal(result.settled.args.bonusBits)
-      for (let cell = 0; cell < polygons; cell++) {
-        const kind = bonusKind(result.settled.args.bonusBits, cell)
-        if (kind) paid[kind] = true
-      }
-      hit = result
-      if (paid[1] && paid[2] && paid[3]) break
-      await (await lottery.connect(player).withdrawPrize()).wait()
-    }
-    expect(hit).to.not.equal(undefined)
-    expect(paid[1]).to.equal(true)
-    expect(paid[2]).to.equal(true)
-    expect(paid[3]).to.equal(true)
   })
 
   it("assigns a cell once, then settles house or players", async () => {

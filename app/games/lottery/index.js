@@ -3,53 +3,13 @@ import { actions } from "app/core/store"
 import { EMPTY_OBJECT } from "app/core"
 import { generateContract, getContract, sendTx, sendWalletTx } from "app/core/contracts"
 import { selectAuth } from "app/core/auth"
-import { clampEth, formatEth, parseEth } from "app/games/roulette/chips"
+import { formatEth, parseEth } from "app/games/roulette/chips"
 import LotteryArtifact from "artifacts/contracts/Lottery.sol/Lottery.json"
 import _ from "lodash"
 
 export const MIN_POLYGONS = 3
 export const MAX_POLYGONS = 48
 export const ticketGas = 3000000n
-export const BONUS_SPARK = 1
-export const BONUS_NUCLEUS = 2
-export const BONUS_NOVA = 3
-
-const unpackBonus = (bits, count) => {
-  const raw = BigInt(bits || 0)
-  return _.times(count || 0, (index) => Number((raw >> BigInt(index * 2)) & 3n))
-}
-
-export const bonusPayout = (kind, ticketPrice, polygonCount, loseCount) => {
-  const price = clampEth(ticketPrice)
-  const cells = (polygonCount || 0) + (loseCount || 0)
-  if (kind === BONUS_SPARK) return price
-  if (kind === BONUS_NUCLEUS) return price * cells
-  if (kind === BONUS_NOVA) return price * cells * (polygonCount || 0)
-  return 0
-}
-
-export const jackpotByPlayer = (lottery) => {
-  const { ticketPrice, polygonCount, loseCount, owners = [], bonuses = [] } = lottery || {}
-  const amounts = {}
-  _.forEach(_.take(owners, polygonCount || 0), (owner, index) => {
-    if (!owner) return
-    if (!amounts[owner]) amounts[owner] = 0
-    const extra = bonusPayout(bonuses[index], ticketPrice, polygonCount, loseCount)
-    if (!extra) return
-    amounts[owner] += extra
-  })
-  return amounts
-}
-
-export const jackpotQuote = (lottery, account) => {
-  const amounts = jackpotByPlayer(lottery) || {}
-  if (account) {
-    const mine = amounts[ethers.getAddress(account)]
-    if (mine) return mine
-    return 0
-  }
-  return _.sum(_.values(amounts))
-}
 
 const lotteryPath = (address) => `games.lottery.${ethers.getAddress(address)}`
 
@@ -103,7 +63,6 @@ export const fetchLottery = async (address) => {
     loseLit,
     prize: formatEth(row.prize),
     mates,
-    bonuses: unpackBonus(row.bonusBits, Number(row.polygonCount) + Number(row.loseCount)),
     myPrize: formatEth(row.myPrize),
     memberShares: formatEth(row.memberShares),
     totalBalance: formatEth(row.totalBalance),
@@ -179,7 +138,6 @@ const readTicket = (contract, receipt) => {
   let roundPrize
   let roundOwners
   let roundMates
-  let roundBonuses
   for (const log of logs) {
     try {
       const parsed = contract.interface.parseLog(log)
@@ -196,15 +154,13 @@ const readTicket = (contract, receipt) => {
           if (!item || item === ethers.ZeroAddress) return null
           return ethers.getAddress(item)
         })
-        roundBonuses = unpackBonus(args.bonusBits, roundOwners.length)
       }
       if (name !== "TicketBought") continue
       draws.push({
         won: args.won,
         polygonId: Number(args.polygonId),
         assigned: args.assigned,
-        split: Boolean(args.split),
-        bonus: Number(args.bonus)
+        split: Boolean(args.split)
       })
     } catch {
       // ignore logs from other contracts
@@ -214,9 +170,8 @@ const readTicket = (contract, receipt) => {
   const claimed = _.filter(draws, "assigned")
   const last = _.last(claimed) || _.last(draws)
   const splitIds = _.uniq(_.map(_.filter(draws, "split"), "polygonId"))
-  const bonusIds = _.uniq(_.map(_.filter(draws, "bonus"), "polygonId"))
   const takenIds = _.uniq(_.map(_.filter(draws, (draw) => {
-    return draw.won && !draw.assigned && !draw.split && !draw.bonus
+    return draw.won && !draw.assigned && !draw.split
   }), "polygonId"))
   const loseIds = _.uniq(_.map(_.filter(draws, (draw) => !draw.won), "polygonId"))
   return {
@@ -230,12 +185,10 @@ const readTicket = (contract, receipt) => {
     takenIds,
     loseIds,
     splitIds,
-    bonusIds,
     settled,
     playersWin,
     roundPrize,
     roundOwners,
-    roundMates,
-    roundBonuses
+    roundMates
   }
 }

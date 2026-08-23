@@ -5,15 +5,22 @@ import { ownerFill } from "../polygons"
 
 
 const PolygonsRace = React.memo(({ players, mineKey, polygonCount, lastGreen, lastHouse, housePct }) => {
+  const rows = _.orderBy(Object.values(players || {}), [
+    (row) => {
+      if (mineKey && row.id === mineKey) return 0
+      return 1
+    },
+    "amount"
+  ], ["asc", "desc"])
   return (
     <div className={cn("polygons-race", "flex min-w-0 flex-1 flex-col gap-1")}>
       <div className={cn("polygons-race-players", lastGreen && "polygons-race-hot")}>
         <div className={cn("polygons-race-track", "polygons-race-track-players", "flex h-1 overflow-hidden rounded-full bg-cs-elevated")}>
-          {_.map(players, (row) => {
-            const isMine = mineKey && row.key === mineKey
+          {_.map(rows, (row) => {
+            const isMine = mineKey && row.id === mineKey
             return (
               <div
-                key={row.key}
+                key={row.id}
                 className={cn(
                   "polygons-race-fill",
                   "polygons-race-fill-player",
@@ -22,7 +29,7 @@ const PolygonsRace = React.memo(({ players, mineKey, polygonCount, lastGreen, la
                 )}
                 style={{
                   width: `${(row.amount / polygonCount) * 100}%`,
-                  background: ownerFill(row.key, isMine)
+                  background: ownerFill(row.id, isMine)
                 }}
               />
             )

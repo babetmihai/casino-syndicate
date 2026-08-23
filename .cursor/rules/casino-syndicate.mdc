@@ -16,6 +16,9 @@ Vite/React/Redux UI (`app`), Hardhat contracts (`contracts`). `GameFactory` crea
 - No nested ternaries; name booleans. JSX: `&&` not ternary. Imperative: `if`, not `&&`
 - No defensive code: no try/catch unless recovering; no fallbacks for required data/env
 - Rem for custom sizes (often `0.75rem`). Minimal diffs
+- Store collections: `{ [id]: { id, ... } }`. Constants stay arrays. Iterate with `Object.values` / `Object.keys` / lodash
+- React UI state via `actions` so handlers live in `actions.js`
+- Scope store paths with `actions.create(path | () => path)`
 
 ## UI (`app`)
 

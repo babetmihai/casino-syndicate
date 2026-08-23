@@ -67,7 +67,7 @@ export const CHIP_COLORS = {
 export const toChips = (amount) => {
   const chips = []
   let remaining = _.round(clampEth(amount) * 100)
-  const units = CHIP_VALUES.map((value) => _.round(value * 100))
+  const units = _.map(CHIP_VALUES, (value) => _.round(value * 100))
   for (let i = units.length - 1; i >= 0; i--) {
     const unit = units[i]
     while (remaining >= unit) {

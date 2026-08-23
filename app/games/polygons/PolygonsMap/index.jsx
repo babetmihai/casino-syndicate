@@ -1,6 +1,6 @@
 import React from "react"
 import _ from "lodash"
-import { cn } from "app/core"
+import { cn, EMPTY_OBJECT } from "app/core"
 import {
   buildPolygons,
   LIT_LOSE_FILL,
@@ -9,6 +9,7 @@ import {
 } from "../polygons"
 import { ethers } from "ethers"
 import PolygonCellGroup from "./PolygonCellGroup"
+import { finishSpin, spinOf } from "../PolygonsGame/actions"
 
 const TRAIL = 4
 const SPIN_MS = 45
@@ -19,20 +20,17 @@ const HOLD_FILL_MS = 1000
 
 const PolygonsMap = ({
   address,
-  owners = [],
-  mates = [],
+  owners = {},
+  mates = {},
   polygonCount,
   loseCount = 0,
   account,
   focusId,
-  flashIds = [],
-  litIds = [],
+  flashIds = {},
+  litIds = {},
   manyLit,
-  splitIds = [],
+  splitIds = {},
   spinning,
-  holdingRef,
-  landingRef,
-  onLandRef,
   celebrate,
   housePop
 }) => {
@@ -40,11 +38,11 @@ const PolygonsMap = ({
   const winCount = polygonCount || 0
   const count = winCount + (loseCount || 0)
   const polygons = React.useMemo(() => {
-    if (!address || !count) return []
+    if (!address || !count) return EMPTY_OBJECT
     return buildPolygons(seedFromAddress(address), count, winCount)
   }, [address, count, winCount])
   const wheel = React.useMemo(() => {
-    return _.map(_.sortBy(polygons, (cell) => Math.atan2(cell.y - 0.5, cell.x - 0.5)), "id")
+    return _.map(_.sortBy(Object.values(polygons), (cell) => Math.atan2(cell.y - 0.5, cell.x - 0.5)), "id")
   }, [polygons])
   const mineAddr = React.useMemo(() => {
     if (!account) return
@@ -56,6 +54,7 @@ const PolygonsMap = ({
     const svg = svgRef.current
     if (!svg) return
     if (!wheel.length) return
+    const spin = spinOf(address)
     const nodes = collectNodes(svg)
     let chase = []
     const held = []
@@ -68,9 +67,9 @@ const PolygonsMap = ({
     const holdStart = Date.now()
     const stop = runWheel({
       wheel,
-      getWinners: () => landingRef && landingRef.current,
+      getWinners: () => spin.landing,
       delay: () => {
-        if (!holdingRef || !holdingRef.current) return SPIN_MS
+        if (!spin.holding) return SPIN_MS
         const t = _.clamp((Date.now() - holdStart) / HOLD_FILL_MS, 0, 1)
         return WIND_MS + t * t * (SPIN_MS - WIND_MS)
       },
@@ -81,17 +80,14 @@ const PolygonsMap = ({
         held.push(id)
         lightHeld(nodes, [id])
       },
-      onDone: (ids) => {
-        const land = onLandRef && onLandRef.current
-        if (land) land(ids)
-      }
+      onDone: (ids) => finishSpin(address, ids)
     })
     return () => {
       stop()
       restoreChase(nodes, chase, held)
       lightHeld(nodes, held)
     }
-  }, [spinning, wheel, holdingRef, landingRef, onLandRef])
+  }, [spinning, wheel, address])
 
   return (
     <svg
@@ -105,28 +101,33 @@ const PolygonsMap = ({
       preserveAspectRatio="xMidYMid meet"
     >
       {_.map(polygons, (polygon) => {
-        const trailRank = manyLit ? 0 : _.indexOf(litIds, polygon.id)
+        const lit = litIds[polygon.id]
+        let trailRank = -1
+        if (lit) trailRank = lit.rank
+        if (manyLit) trailRank = 0
         let isLit = trailRank === 0
-        if (manyLit) isLit = _.includes(litIds, polygon.id)
-        let isFlash = _.includes(flashIds, polygon.id)
-        if (!isFlash) isFlash = _.includes(flashIds, Number(polygon.id))
+        if (manyLit) isLit = Boolean(lit)
+        const isFlash = Boolean(flashIds[polygon.id])
+        const { address: owner } = owners[polygon.id] || {}
+        const { address: mate } = mates[polygon.id] || {}
         if (spinning) {
           isLit = false
-          isFlash = false
         }
+        let flash = isFlash
+        if (spinning) flash = false
         return (
           <PolygonCellGroup
             key={polygon.id}
             polygon={polygon}
-            owner={owners[polygon.id]}
-            mate={mates[polygon.id]}
+            owner={owner}
+            mate={mate}
             winCount={winCount}
             mineAddr={mineAddr}
             isFocus={focusId === polygon.id}
-            isFlash={isFlash}
+            isFlash={flash}
             isLit={isLit}
             trailRank={trailRank}
-            isSplitFlash={_.includes(splitIds, polygon.id)}
+            isSplitFlash={Boolean(splitIds[polygon.id])}
             spinning={spinning}
             manyLit={manyLit}
             celebrate={celebrate}
@@ -339,7 +340,8 @@ const runWheel = ({ wheel, getWinners, delay, onTick, onHold, onDone }) => {
     }
     index = (index + 1) % span
     let wait = delay()
-    if (_.isFinite(target)) {
+    const lastTarget = queue && queue.length === 1
+    if (lastTarget && _.isFinite(target)) {
       const at = _.indexOf(wheel, target)
       if (at >= 0) {
         const left = cwDist(index, at, span)

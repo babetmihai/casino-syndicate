@@ -51,7 +51,7 @@ export const buildPolygons = (seed, count, winCount) => {
     })
   })
   const sites = inner.concat(outer)
-  return _.map(sites, (site, index) => {
+  return _.keyBy(_.map(sites, (site, index) => {
     const points = voronoiCell(site, index, sites)
     const center = polygonCentroid(points)
     return {
@@ -64,7 +64,7 @@ export const buildPolygons = (seed, count, winCount) => {
       path: polygonPath(points),
       angle: splitAngle(index)
     }
-  })
+  }), "id")
 }
 
 export const splitLobes = (cell) => {

@@ -1,5 +1,5 @@
 import React from "react"
-import RoundedRect from "../RoundedRect"
+import RoundedRect from "./RoundedRect"
 
 const SIZE = 10
 

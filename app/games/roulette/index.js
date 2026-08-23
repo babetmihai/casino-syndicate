@@ -4,14 +4,16 @@ import { EMPTY_OBJECT } from "app/core"
 import { generateContract, getContract, sendTx, sendWalletTx } from "app/core/contracts"
 import { selectAuth } from "app/core/auth"
 import { formatEth, parseEth } from "./chips"
+import { BET_COUNT } from "./bets"
+import _ from "lodash"
 
 
-const roulettePath = (address) => `games.roulette.${ethers.getAddress(address)}`
+export const rouletteActions = (address) => actions.create("games.roulette").create(() => ethers.getAddress(address))
 
 
 export const selectRoulette = (address) => {
   if (!address || !ethers.isAddress(address)) return EMPTY_OBJECT
-  return actions.get(roulettePath(address), EMPTY_OBJECT)
+  return rouletteActions(address).get()
 }
 
 export const fetchRoulette = async (address) => {
@@ -31,7 +33,7 @@ export const fetchRoulette = async (address) => {
   const ownerRaw = row[7]
   let owner
   if (ownerRaw && ownerRaw !== ethers.ZeroAddress) owner = ethers.getAddress(ownerRaw)
-  actions.update(roulettePath(address), {
+  rouletteActions(address).update({
     memberShares: formatEth(memberShares),
     playerBalance: formatEth(playerBalance),
     totalShares: formatEth(totalShares),
@@ -62,33 +64,37 @@ export const withdrawTableShares = async ({ balance }, address) => {
 export const postRouletteBet = async (address, bets) => {
   let contract = getContract(address)
   if (!contract) contract = await generateContract(address)
-  const values = bets.map((bet) => parseEth(bet || 0))
-  const value = values.reduce((sum, amount) => sum + amount, 0n)
+  const values = _.map(_.range(BET_COUNT), (id) => parseEth(_.get(bets, [id, "amount"], 0)))
+  const value = _.reduce(values, (sum, amount) => sum + amount, 0n)
   const receipt = await sendTx(contract.postBet, [values], { value })
   const lastSpin = readWinningNumber(contract, receipt)
-  if (lastSpin) actions.update(roulettePath(address), { lastSpin })
+  if (lastSpin) rouletteActions(address).update({ lastSpin })
   return lastSpin
 }
 
 export const pushSpinHistory = (address, number) => {
-  actions.update(roulettePath(address), (current) => {
-    const { history = [] } = current || {}
+  rouletteActions(address).update((current) => {
+    const { history = {} } = current || {}
+    const id = String(_.size(history))
     return {
       ...current,
-      history: [...history, number]
+      history: { ...history, [id]: { id, number } }
     }
   })
 }
 
 
 const readWinningNumber = (contract, receipt) => {
-  const { logs = [] } = receipt || {}
-  for (const log of logs) {
+  const { logs, hash } = receipt || {}
+  let lastSpin
+  _.forEach(logs, (log) => {
+    if (lastSpin) return
     try {
       const parsed = contract.interface.parseLog(log)
       const { name, args = {} } = parsed || {}
-      if (name !== "WinningNumber") continue
-      return {
+      if (name !== "WinningNumber") return
+      lastSpin = {
+        id: hash,
         number: Number(args.number),
         totalBetAmount: formatEth(args.totalBetAmount),
         winningAmount: formatEth(args.winningAmount),
@@ -97,5 +103,6 @@ const readWinningNumber = (contract, receipt) => {
     } catch {
       // ignore logs from other contracts
     }
-  }
+  })
+  return lastSpin
 }

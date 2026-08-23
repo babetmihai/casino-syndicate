@@ -14,12 +14,12 @@ const UNSET = "@@UNSET"
 
 
 export const createStore = (middleware) => legacy_createStore(reducer, {}, middleware)
-export const createActions = (store, basePath) => ({
+export const createActions = (store, ...basePaths) => ({
   get: (...args) => {
     let _path
     let defaultValue = EMPTY_OBJECT
     if (args.length > 0) [_path, defaultValue] = args
-    const path = join(basePath, _path)
+    const path = join(...basePaths, _path)
     if (!path) return store.getState()
     return _.get(store.getState(), path, defaultValue)
   },
@@ -27,7 +27,7 @@ export const createActions = (store, basePath) => ({
     let _path
     let [payload] = args
     if (args.length > 1) [_path, payload] = args
-    const path = join(basePath, _path)
+    const path = join(...basePaths, _path)
     store.dispatch({
       type: `Set ${stringify(path)}`,
       path,
@@ -39,7 +39,7 @@ export const createActions = (store, basePath) => ({
     let _path
     let [payload] = args
     if (args.length > 1) [_path, payload] = args
-    const path = join(basePath, _path)
+    const path = join(...basePaths, _path)
     store.dispatch({
       type: `Update ${stringify(path)}`,
       path,
@@ -49,14 +49,14 @@ export const createActions = (store, basePath) => ({
   },
   unset: (...args) => {
     const [_path] = args
-    const path = join(basePath, _path)
+    const path = join(...basePaths, _path)
     store.dispatch({
       type: `Unset ${stringify(path)}`,
       path,
       method: UNSET
     })
   },
-  create: (path) => createActions(store, join(basePath, path))
+  create: (path) => createActions(store, ...basePaths, path)
 })
 
 
@@ -99,6 +99,7 @@ const join = (...args) => {
   const _path = args
     .filter(Boolean)
     .map((path) => {
+      if (_.isFunction(path)) return path()
       if (_.isString(path)) return path.split(".")
       return path
     })

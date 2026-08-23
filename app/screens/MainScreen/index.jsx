@@ -25,11 +25,11 @@ const MainScreen = () => {
     fetchTables()
   }, [account])
 
-  const ownedTables = _.orderBy(Object.values(tables), ["createdAt"], ["desc"]).filter((table) => {
+  const ownedTables = _.filter(_.orderBy(Object.values(tables), ["createdAt"], ["desc"]), (table) => {
     const { createdBy } = table || {}
     return createdBy && account && ethers.getAddress(createdBy) === ethers.getAddress(account)
   })
-  const isEmpty = ownedTables.length === 0
+  const isEmpty = _.isEmpty(ownedTables)
   const showHero = !account || isEmpty
 
   const openCreate = () => showModal(TableModal, {
@@ -87,9 +87,9 @@ const MainScreen = () => {
               </Button>
             </div>
             <div className={cn("main-tables-list", "flex min-h-0 flex-1 flex-col gap-2 overflow-hidden")}>
-              {ownedTables.map((table, index) => (
+              {_.map(ownedTables, (table, index) => (
                 <TableCard
-                  key={table.address}
+                  key={table.id}
                   table={table}
                   index={index}
                 />

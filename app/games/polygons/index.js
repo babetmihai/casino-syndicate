@@ -12,12 +12,12 @@ export const MAX_POLYGONS = 48
 export const TICKET_MULTIPLIERS = [1, 5, 10]
 export const ticketGas = (count) => 3000000n + BigInt(_.max([count - 1, 0])) * 200000n
 
-const polygonsPath = (address) => `games.polygons.${ethers.getAddress(address)}`
+export const polygonsActions = (address) => actions.create("games.polygons").create(() => ethers.getAddress(address))
 
 
 export const selectPolygons = (address) => {
   if (!address || !ethers.isAddress(address)) return EMPTY_OBJECT
-  return actions.get(polygonsPath(address), EMPTY_OBJECT)
+  return polygonsActions(address).get()
 }
 
 export const fetchPolygons = async (address) => {
@@ -27,14 +27,8 @@ export const fetchPolygons = async (address) => {
   let overrides = {}
   if (account) overrides = { from: account }
   const row = await contract.getTable.staticCall(overrides)
-  const owners = _.map(row.owners || [], (item) => {
-    if (!item || item === ethers.ZeroAddress) return null
-    return ethers.getAddress(item)
-  })
-  const mates = _.map(row.mates || [], (item) => {
-    if (!item || item === ethers.ZeroAddress) return null
-    return ethers.getAddress(item)
-  })
+  const owners = fromOwners(row.owners)
+  const mates = fromOwners(row.mates)
   const ownerRaw = row.owner
   let owner
   if (ownerRaw && ownerRaw !== ethers.ZeroAddress) owner = ethers.getAddress(ownerRaw)
@@ -42,8 +36,8 @@ export const fetchPolygons = async (address) => {
   const loseLit = Number(row.loseLit)
   const prev = selectPolygons(address) || {}
   const occupied = claimedCount + loseLit
-  let livePlayers = prev.livePlayers || []
-  if (occupied > 0) livePlayers = _.uniq(_.compact([...owners, ...mates]))
+  let livePlayers = prev.livePlayers || {}
+  if (occupied > 0) livePlayers = fromPlayers(owners, mates)
   let lastSettle = prev.lastSettle
   const wasOccupied = (prev.claimedCount || 0) + (prev.loseLit || 0) > 0
   if (occupied === 0 && wasOccupied) {
@@ -56,7 +50,7 @@ export const fetchPolygons = async (address) => {
       }
     }
   }
-  actions.update(polygonsPath(address), {
+  polygonsActions(address).update({
     polygonCount: Number(row.polygonCount),
     loseCount: Number(row.loseCount),
     ticketPrice: formatEth(await contract.ticketPrice()),
@@ -83,7 +77,7 @@ export const watchPolygons = (address) => {
   const key = ethers.getAddress(address)
   if (polygonsWatches[key]) return
   const refresh = _.debounce(() => fetchPolygons(address), 200)
-  polygonsWatches[key] = { refresh, timer: setInterval(refresh, 1500) }
+  polygonsWatches[key] = { id: key, refresh, timer: setInterval(refresh, 1500) }
 }
 
 export const unwatchPolygons = (address) => {
@@ -106,7 +100,7 @@ export const buyPolygonsTicket = async (address, count = 1) => {
     gasLimit: ticketGas(tickets)
   })
   const lastTicket = readTicket(contract, receipt)
-  if (lastTicket) actions.update(polygonsPath(address), { lastTicket })
+  if (lastTicket) polygonsActions(address).update({ lastTicket })
   return lastTicket
 }
 
@@ -132,16 +126,47 @@ export const withdrawPolygonsShares = async ({ balance }, address) => {
 }
 
 
+export const fromOwners = (items) => {
+  const result = {}
+  _.forEach(items, (item, index) => {
+    if (!item || item === ethers.ZeroAddress) return
+    result[index] = { id: index, address: ethers.getAddress(item) }
+  })
+  return result
+}
+
+export const fromRankedIds = (ids) => {
+  const result = {}
+  _.forEach(ids, (id, rank) => {
+    result[id] = { id, rank }
+  })
+  return result
+}
+
+const fromPlayers = (owners, mates) => {
+  const result = {}
+  _.forEach(owners, ({ address }) => {
+    if (!address) return
+    result[address] = { id: address }
+  })
+  _.forEach(mates, ({ address }) => {
+    if (!address) return
+    result[address] = { id: address }
+  })
+  return result
+}
+
 const readTicket = (contract, receipt) => {
-  const { logs = [] } = receipt || {}
-  const draws = []
+  const { logs, hash } = receipt || {}
+  const draws = {}
   let settled = false
   let playersWin
   let roundPrize
   let roundOwners
   let roundMates
   let closer
-  for (const log of logs) {
+  let drawId = 0
+  _.forEach(logs, (log) => {
     try {
       const parsed = contract.interface.parseLog(log)
       const { name, args = {} } = parsed || {}
@@ -149,45 +174,45 @@ const readTicket = (contract, receipt) => {
         settled = true
         roundPrize = formatEth(args.prize)
         playersWin = args.playersWin
-        roundOwners = _.map(args.owners || [], (item) => {
-          if (!item || item === ethers.ZeroAddress) return null
-          return ethers.getAddress(item)
-        })
-        roundMates = _.map(args.mates || [], (item) => {
-          if (!item || item === ethers.ZeroAddress) return null
-          return ethers.getAddress(item)
-        })
+        roundOwners = fromOwners(args.owners)
+        roundMates = fromOwners(args.mates)
         const closerRaw = args.closer
         if (closerRaw && closerRaw !== ethers.ZeroAddress) closer = ethers.getAddress(closerRaw)
       }
-      if (name !== "TicketBought") continue
-      draws.push({
+      if (name !== "TicketBought") return
+      draws[drawId] = {
+        id: drawId,
         won: args.won,
         polygonId: Number(args.polygonId),
         assigned: args.assigned,
         split: Boolean(args.split),
         bounce: Boolean(args.bounce),
         fromId: Number(args.fromId)
-      })
+      }
+      drawId += 1
     } catch {
       // ignore logs from other contracts
     }
-  }
-  if (draws.length === 0 && !settled) return
-  const claimed = _.filter(draws, "assigned")
-  const last = _.last(claimed) || _.last(draws) || {}
-  const splitIds = _.uniq(_.map(_.filter(draws, "split"), "polygonId"))
-  const takenIds = _.uniq(_.map(_.filter(draws, (draw) => {
-    return draw.won && !draw.assigned && !draw.split
-  }), "polygonId"))
-  const loseIds = _.uniq(_.map(_.filter(draws, (draw) => !draw.won), "polygonId"))
+  })
+  if (_.isEmpty(draws) && !settled) return
+  const claimed = _.pickBy(draws, "assigned")
+  const last = _.last(Object.values(claimed)) || _.last(Object.values(draws)) || {}
+  const splitIds = {}
+  const takenIds = {}
+  const loseIds = {}
+  _.forEach(draws, (draw) => {
+    if (draw.split) splitIds[draw.polygonId] = { id: draw.polygonId }
+    if (draw.won && !draw.assigned && !draw.split) takenIds[draw.polygonId] = { id: draw.polygonId }
+    if (!draw.won) loseIds[draw.polygonId] = { id: draw.polygonId }
+  })
   return {
+    id: hash,
     ...last,
-    assignedCount: claimed.length,
-    wonCount: _.filter(draws, "won").length,
-    loseAssignedCount: _.filter(draws, (draw) => draw.assigned && !draw.won).length,
-    winAssignedCount: _.filter(draws, (draw) => draw.assigned && draw.won).length,
-    drawCount: draws.length,
+    assignedCount: _.size(claimed),
+    wonCount: _.size(_.pickBy(draws, "won")),
+    loseAssignedCount: _.size(_.pickBy(draws, (draw) => draw.assigned && !draw.won)),
+    winAssignedCount: _.size(_.pickBy(draws, (draw) => draw.assigned && draw.won)),
+    drawCount: _.size(draws),
     draws,
     takenIds,
     loseIds,

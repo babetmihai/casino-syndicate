@@ -84,17 +84,18 @@ export const betWins = (index, number) => {
 export const maxPotentialPayout = (bets) => {
   return _.max(_.map(_.range(37), (number) => {
     let amount = 0
-    _.forEach(bets, (bet, index) => {
-      if (!bet) return
-      if (!betWins(index, number)) return
+    _.forEach(bets, (bet) => {
+      const { id, amount: value } = bet || {}
+      if (!value) return
+      if (!betWins(id, number)) return
       let payout = 6
-      if (index < 37) payout = 36
-      else if (index <= 42) payout = 2
-      else if (index <= 48) payout = 3
-      else if (index < INSIDE.STREET) payout = 18
-      else if (index < INSIDE.CORNER) payout = 12
-      else if (index < INSIDE.LINE) payout = 9
-      amount += bet * payout
+      if (id < 37) payout = 36
+      else if (id <= 42) payout = 2
+      else if (id <= 48) payout = 3
+      else if (id < INSIDE.STREET) payout = 18
+      else if (id < INSIDE.CORNER) payout = 12
+      else if (id < INSIDE.LINE) payout = 9
+      amount += value * payout
     })
     return amount
   })) || 0

@@ -31,16 +31,16 @@ const RouletteAdmin = ({ address }) => {
   const numberClass = cn("roulette-admin-stat-value", "font-headings text-base font-extrabold leading-[1.15] text-cs-accent")
   const shareColor = "var(--color-cs-accent)"
 
-  const pieData = []
-  if (share > 0) pieData.push({ key: "yours", value: share, color: shareColor })
-  if (rest > 0) pieData.push({ key: "rest", value: rest, color: "var(--color-cs-border)" })
-  if (pieData.length === 0) pieData.push({ key: "rest", value: 1, color: "var(--color-cs-border)" })
+  const pieData = {}
+  if (share > 0) pieData.yours = { id: "yours", value: share, color: shareColor }
+  if (rest > 0) pieData.rest = { id: "rest", value: rest, color: "var(--color-cs-border)" }
+  if (_.isEmpty(pieData)) pieData.rest = { id: "rest", value: 1, color: "var(--color-cs-border)" }
 
   const sliceArc = arc().innerRadius(CHART_INNER).outerRadius(CHART_OUTER)
   const arcs = pie()
     .sort(null)
-    .padAngle(pieData.length > 1 ? 0.04 : 0)
-    .value((d) => d.value)(pieData)
+    .padAngle(_.size(pieData) > 1 ? 0.04 : 0)
+    .value((d) => d.value)(Object.values(pieData))
 
   React.useEffect(() => {
     fetchRoulette(address)
@@ -55,10 +55,10 @@ const RouletteAdmin = ({ address }) => {
             className={cn("roulette-admin-chart-svg", "block size-full")}
           >
             <g className={cn("roulette-admin-chart-slices")} transform={`translate(${CHART_SIZE / 2}, ${CHART_SIZE / 2})`}>
-              {arcs.map((item) => (
+              {_.map(arcs, (item) => (
                 <path
-                  key={item.data.key}
-                  className={cn("roulette-admin-slice", `roulette-admin-slice-${item.data.key}`)}
+                  key={item.data.id}
+                  className={cn("roulette-admin-slice", `roulette-admin-slice-${item.data.id}`)}
                   d={sliceArc(item)}
                   fill={item.data.color}
                 />

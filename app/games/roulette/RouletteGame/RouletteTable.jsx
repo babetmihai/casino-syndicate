@@ -1,8 +1,8 @@
 import React from "react"
 import _ from "lodash"
 import { cn } from "app/core"
-import { CHIP_COLORS, chipLabel, toChips } from "../../chips"
-import { BLACK_NUMBERS, INSIDE, OUTSIDE, betWins } from "../../bets"
+import { CHIP_COLORS, chipLabel, toChips } from "../chips"
+import { BLACK_NUMBERS, INSIDE, OUTSIDE, betWins } from "../bets"
 
 const CELL_W = 84
 const CELL_H = 56
@@ -61,7 +61,7 @@ const insideSpot = (index, cx, cy, w = HIT, h = HIT) => ({
 })
 
 const SPOTS = [
-  ..._.range(37).map((number) => {
+  ..._.map(_.range(37), (number) => {
     const layout = numberLayout(number)
     let fontSize = 16
     if (number === 0) fontSize = 22
@@ -176,8 +176,14 @@ const chipPosition = (spot, chipIndex) => ({
 
 const stackChips = (bets) => {
   return _.sortBy(_.flatMap(SPOTS, (spot) => {
-    const chips = toChips(bets[spot.index] || 0).slice(-4)
-    return _.map(chips, (value, chipIndex) => ({ spot, value, chipIndex }))
+    const amount = _.get(bets, [spot.index, "amount"], 0)
+    const chips = toChips(amount).slice(-4)
+    return _.map(chips, (value, chipIndex) => ({
+      id: `${spot.index}-${chipIndex}`,
+      spot,
+      value,
+      chipIndex
+    }))
   }), "chipIndex")
 }
 
@@ -372,7 +378,7 @@ const RouletteTable = React.memo(({ bets, winningNumber, landingNumber, spinning
       onPointerCancel={onPointerCancel}
       onContextMenu={(event) => event.preventDefault()}
     >
-      {SPOTS.map((spot) => {
+      {_.map(SPOTS, (spot) => {
         const { index, x, y, w, h, color, label, fontSize, labelFill = COLORS.text, rx = 8, inside } = spot
         let winner = false
         if (!spinning && !inside) winner = betWins(index, winningNumber)
@@ -431,14 +437,15 @@ const RouletteTable = React.memo(({ bets, winningNumber, landingNumber, spinning
           </g>
         )
       })}
-      {_.map(stackChips(bets), ({ spot, value, chipIndex }) => {
+      {_.map(stackChips(bets), (item) => {
+        const { id, spot, value, chipIndex } = item || {}
         const hiding = dragging && drag.fromIndex === spot.index && chipIndex === drag.chipIndex
         const pos = chipPosition(spot, chipIndex)
         let visibility = "visible"
         if (hiding) visibility = "hidden"
         return (
           <g
-            key={`${spot.index}-${chipIndex}-${value}`}
+            key={id}
             className={cn("roulette-table-chip")}
             transform={`translate(${pos.x}, ${pos.y})`}
             visibility={visibility}

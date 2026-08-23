@@ -27,14 +27,17 @@ const TABLE_TYPE_BY_ID = {
   1: TABLE_TYPES.Polygons
 }
 
+export const tablesActions = actions.create("tables")
+export const tableActions = (address) => tablesActions.create(() => ethers.getAddress(address))
+
 
 export const selectTable = (address) => {
   if (!address) return EMPTY_OBJECT
   if (!ethers.isAddress(address)) return EMPTY_OBJECT
-  return actions.get(`tables.${ethers.getAddress(address)}`, EMPTY_OBJECT)
+  return tableActions(address).get()
 }
 
-export const selectTables = () => actions.get("tables", EMPTY_OBJECT)
+export const selectTables = () => tablesActions.get()
 
 
 export const initTable = async (address) => {
@@ -46,7 +49,7 @@ export const initTable = async (address) => {
   try {
     const factory = await getFactory()
     const table = toTable(await factory.getGame(address))
-    actions.set(`tables.${table.address}`, table)
+    tableActions(address).set(table)
     await generateContract(address, abiForType(table.type))
   } catch (error) {
     const text = `${error.shortMessage || ""} ${error.reason || ""} ${error.message || ""}`
@@ -60,14 +63,14 @@ export const initTable = async (address) => {
 export const fetchTables = async () => {
   const { account } = selectAuth()
   if (!account) {
-    actions.set("tables", {})
+    tablesActions.set({})
     return
   }
 
   const factory = await getFactory()
   const rows = await factory.getGamesByCreator(account)
-  const tables = _.keyBy(rows.map(toTable), "address")
-  actions.set("tables", tables)
+  const tables = _.keyBy(_.map(rows, toTable), "id")
+  tablesActions.set(tables)
   await Promise.all(_.map(tables, (table) => {
     if (table.type === TABLE_TYPES.Polygons) return fetchPolygons(table.address)
     return fetchRoulette(table.address)
@@ -116,6 +119,7 @@ const abiForType = (type) => {
 const toTable = ({ game, createdBy, createdAt, gameType } = {}) => {
   const address = ethers.getAddress(game)
   return {
+    id: address,
     address,
     createdBy: ethers.getAddress(createdBy),
     createdAt: Number(createdAt),

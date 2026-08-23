@@ -1,7 +1,6 @@
 import React from "react"
 import _ from "lodash"
 import { Button } from "@mantine/core"
-import { TICKET_MULTIPLIERS } from ".."
 import { cn } from "app/core"
 import { showModal } from "app/core/modals"
 import AuthModal from "app/core/auth/AuthModal"
@@ -13,6 +12,7 @@ const PolygonsControls = React.memo(({
   authorized,
   pending,
   multiplier,
+  multipliers = [],
   buying,
   revealing,
   holdingSpin,
@@ -34,9 +34,9 @@ const PolygonsControls = React.memo(({
           Deposit
         </Button>
       }
-      {authorized && !pending &&
+      {authorized && multipliers.length > 1 &&
         <div className={cn("polygons-multipliers", "flex shrink-0 flex-row gap-1.5")}>
-          {_.map(TICKET_MULTIPLIERS, (value) => {
+          {_.map(multipliers, (value) => {
             const isCurrent = value === multiplier
             return (
               <button
@@ -51,7 +51,7 @@ const PolygonsControls = React.memo(({
                   "cursor-pointer disabled:cursor-default disabled:opacity-40 disabled:shadow-none"
                 )}
                 aria-pressed={isCurrent}
-                disabled={buying || revealing || holdingSpin}
+                disabled={pending || buying || revealing || holdingSpin}
                 onClick={() => onMultiplier(value)}
               >
                 x{value}
@@ -60,7 +60,7 @@ const PolygonsControls = React.memo(({
           })}
         </div>
       }
-      {authorized && !pending &&
+      {authorized &&
         <button
           type="button"
           className={cn(
@@ -78,7 +78,7 @@ const PolygonsControls = React.memo(({
           )}
           data-holding={holdingSpin}
           data-spinning={revealing}
-          disabled={!canSpin && !holdingSpin && !revealing}
+          disabled={pending || (!canSpin && !holdingSpin && !revealing)}
           onPointerDown={onSpinDown}
           onPointerUp={onSpinUp}
           onPointerCancel={onSpinUp}

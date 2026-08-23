@@ -185,7 +185,7 @@ const TableModal = ({ onSubmit }) => {
         mt="xs"
       >
         {!isPolygons && `Minimum ${MIN_TABLE_DEPOSIT} ${symbol}. Bankroll under ${LOW_BANKROLL_MULTIPLIER}× max is shown as low.`}
-        {isPolygons && `${MIN_POLYGONS}–${MAX_POLYGONS} polygons. House has one less cell.`}
+        {isPolygons && `${MIN_POLYGONS}–${MAX_POLYGONS} polygons. House has 10% fewer cells and matches each ticket 1:1.`}
       </Text>
       <Group
         className={cn("table-modal-actions")}

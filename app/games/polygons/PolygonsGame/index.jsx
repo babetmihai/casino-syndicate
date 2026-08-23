@@ -1,7 +1,7 @@
 import React from "react"
 import _ from "lodash"
 import { Card, Text } from "@mantine/core"
-import { fetchPolygons, selectPolygons, unwatchPolygons, watchPolygons } from ".."
+import { fetchPolygons, packedTickets, selectPolygons, TICKET_MULTIPLIERS, unwatchPolygons, watchPolygons } from ".."
 import { useSelector } from "react-redux"
 import { fetchBalance, selectAuth } from "app/core/auth"
 import { cn, EMPTY_OBJECT } from "app/core"
@@ -18,7 +18,7 @@ import PolygonsBanner from "./PolygonsBanner"
 import {
   canSpinPolygons,
   cancelSpinHold,
-  claimPrize,
+  ackMapPrompt,
   noteHouseSettle,
   setMultiplier,
   spinOf,
@@ -36,14 +36,18 @@ const PolygonsGame = React.memo(({ address }) => {
     polygonCount, loseCount, ticketPrice, claimedCount, loseLit, prize, myPrize,
     owners = {}, lastTicket, totalBalance, livePlayers = {}, lastSettle,
     buying, claiming, revealing, litIds = {}, landed, showBanner, holdingSpin, beat, multiplier = 1,
-    revealedOwners = {}
+    revealedOwners = {}, awaitNewGame, holdBoard
   } = polygons
   const { settled, playersWin, roundPrize, closer, refunded } = lastTicket || {}
   const hasPrize = clampEth(myPrize) > 0
-  const pending = hasPrize
   const showClaim = Boolean(account && hasPrize && !revealing && !showBanner)
-  const roundOpen = (claimedCount || 0) < (polygonCount || 0) && (loseLit || 0) < (loseCount || 0)
-  const totalPrice = clampEth(ticketPrice) * multiplier
+  const showNewGame = Boolean(account && awaitNewGame && !revealing && !showClaim && !showBanner && !beat)
+  const pending = hasPrize || awaitNewGame
+  const showPrompt = showClaim || showNewGame
+  let promptLabel = "New game"
+  if (showClaim) promptLabel = `Claim ${ethLabel(myPrize, symbol)}`
+  const pack = packedTickets(multiplier)
+  const totalPrice = clampEth(ticketPrice) * pack
   const bankroll = clampEth(totalBalance)
   const pot = clampEth(prize)
   const canSpin = canSpinPolygons(address)
@@ -59,7 +63,7 @@ const PolygonsGame = React.memo(({ address }) => {
       flashIds = { ...flashIds, ...revealedOwners }
     }
   }
-  if (showClaim) flashIds = EMPTY_OBJECT
+  if (showPrompt) flashIds = EMPTY_OBJECT
   let bannerLabel
   let bannerHero
   if (houseWon) bannerLabel = "House wins"
@@ -78,14 +82,19 @@ const PolygonsGame = React.memo(({ address }) => {
   if (playersWon) cardAnim = "animate-banner-card-long"
   const spin = spinOf(address)
   let mapOwners = owners
-  if ((hideResult || landed) && spin.boardSnap) {
-    mapOwners = { ...spin.boardSnap.owners, ...revealedOwners }
-  }
   let shownCells = claimedCount || 0
   let shownLose = loseLit || 0
-  if (hideResult && spin.boardSnap) {
+  let shownPot = pot
+  if ((hideResult || landed) && spin.boardSnap) {
+    mapOwners = { ...spin.boardSnap.owners, ...revealedOwners }
     shownCells = spin.boardSnap.claimedCount || 0
     shownLose = spin.boardSnap.loseLit || 0
+  }
+  if ((awaitNewGame || hasPrize || holdBoard) && spin.resultSnap) {
+    mapOwners = spin.resultSnap.owners
+    shownCells = spin.resultSnap.claimedCount || 0
+    shownLose = spin.resultSnap.loseLit || 0
+    shownPot = clampEth(spin.resultSnap.prize)
   }
   const racePlayers = React.useMemo(() => {
     const rows = {}
@@ -107,22 +116,21 @@ const PolygonsGame = React.memo(({ address }) => {
   const lastGreen = shownCells > 0 && shownCells === (polygonCount || 0) - 1
   const lastHouse = shownLose > 0 && shownLose === (loseCount || 0) - 1
   let spinLabel = `Hold to spin · ${ethLabel(totalPrice, symbol)}`
-  if (multiplier > 1) spinLabel = `Hold to spin · x${multiplier} · ${ethLabel(totalPrice, symbol)}`
+  if (pack > 1) spinLabel = `Hold to spin · x${pack} · ${ethLabel(totalPrice, symbol)}`
   if (buying || revealing) {
     spinLabel = "Spinning"
-    if (multiplier > 1) spinLabel = `Spinning · x${multiplier}`
+    if (pack > 1) spinLabel = `Spinning · x${pack}`
   }
-  if (!roundOpen) spinLabel = "Closed"
 
   React.useEffect(() => {
-    if (holdingSpin || revealing || buying) {
+    if (holdingSpin || revealing || buying || awaitNewGame || hasPrize) {
       unwatchPolygons(address)
       return
     }
     fetchPolygons(address)
     watchPolygons(address)
     return () => unwatchPolygons(address)
-  }, [address, account, holdingSpin, revealing, buying])
+  }, [address, account, holdingSpin, revealing, buying, awaitNewGame, hasPrize])
 
   React.useEffect(() => {
     if (!account) return
@@ -182,18 +190,18 @@ const PolygonsGame = React.memo(({ address }) => {
               loseCount={loseCount}
               account={account}
               flashIds={flashIds}
-              litIds={showClaim ? EMPTY_OBJECT : litIds}
+              litIds={showPrompt ? EMPTY_OBJECT : litIds}
               spinning={holdingSpin || revealing}
-              manyLit={multiplier > 1}
+              manyLit={pack > 1}
               celebrate={showBanner && playersWon}
             />
-            <PolygonsPrize label={ethLabel(pot, symbol)} />
+            <PolygonsPrize label={ethLabel(shownPot, symbol)} />
           </div>
           <PolygonsClaim
-            show={showClaim}
-            claiming={claiming}
-            label={ethLabel(myPrize, symbol)}
-            onClaim={() => claimPrize(address)}
+            show={showPrompt}
+            loading={claiming}
+            label={promptLabel}
+            onClick={() => ackMapPrompt(address)}
           />
         </div>
       </Card>
@@ -202,7 +210,8 @@ const PolygonsGame = React.memo(({ address }) => {
         account={account}
         authorized={authorized}
         pending={pending}
-        multiplier={multiplier}
+        multiplier={pack}
+        multipliers={TICKET_MULTIPLIERS}
         buying={buying}
         revealing={revealing}
         holdingSpin={holdingSpin}

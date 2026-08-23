@@ -3,13 +3,17 @@ import { actions } from "app/core/store"
 import { EMPTY_OBJECT } from "app/core"
 import { generateContract, getContract, sendTx, sendWalletTx } from "app/core/contracts"
 import { selectAuth } from "app/core/auth"
-import { formatEth, parseEth } from "app/games/roulette/chips"
+import { clampEth, formatEth, parseEth } from "app/games/roulette/chips"
 import PolygonsArtifact from "artifacts/contracts/Polygons.sol/Polygons.json"
 import _ from "lodash"
 
 export const MIN_POLYGONS = 6
-export const MAX_POLYGONS = 36
+export const MAX_POLYGONS = 128
 export const TICKET_MULTIPLIERS = [1, 5, 10, 25]
+export const packedTickets = (multiplier = 1) => {
+  if (_.includes(TICKET_MULTIPLIERS, multiplier)) return multiplier
+  return 1
+}
 export const ticketGas = (count) => 3000000n + BigInt(_.max([count - 1, 0])) * 200000n
 
 export const polygonsActions = (address) => actions.create("games.polygons").create(() => ethers.getAddress(address))
@@ -51,23 +55,38 @@ export const fetchPolygons = async (address) => {
   }
   let overlay = {}
   const spinBusy = prev.revealing || prev.holdingSpin || prev.buying || prev.showBanner || prev.landed
-  if (occupied === 0 && wasOccupied && !spinBusy) {
+  const houseJustSettled = occupied === 0 && wasOccupied && lastSettle && !lastSettle.playersWin
+  const prizeOpen = clampEth(prev.myPrize) > 0
+  const freezeBoard = prev.awaitNewGame || prev.holdBoard || houseJustSettled || prizeOpen
+  if (occupied === 0 && wasOccupied && !spinBusy && !freezeBoard) {
     overlay = { revealedOwners: {}, litIds: {}, landed: false }
+  }
+  let nextOwners = owners
+  let nextClaimed = claimedCount
+  let nextLose = loseLit
+  let nextPrize = formatEth(row.prize)
+  let nextLive = livePlayers
+  if (freezeBoard) {
+    nextOwners = prev.owners || owners
+    nextClaimed = prev.claimedCount
+    nextLose = prev.loseLit
+    nextPrize = prev.prize
+    nextLive = prev.livePlayers || livePlayers
   }
   polygonsActions(address).update({
     polygonCount: Number(row.polygonCount),
     loseCount: Number(row.loseCount),
     ticketPrice: formatEth(await contract.ticketPrice()),
-    claimedCount,
-    loseLit,
-    prize: formatEth(row.prize),
+    claimedCount: nextClaimed,
+    loseLit: nextLose,
+    prize: nextPrize,
     myPrize: formatEth(row.myPrize),
     memberShares: formatEth(row.memberShares),
     totalBalance: formatEth(row.totalBalance),
     lastWithdrawAt: Number(row.lastWithdrawAt),
     owner,
-    owners,
-    livePlayers,
+    owners: nextOwners,
+    livePlayers: nextLive,
     lastSettle,
     ...overlay
   })

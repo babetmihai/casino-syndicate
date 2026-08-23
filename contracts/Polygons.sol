@@ -32,7 +32,7 @@ contract Polygons {
 	mapping(address => uint256) private heldSettle;
 
 	uint256 public constant MIN_POLYGONS = 6;
-	uint256 public constant MAX_POLYGONS = 36;
+	uint256 public constant MAX_POLYGONS = 128;
 	uint256 public constant CHIP = 0.01 ether;
 	uint256 public constant WITHDRAW_INTERVAL = 1 days;
 	uint256 public constant MAX_TICKETS = 25;
@@ -73,7 +73,7 @@ contract Polygons {
 		factory = msg.sender;
 		createdAt = block.timestamp;
 		polygonCount = _polygonCount;
-		loseCount = _polygonCount - 1;
+		loseCount = (_polygonCount * 9) / 10;
 		ticketPrice = _ticketPrice;
 		totalShares = msg.value;
 		shares[_createdBy] = msg.value;
@@ -214,18 +214,23 @@ contract Polygons {
 		require(msg.value == ticketPrice * count, "Wrong price");
 		uint256 used = 0;
 		uint8 outcome = 0;
+		bool broke = false;
 		while (used < count) {
-			uint256 nextPot = pot + ticketPrice;
+			uint256 nextPot = pot + ticketPrice * 2;
 			uint256 unspent = ticketPrice * (count - used - 1);
 			if (address(this).balance < unspent + reserved + nextPot) {
 				require(winLit > 0, "Bankroll");
-				settlePlayers(address(0));
+				broke = true;
 				break;
 			}
 			pot = nextPot;
 			used += 1;
 			outcome = drawTicket(player);
 			if (outcome != 0) {
+				break;
+			}
+			if (houseBankroll() < ticketPrice && winLit > 0) {
+				broke = true;
 				break;
 			}
 		}
@@ -236,7 +241,9 @@ contract Polygons {
 			require(ok, "Refund failed");
 			emit TicketsRefunded(player, leftover, refund);
 		}
-		if (outcome == 1) {
+		if (broke) {
+			settlePlayers(address(0));
+		} else if (outcome == 1) {
 			settlePlayers(player);
 		} else if (outcome == 2) {
 			settleHouse();

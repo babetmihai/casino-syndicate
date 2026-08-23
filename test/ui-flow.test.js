@@ -923,39 +923,39 @@ describe("UI flow: create, view, play polygons", () => {
     expect(stillSecond.prize).to.equal(secondPrize)
   })
 
-  it("bounces a duplicate own cell onto an empty green", async () => {
+  it("adds a duplicate own or house cell to the pot without moving", async () => {
     const [creator, player] = await ethers.getSigners()
     const factory = await deployFactory()
     const price = ethers.parseEther("0.01")
     const createTx = await createPolygons(factory, creator, 4, price)
     const game = await ethers.getContractAt("Polygons", createdAddress(factory, await createTx.wait()))
-    let bounced
+    let miss
+    let before
     for (let i = 0; i < 200; i++) {
       const table = await game.connect(player).getTable()
       if (table.myPrize > 0n) {
         await (await game.connect(player).withdrawPrize()).wait()
       }
+      before = await game.connect(player).getTable()
       const tx = await game.connect(player).buyTicket({ value: price })
       const receipt = await tx.wait()
       const tickets = parseTicket(game, receipt)
-      const hit = tickets.find((ticket) => ticket.bounce)
+      const hit = tickets.find((ticket) => !ticket.assigned && !ticket.split)
       if (hit) {
-        bounced = hit
+        miss = hit
         break
       }
     }
-    expect(bounced).to.not.equal(undefined)
-    expect(bounced.assigned).to.equal(true)
-    expect(bounced.split).to.equal(false)
-    const fromId = Number(bounced.fromId)
-    const destId = Number(bounced.polygonId)
-    expect(destId).to.not.equal(fromId)
-    expect(destId).to.be.lt(4)
-    const table = await game.connect(player).getTable()
-    if (table.myPrize === 0n) {
-      expect(table.owners[destId]).to.equal(player.address)
-      expect(table.owners[fromId]).to.equal(player.address)
-    }
+    expect(miss).to.not.equal(undefined)
+    expect(miss.bounce).to.equal(false)
+    expect(miss.fromId).to.equal(miss.polygonId)
+    const cellId = Number(miss.polygonId)
+    const after = await game.connect(player).getTable()
+    expect(after.claimedCount).to.equal(before.claimedCount)
+    expect(after.loseLit).to.equal(before.loseLit)
+    expect(after.prize).to.equal(before.prize + price * 2n)
+    expect(after.owners[cellId]).to.equal(before.owners[cellId])
+    expect(after.owners[cellId]).to.equal(player.address)
   })
 
   it("pays nucleus extra and closer an extra share", async () => {

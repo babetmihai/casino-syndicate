@@ -265,49 +265,28 @@ contract Polygons {
 				emit TicketBought(player, true, cellId, true, true, false, cellId);
 				return 0;
 			}
-			if (owner == player) {
-				uint256 dest = nextEmpty(cellId);
-				return assignCell(player, dest, true, cellId);
-			}
 			emit TicketBought(player, won, cellId, false, false, false, cellId);
 			return 0;
 		}
-		return assignCell(player, cellId, false, cellId);
+		return assignCell(player, cellId);
 	}
 
-	function assignCell(address player, uint256 cellId, bool bounce, uint256 fromId) private returns (uint8 outcome) {
+	function assignCell(address player, uint256 cellId) private returns (uint8 outcome) {
 		cellOwner[cellId] = player;
 		if (cellId < polygonCount) {
 			winLit++;
-			emit TicketBought(player, true, cellId, true, false, bounce, fromId);
+			emit TicketBought(player, true, cellId, true, false, false, cellId);
 			if (winLit == polygonCount) {
 				return 1;
 			}
 			return 0;
 		}
 		loseLit++;
-		emit TicketBought(player, false, cellId, true, false, bounce, fromId);
+		emit TicketBought(player, false, cellId, true, false, false, cellId);
 		if (loseLit == loseCount) {
 			return 2;
 		}
 		return 0;
-	}
-
-	function nextEmpty(uint256 fromId) private view returns (uint256) {
-		uint256 total = polygonCount + loseCount;
-		for (uint256 i = 1; i < total; i++) {
-			uint256 id = (fromId + i) % total;
-			if (id < polygonCount && cellOwner[id] == address(0)) {
-				return id;
-			}
-		}
-		for (uint256 i = 1; i < total; i++) {
-			uint256 id = (fromId + i) % total;
-			if (cellOwner[id] == address(0)) {
-				return id;
-			}
-		}
-		revert("Full");
 	}
 
 	function cellWeight(uint256 id) private view returns (uint256) {

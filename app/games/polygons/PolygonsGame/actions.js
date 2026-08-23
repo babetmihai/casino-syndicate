@@ -2,7 +2,6 @@ import { buyPolygonsTicket, fetchPolygons, fromRankedIds, polygonsActions, selec
 import { fetchBalance, selectAuth } from "app/core/auth"
 import { requirePlayWallet } from "app/core/auth/SessionModal"
 import { clampEth } from "app/games/roulette/chips"
-import { NUCLEUS_ID } from "../polygons"
 import { ethers } from "ethers"
 import _ from "lodash"
 
@@ -55,7 +54,7 @@ export const claimPrize = async (address) => {
 const clearSpinPaint = (address) => {
   const spin = spinOf(address)
   spin.boardSnap = undefined
-  updateGame(address, { litIds: {}, landed: false, revealedOwners: {}, revealedMates: {} })
+  updateGame(address, { litIds: {}, landed: false, revealedOwners: {} })
 }
 
 export const showResultBanner = (address, house) => {
@@ -76,9 +75,7 @@ export const showResultBanner = (address, house) => {
       litIds: {},
       landed: false,
       revealedOwners: {},
-      revealedMates: {},
       owners: {},
-      mates: {},
       claimedCount: 0,
       loseLit: 0,
       prize: 0
@@ -110,21 +107,16 @@ const scheduleClearLit = (address) => {
   }, CLEAR_MS)
 }
 
-export const revealCell = (address, id, draw) => {
+export const revealCell = (address, id) => {
   const { account } = selectAuth() || {}
   if (!account) return
   if (!_.isFinite(id)) return
   const player = ethers.getAddress(account)
   const game = selectPolygons(address) || {}
-  const { revealedOwners = {}, revealedMates = {} } = game
+  const { revealedOwners = {} } = game
   const nextOwners = { ...revealedOwners }
-  const nextMates = { ...revealedMates }
-  if (draw && draw.split) {
-    nextMates[id] = { id, address: player }
-  } else {
-    nextOwners[id] = { id, address: player }
-  }
-  updateGame(address, { revealedOwners: nextOwners, revealedMates: nextMates })
+  nextOwners[id] = { id, address: player }
+  updateGame(address, { revealedOwners: nextOwners })
 }
 
 export const finishSpin = async (address, ids) => {
@@ -166,15 +158,11 @@ export const finishSpin = async (address, ids) => {
     return
   }
   scheduleClearLit(address)
-  const nucleusHit = _.some(draws, (draw) => {
-    return draw.assigned && draw.won && draw.polygonId === NUCLEUS_ID
-  })
-  if (nucleusHit) setBeat(address, "Nucleus")
 }
 
 const buyTicket = async (address) => {
   const { multiplier = 1 } = selectPolygons(address) || {}
-  updateGame(address, { buying: true, revealing: true, litIds: {}, landed: false, revealedOwners: {}, revealedMates: {} })
+  updateGame(address, { buying: true, revealing: true, litIds: {}, landed: false, revealedOwners: {} })
   const spin = spinOf(address)
   try {
     const ticket = await buyPolygonsTicket(address, multiplier)
@@ -213,8 +201,7 @@ export const cancelSpinHold = (address) => {
     litIds: {},
     landed: false,
     beat: "",
-    revealedOwners: {},
-    revealedMates: {}
+    revealedOwners: {}
   })
 }
 
@@ -227,12 +214,11 @@ export const startSpinHold = (address, event) => {
   spin.landing = undefined
   spin.ticket = undefined
   unwatchPolygons(address)
-  const { owners, mates, claimedCount, loseLit } = selectPolygons(address) || {}
-  spin.boardSnap = { owners, mates, claimedCount, loseLit }
+  const { owners, claimedCount, loseLit } = selectPolygons(address) || {}
+  spin.boardSnap = { owners, claimedCount, loseLit }
   spin.holding = true
   spin.revealedOwners = undefined
-  spin.revealedMates = undefined
-  updateGame(address, { holdingSpin: true, landed: false, beat: "", revealedOwners: {}, revealedMates: {} })
+  updateGame(address, { holdingSpin: true, landed: false, beat: "", revealedOwners: {} })
   spin.holdTimer = _.delay(() => {
     spin.holdTimer = null
     spin.holding = false

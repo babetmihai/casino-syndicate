@@ -7,8 +7,8 @@ import { formatEth, parseEth } from "app/games/roulette/chips"
 import PolygonsArtifact from "artifacts/contracts/Polygons.sol/Polygons.json"
 import _ from "lodash"
 
-export const MIN_POLYGONS = 3
-export const MAX_POLYGONS = 48
+export const MIN_POLYGONS = 6
+export const MAX_POLYGONS = 36
 export const TICKET_MULTIPLIERS = [1, 5, 10, 25]
 export const ticketGas = (count) => 3000000n + BigInt(_.max([count - 1, 0])) * 200000n
 
@@ -28,7 +28,6 @@ export const fetchPolygons = async (address) => {
   if (account) overrides = { from: account }
   const row = await contract.getTable.staticCall(overrides)
   const owners = fromOwners(row.owners)
-  const mates = fromOwners(row.mates)
   const ownerRaw = row.owner
   let owner
   if (ownerRaw && ownerRaw !== ethers.ZeroAddress) owner = ethers.getAddress(ownerRaw)
@@ -37,7 +36,7 @@ export const fetchPolygons = async (address) => {
   const prev = selectPolygons(address) || {}
   const occupied = claimedCount + loseLit
   let livePlayers = prev.livePlayers || {}
-  if (occupied > 0) livePlayers = fromPlayers(owners, mates)
+  if (occupied > 0) livePlayers = fromPlayers(owners)
   let lastSettle = prev.lastSettle
   const wasOccupied = (prev.claimedCount || 0) + (prev.loseLit || 0) > 0
   if (occupied === 0 && wasOccupied) {
@@ -53,7 +52,7 @@ export const fetchPolygons = async (address) => {
   let overlay = {}
   const spinBusy = prev.revealing || prev.holdingSpin || prev.buying || prev.showBanner || prev.landed
   if (occupied === 0 && wasOccupied && !spinBusy) {
-    overlay = { revealedOwners: {}, revealedMates: {}, litIds: {}, landed: false }
+    overlay = { revealedOwners: {}, litIds: {}, landed: false }
   }
   polygonsActions(address).update({
     polygonCount: Number(row.polygonCount),
@@ -62,7 +61,6 @@ export const fetchPolygons = async (address) => {
     claimedCount,
     loseLit,
     prize: formatEth(row.prize),
-    mates,
     myPrize: formatEth(row.myPrize),
     memberShares: formatEth(row.memberShares),
     totalBalance: formatEth(row.totalBalance),
@@ -149,13 +147,9 @@ export const fromRankedIds = (ids) => {
   return result
 }
 
-const fromPlayers = (owners, mates) => {
+const fromPlayers = (owners) => {
   const result = {}
   _.forEach(owners, ({ address }) => {
-    if (!address) return
-    result[address] = { id: address }
-  })
-  _.forEach(mates, ({ address }) => {
     if (!address) return
     result[address] = { id: address }
   })
@@ -169,7 +163,6 @@ const readTicket = (contract, receipt) => {
   let playersWin
   let roundPrize
   let roundOwners
-  let roundMates
   let closer
   let refundedCount = 0
   let refunded = 0
@@ -187,7 +180,6 @@ const readTicket = (contract, receipt) => {
         roundPrize = formatEth(args.prize)
         playersWin = args.playersWin
         roundOwners = fromOwners(args.owners)
-        roundMates = fromOwners(args.mates)
         const closerRaw = args.closer
         if (closerRaw && closerRaw !== ethers.ZeroAddress) closer = ethers.getAddress(closerRaw)
       }
@@ -209,12 +201,10 @@ const readTicket = (contract, receipt) => {
   if (_.isEmpty(draws) && !settled) return
   const claimed = _.pickBy(draws, "assigned")
   const last = _.last(Object.values(claimed)) || _.last(Object.values(draws)) || {}
-  const splitIds = {}
   const takenIds = {}
   const loseIds = {}
   _.forEach(draws, (draw) => {
-    if (draw.split) splitIds[draw.polygonId] = { id: draw.polygonId }
-    if (draw.won && !draw.assigned && !draw.split) takenIds[draw.polygonId] = { id: draw.polygonId }
+    if (draw.won && !draw.assigned) takenIds[draw.polygonId] = { id: draw.polygonId }
     if (!draw.won) loseIds[draw.polygonId] = { id: draw.polygonId }
   })
   return {
@@ -228,12 +218,10 @@ const readTicket = (contract, receipt) => {
     draws,
     takenIds,
     loseIds,
-    splitIds,
     settled,
     playersWin,
     roundPrize,
     roundOwners,
-    roundMates,
     closer,
     refundedCount,
     refunded

@@ -52,13 +52,14 @@ const TableModal = ({ onSubmit }) => {
       form.setSubmitting(true)
       try {
         const polygonCount = _.clamp(_.round(Number(values.polygonCount) || 0), MIN_POLYGONS, MAX_POLYGONS)
+        const ticketPrice = clampEth(values.ticketPrice)
         await onSubmit({
           ...values,
           balance: clampEth(values.balance),
           minBet: clampEth(values.minBet),
           maxBet: clampEth(values.maxBet),
           polygonCount,
-          ticketPrice: clampEth(values.ticketPrice)
+          ticketPrice
         })
         hideModal()
       } finally {
@@ -91,7 +92,12 @@ const TableModal = ({ onSubmit }) => {
         ]}
       />
       {!isPolygons &&
-        <Group className={cn("table-modal-limits")} grow align="flex-start" mt="md">
+        <Group
+          className={cn("table-modal-limits")}
+          grow
+          align="flex-start"
+          mt="md"
+        >
           <NumberInput
             className={cn("table-modal-min")}
             label="Minimum"
@@ -123,7 +129,12 @@ const TableModal = ({ onSubmit }) => {
         </Group>
       }
       {isPolygons &&
-        <Group className={cn("table-modal-polygons-fields")} grow align="flex-start" mt="md">
+        <Group
+          className={cn("table-modal-polygons-fields")}
+          grow
+          align="flex-start"
+          mt="md"
+        >
           <NumberInput
             className={cn("table-modal-polygons")}
             label="Polygons"
@@ -161,17 +172,27 @@ const TableModal = ({ onSubmit }) => {
         decimalScale={2}
         allowDecimal
         allowNegative={false}
-        clampBehavior="strict"
         mt="md"
         value={formik.values.balance}
         onChange={(value) => {
           formik.setFieldValue("balance", value)
         }}
       />
-      <Text className={cn("table-modal-hint")} size="sm" c="dimmed" mt="xs">
-        Minimum {MIN_TABLE_DEPOSIT} {symbol}. Bankroll under {LOW_BANKROLL_MULTIPLIER}× max is shown as low.
+      <Text
+        className={cn("table-modal-hint")}
+        size="sm"
+        c="dimmed"
+        mt="xs"
+      >
+        {!isPolygons && `Minimum ${MIN_TABLE_DEPOSIT} ${symbol}. Bankroll under ${LOW_BANKROLL_MULTIPLIER}× max is shown as low.`}
+        {isPolygons && `${MIN_POLYGONS}–${MAX_POLYGONS} polygons. House has one less cell.`}
       </Text>
-      <Group className={cn("table-modal-actions")} justify="flex-end" gap="sm" mt="md">
+      <Group
+        className={cn("table-modal-actions")}
+        justify="flex-end"
+        gap="sm"
+        mt="md"
+      >
         <Button
           className={cn("table-modal-cancel")}
           variant="subtle"

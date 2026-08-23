@@ -26,9 +26,9 @@
   --animate-map-glow-flash: map-glow-flash 0.5s ease-out forwards;
   --animate-map-glow-win: map-glow-win 1.15s ease-in-out infinite;
   --animate-map-pop: map-pop 0.55s cubic-bezier(0.2, 0.8, 0.32, 1) forwards;
-  --animate-nucleus: nucleus-pulse 1.8s ease-in-out infinite;
-  --animate-nucleus-in: nucleus-in 0.62s cubic-bezier(0.22, 1, 0.36, 1) both;
-  --animate-nucleus-glow-in: nucleus-glow-in 0.7s ease-out both;
+  --animate-map-spin: map-spin-pulse 0.7s ease-in-out infinite;
+  --animate-map-spin-lose: map-spin-pulse-lose 0.7s ease-in-out infinite;
+  --animate-map-spin-glow: map-spin-glow 0.7s ease-in-out infinite;
   --animate-race-hot: race-hot 0.9s ease-in-out infinite;
   --animate-claim: claim-pulse 1.8s ease-in-out infinite;
   --animate-overlay-in: overlay-in 0.32s ease-out;
@@ -90,27 +90,43 @@
   50% { opacity: 0.42; transform: scale(1.2); }
 }
 
+@keyframes map-spin-pulse {
+  0%, 100% {
+    fill: color-mix(in srgb, var(--cs-accent) 10%, var(--cs-bg));
+    transform: scale(1);
+  }
+  50% {
+    fill: color-mix(in srgb, var(--cs-accent) 46%, var(--cs-bg));
+    transform: scale(1.03);
+  }
+}
+
+@keyframes map-spin-pulse-lose {
+  0%, 100% {
+    fill: color-mix(in srgb, var(--cs-accent-2) 10%, var(--cs-bg));
+    transform: scale(1);
+  }
+  50% {
+    fill: color-mix(in srgb, var(--cs-accent-2) 46%, var(--cs-bg));
+    transform: scale(1.03);
+  }
+}
+
+@keyframes map-spin-glow {
+  0%, 100% {
+    opacity: 0.06;
+    transform: scale(1.08);
+  }
+  50% {
+    opacity: 0.3;
+    transform: scale(1.18);
+  }
+}
+
 @keyframes map-pop {
   0% { transform: scale(1); opacity: 1; }
   32% { transform: scale(1.22); opacity: 1; }
   100% { transform: scale(0); opacity: 0; }
-}
-
-@keyframes nucleus-pulse {
-  0%, 100% { transform: scale(1); opacity: 1; }
-  50% { transform: scale(0.84); opacity: 0.78; }
-}
-
-@keyframes nucleus-in {
-  0% { transform: scale(0); opacity: 0; }
-  58% { transform: scale(1.28); opacity: 1; }
-  100% { transform: scale(1); opacity: 1; }
-}
-
-@keyframes nucleus-glow-in {
-  0% { transform: scale(0.2); opacity: 0; }
-  42% { transform: scale(2.35); opacity: 0.5; }
-  100% { transform: scale(1.7); opacity: 0.22; }
 }
 
 @keyframes race-hot {
@@ -214,9 +230,7 @@
   }
 
   .polygons-map-cell,
-  .polygons-map-cell-glow,
-  .polygons-map-nucleus,
-  .polygons-map-nucleus-glow {
+  .polygons-map-cell-glow {
     transform-box: fill-box;
     transform-origin: center;
   }
@@ -229,37 +243,30 @@
     transition: none;
   }
 
-  .polygons-map-spinning .polygons-map-cell {
-    transition: fill 0.06s linear;
+  .polygons-map-spinning .polygons-map-cell:not(.polygons-map-cell-owned):not(.polygons-map-cell-taken) {
+    animation: var(--animate-map-spin);
+    transition: none;
+  }
+
+  .polygons-map-spinning .polygons-map-cell-lose:not(.polygons-map-cell-owned):not(.polygons-map-cell-taken) {
+    animation: var(--animate-map-spin-lose);
   }
 
   .polygons-map-spinning .polygons-map-cell-taken {
+    animation: none;
     transition: none;
   }
 
   .polygons-map-spinning .polygons-map-cell-glow {
-    opacity: 0;
+    animation: var(--animate-map-spin-glow);
     transition: none;
   }
 
-  .polygons-map-spinning .polygons-map-cell-glow-on {
-    opacity: 0.28;
-    transform: scale(1.16);
-  }
-
-  .polygons-map-spinning .polygons-map-cell-glow-1 {
-    opacity: 0.26;
-    transform: scale(1.16);
-  }
-
-  .polygons-map-spinning .polygons-map-cell-glow-2 {
-    opacity: 0.15;
-    transform: scale(1.12);
-  }
-
-  .polygons-map-spinning .polygons-map-cell-glow-3 {
-    opacity: 0.08;
-    transform: scale(1.08);
+  .polygons-map-spinning .polygons-map-cell-glow-on,
+  .polygons-map-spinning .polygons-map-cell-glow-flash {
+    animation: none;
+    opacity: 0.4;
+    transform: scale(1.2);
   }
 
   .polygons-map-cell-glow {
@@ -291,14 +298,6 @@
   .polygons-map-cell-glow-3 {
     opacity: 0.08;
     transform: scale(1.08);
-  }
-
-  .polygons-map-nucleus-fresh {
-    animation: nucleus-in 0.62s cubic-bezier(0.22, 1, 0.36, 1) both, nucleus-pulse 1.8s ease-in-out 0.62s infinite;
-  }
-
-  .polygons-map-nucleus-glow-fresh {
-    animation: nucleus-glow-in 0.7s ease-out both;
   }
 
   .polygons-map-card,
@@ -352,8 +351,6 @@
     .polygons-map-cell,
     .polygons-map-cell-glow,
     .polygons-map-cell-pop,
-    .polygons-map-nucleus,
-    .polygons-map-nucleus-glow,
     .polygons-banner,
     .polygons-banner-card,
     .polygons-toast,

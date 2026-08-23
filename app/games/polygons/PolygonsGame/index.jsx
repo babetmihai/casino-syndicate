@@ -8,7 +8,6 @@ import { cn, EMPTY_OBJECT } from "app/core"
 import PolygonsMap from "../PolygonsMap"
 import { bankrollClass, clampEth, ethLabel } from "app/games/roulette/chips"
 import { selectNativeSymbol } from "app/core/chain"
-import { nucleusWeight } from "../polygons"
 import { ethers } from "ethers"
 import PolygonsRace from "./PolygonsRace"
 import PolygonsPrize from "./PolygonsPrize"
@@ -35,20 +34,19 @@ const PolygonsGame = React.memo(({ address }) => {
   const symbol = useSelector(() => selectNativeSymbol())
   const {
     polygonCount, loseCount, ticketPrice, claimedCount, loseLit, prize, myPrize,
-    owners = {}, mates = {}, lastTicket, totalBalance, livePlayers = {}, lastSettle,
+    owners = {}, lastTicket, totalBalance, livePlayers = {}, lastSettle,
     buying, claiming, revealing, litIds = {}, landed, showBanner, holdingSpin, beat, multiplier = 1,
-    revealedOwners = {}, revealedMates = {}
+    revealedOwners = {}
   } = polygons
-  const { settled, playersWin, roundPrize, splitIds = {}, roundMates, closer, refunded } = lastTicket || {}
+  const { settled, playersWin, roundPrize, closer, refunded } = lastTicket || {}
   const hasPrize = clampEth(myPrize) > 0
   const pending = hasPrize
   const showClaim = Boolean(account && hasPrize && !revealing && !showBanner)
   const roundOpen = (claimedCount || 0) < (polygonCount || 0) && (loseLit || 0) < (loseCount || 0)
   const totalPrice = clampEth(ticketPrice) * multiplier
   const bankroll = clampEth(totalBalance)
-  const pot = clampEth(prize / 2)
+  const pot = clampEth(prize)
   const canSpin = canSpinPolygons(address)
-  const isSplit = !_.isEmpty(splitIds) && !settled
   const mineKey = account && ethers.getAddress(account)
   const houseFromWatch = lastSettle && !lastSettle.playersWin && mineKey && livePlayers[mineKey]
   const houseWon = (settled && !playersWin) || houseFromWatch
@@ -57,8 +55,8 @@ const PolygonsGame = React.memo(({ address }) => {
   let flashIds = EMPTY_OBJECT
   if (hideResult || landed) {
     if (landed) flashIds = litIds
-    if (!_.isEmpty(revealedOwners) || !_.isEmpty(revealedMates)) {
-      flashIds = { ...flashIds, ...revealedOwners, ...revealedMates }
+    if (!_.isEmpty(revealedOwners)) {
+      flashIds = { ...flashIds, ...revealedOwners }
     }
   }
   if (showClaim) flashIds = EMPTY_OBJECT
@@ -78,18 +76,10 @@ const PolygonsGame = React.memo(({ address }) => {
   if (playersWon) heroClass = "text-[1.75rem]"
   let cardAnim = "animate-banner-card"
   if (playersWon) cardAnim = "animate-banner-card-long"
-  let mapSplit = EMPTY_OBJECT
-  if (hideResult || showClaim) mapSplit = revealedMates
-  if (!hideResult && !showClaim && isSplit) mapSplit = splitIds
   const spin = spinOf(address)
   let mapOwners = owners
-  let mapMates = mates
-  if (pending && !_.isEmpty(roundMates) && (hideResult || landed || showClaim)) {
-    mapMates = roundMates
-  }
   if ((hideResult || landed) && spin.boardSnap) {
     mapOwners = { ...spin.boardSnap.owners, ...revealedOwners }
-    mapMates = { ...spin.boardSnap.mates, ...revealedMates }
   }
   let shownCells = claimedCount || 0
   let shownLose = loseLit || 0
@@ -102,25 +92,16 @@ const PolygonsGame = React.memo(({ address }) => {
     _.forEach(mapOwners, ({ id, address: owner }) => {
       if (id >= (polygonCount || 0)) return
       if (!owner) return
-      const { address: mate } = mapMates[id] || {}
-      const addShare = (addr, amount) => {
-        const key = ethers.getAddress(addr)
-        const row = rows[key]
-        if (row) {
-          row.amount += amount
-          return
-        }
-        rows[key] = { id: key, amount }
-      }
-      if (mate) {
-        addShare(owner, 0.5)
-        addShare(mate, 0.5)
+      const key = ethers.getAddress(owner)
+      const row = rows[key]
+      if (row) {
+        row.amount += 1
         return
       }
-      addShare(owner, 1)
+      rows[key] = { id: key, amount: 1 }
     })
     return rows
-  }, [mapOwners, mapMates, polygonCount])
+  }, [mapOwners, polygonCount])
   let housePct = 0
   if (loseCount) housePct = (shownLose / loseCount) * 100
   const lastGreen = shownCells > 0 && shownCells === (polygonCount || 0) - 1
@@ -197,13 +178,11 @@ const PolygonsGame = React.memo(({ address }) => {
             <PolygonsMap
               address={address}
               owners={mapOwners}
-              mates={mapMates}
               polygonCount={polygonCount}
               loseCount={loseCount}
               account={account}
               flashIds={flashIds}
               litIds={showClaim ? EMPTY_OBJECT : litIds}
-              splitIds={mapSplit}
               spinning={holdingSpin || revealing}
               manyLit={multiplier > 1}
               celebrate={showBanner && playersWon}
@@ -236,7 +215,6 @@ const PolygonsGame = React.memo(({ address }) => {
       <PolygonsToast
         beat={beat}
         revealing={revealing}
-        hero={beat === "Nucleus" && `x${nucleusWeight(polygonCount)}`}
         house={beat === "House wins"}
       />
       <PolygonsBanner

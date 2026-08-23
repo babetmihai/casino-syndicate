@@ -533,13 +533,15 @@ describe("UI flow: create, view, play polygons", () => {
     return created.args.game
   }
 
-  const createPolygons = (factory, creator, polygons, price) => {
+  const createPolygons = (factory, creator, polygons, price, value) => {
+    let funded = value
+    if (funded === undefined) funded = DEPOSIT
     return factory.connect(creator).createGame(
       TABLE_TYPE_IDS.Polygons,
       polygons,
       0,
       price,
-      { value: DEPOSIT }
+      { value: funded }
     )
   }
 
@@ -581,26 +583,12 @@ describe("UI flow: create, view, play polygons", () => {
       .find((parsed) => parsed && parsed.name === "Settled")
   }
 
-  const nucleusWeightOf = (count) => {
-    const n = Number(count)
-    let step = Math.ceil(n / 12)
-    if (step < 1) step = 1
-    if (step > 4) step = 4
-    return BigInt(3 * step)
-  }
-
-  const pieceCount = (owners, mates, closer) => {
-    const nucleusId = 0
-    const nucleusWeight = nucleusWeightOf(owners.length)
+  const pieceCount = (owners, closer) => {
     let n = 0n
     for (let i = 0; i < owners.length; i++) {
       const owner = owners[i]
       if (!owner || owner === ethers.ZeroAddress) continue
-      let w = 1n
-      if (i === nucleusId) w = nucleusWeight
-      n += w
-      const mate = mates[i]
-      if (mate && mate !== ethers.ZeroAddress) n += w
+      n += 1n
     }
     if (closer && closer !== ethers.ZeroAddress) n += 1n
     return n
@@ -668,13 +656,32 @@ describe("UI flow: create, view, play polygons", () => {
     expect(table.owners.length).to.equal(23)
   })
 
+  it("creates a large lottery and draws a ticket", async () => {
+    const [creator, player] = await ethers.getSigners()
+    const factory = await deployFactory()
+    const price = ethers.parseEther("0.01")
+    const createTx = await createPolygons(factory, creator, 16, price)
+    const game = await ethers.getContractAt("Polygons", createdAddress(factory, await createTx.wait()))
+    const table = await game.connect(creator).getTable()
+    expect(table.polygonCount).to.equal(16n)
+    expect(table.loseCount).to.equal(15n)
+    expect(table.owners.length).to.equal(31)
+    const receipt = await (await game.connect(player).buyTicket({ value: price })).wait()
+    const tickets = parseTicket(game, receipt)
+    expect(tickets.length).to.equal(1)
+    expect(tickets[0].assigned).to.equal(true)
+    const live = await game.connect(player).getTable()
+    expect(live.claimedCount + live.loseLit).to.equal(1n)
+    expect(live.prize).to.equal(price)
+  })
+
   it("rejects bad polygons params and wrong ticket price", async () => {
     const [creator, player] = await ethers.getSigners()
     const factory = await deployFactory()
     await expect(
       factory.connect(creator).createGame(
         TABLE_TYPE_IDS.Polygons,
-        2,
+        5,
         0,
         ethers.parseEther("0.01"),
         { value: DEPOSIT }
@@ -683,7 +690,7 @@ describe("UI flow: create, view, play polygons", () => {
     await expect(
       factory.connect(creator).createGame(
         TABLE_TYPE_IDS.Polygons,
-        49,
+        37,
         0,
         ethers.parseEther("0.01"),
         { value: DEPOSIT }
@@ -698,16 +705,8 @@ describe("UI flow: create, view, play polygons", () => {
         { value: DEPOSIT }
       )
     ).to.be.revertedWith("Price too small")
-    await expect(
-      factory.connect(creator).createGame(
-        TABLE_TYPE_IDS.Polygons,
-        12,
-        0,
-        ethers.parseEther("0.01")
-      )
-    ).to.be.revertedWith("Min deposit 1")
 
-    const createTx = await createPolygons(factory, creator, 4, ethers.parseEther("0.01"))
+    const createTx = await createPolygons(factory, creator, 6, ethers.parseEther("0.01"))
     const game = await ethers.getContractAt("Polygons", createdAddress(factory, await createTx.wait()))
     await expect(
       game.connect(player).buyTicket({ value: ethers.parseEther("0.02") })
@@ -716,20 +715,20 @@ describe("UI flow: create, view, play polygons", () => {
     const boughtReceipt = await bought.wait()
     expect(parseTicket(game, boughtReceipt).length).to.equal(1)
     const live = await game.connect(player).getTable()
-    expect(live.prize).to.equal(ethers.parseEther("0.02"))
+    expect(live.prize).to.equal(ethers.parseEther("0.01"))
   })
 
   it("buys a ticket pack and refunds leftovers after settle", async () => {
     const [creator, player] = await ethers.getSigners()
     const factory = await deployFactory()
     const price = ethers.parseEther("0.01")
-    const createTx = await createPolygons(factory, creator, 3, price)
+    const createTx = await createPolygons(factory, creator, 6, price)
     const game = await ethers.getContractAt("Polygons", createdAddress(factory, await createTx.wait()))
     await expect(
       game.connect(player).buyTickets(0, { value: 0 })
     ).to.be.revertedWith("Bad count")
     await expect(
-      game.connect(player).buyTickets(101, { value: price * 101n })
+      game.connect(player).buyTickets(26, { value: price * 26n })
     ).to.be.revertedWith("Bad count")
     await expect(
       game.connect(player).buyTickets(5, { value: price })
@@ -761,8 +760,8 @@ describe("UI flow: create, view, play polygons", () => {
     }
     const live = await game.connect(player).getTable()
     if (settled.args.playersWin) {
-      const matched = price * used * 2n
-      const pieces = pieceCount(settled.args.owners, settled.args.mates, settled.args.closer)
+      const matched = price * used
+      const pieces = pieceCount(settled.args.owners, settled.args.closer)
       expect(settled.args.prize).to.equal(matched - (matched % pieces))
       expect(live.myPrize).to.equal(settled.args.prize)
     } else {
@@ -771,37 +770,11 @@ describe("UI flow: create, view, play polygons", () => {
     }
   })
 
-  it("splits like a player win when the house cannot cover the pot", async () => {
-    const [creator, player] = await ethers.getSigners()
-    const factory = await deployFactory()
-    const price = ethers.parseEther("1")
-    let settled
-    for (let i = 0; i < 40; i++) {
-      const createTx = await createPolygons(factory, creator, 48, price)
-      const game = await ethers.getContractAt("Polygons", createdAddress(factory, await createTx.wait()))
-      const first = await (await game.connect(player).buyTicket({ value: price })).wait()
-      const green = parseTicket(game, first).find((ticket) => ticket.assigned && ticket.won)
-      if (!green) continue
-      const second = await (await game.connect(player).buyTicket({ value: price })).wait()
-      settled = parseSettled(game, second)
-      expect(settled.args.playersWin).to.equal(true)
-      expect(settled.args.closer).to.equal(ethers.ZeroAddress)
-      expect(parseTicket(game, second).length).to.equal(0)
-      const pieces = pieceCount(settled.args.owners, settled.args.mates, settled.args.closer)
-      expect(settled.args.prize).to.equal(price * 2n - (price * 2n % pieces))
-      const held = await game.connect(player).getTable()
-      expect(held.myPrize).to.equal(settled.args.prize)
-      expect(held.claimedCount).to.equal(1n)
-      break
-    }
-    expect(settled).to.not.equal(undefined)
-  })
-
   it("splits the ticket pot when greens fill", async () => {
     const [creator, player] = await ethers.getSigners()
     const factory = await deployFactory()
     const price = ethers.parseEther("0.01")
-    const createTx = await createPolygons(factory, creator, 3, price)
+    const createTx = await createPolygons(factory, creator, 6, price)
     const game = await ethers.getContractAt("Polygons", createdAddress(factory, await createTx.wait()))
     let used = 0n
     let settled
@@ -818,13 +791,13 @@ describe("UI flow: create, view, play polygons", () => {
     expect(live.prize).to.equal(0n)
     expect(live.owners.filter((owner) => owner !== ethers.ZeroAddress).length).to.equal(0)
     if (settled.args.playersWin) {
-      const matched = price * used * 2n
-      const pieces = pieceCount(settled.args.owners, settled.args.mates, settled.args.closer)
-      expect(settled.args.owners.length).to.equal(3)
+      const matched = price * used
+      const pieces = pieceCount(settled.args.owners, settled.args.closer)
+      expect(settled.args.owners.length).to.equal(6)
       expect(settled.args.closer).to.equal(player.address)
       expect(settled.args.prize).to.equal(matched - (matched % pieces))
       const held = await game.connect(player).getTable()
-      expect(held.claimedCount).to.equal(3n)
+      expect(held.claimedCount).to.equal(6n)
       expect(held.prize).to.equal(settled.args.prize)
       expect(held.myPrize).to.equal(settled.args.prize)
       await expect(
@@ -844,7 +817,7 @@ describe("UI flow: create, view, play polygons", () => {
     const [creator, player, other] = await ethers.getSigners()
     const factory = await deployFactory()
     const price = ethers.parseEther("0.01")
-    const createTx = await createPolygons(factory, creator, 4, price)
+    const createTx = await createPolygons(factory, creator, 6, price)
     const game = await ethers.getContractAt("Polygons", createdAddress(factory, await createTx.wait()))
     const buyers = [player, other]
     const firstOwners = {}
@@ -877,11 +850,11 @@ describe("UI flow: create, view, play polygons", () => {
     expect(live.owners.filter((owner) => owner !== ethers.ZeroAddress).length).to.equal(0)
     if (settled.args.playersWin) {
       expect(settled.args.prize).to.be.greaterThan(0n)
-      expect(assigned).to.be.gte(4)
-      expect(settled.args.owners.length).to.equal(4)
+      expect(assigned).to.be.gte(6)
+      expect(settled.args.owners.length).to.equal(6)
       const winners = {}
       let paidTotal = 0n
-      const payees = [...settled.args.owners, ...(settled.args.mates || [])]
+      const payees = settled.args.owners
       for (const owner of payees) {
         if (!owner || owner === ethers.ZeroAddress) continue
         if (winners[owner]) continue
@@ -890,7 +863,7 @@ describe("UI flow: create, view, play polygons", () => {
         if (ethers.getAddress(owner) === ethers.getAddress(player.address)) signer = player
         const before = await game.connect(signer).getTable()
         expect(before.myPrize).to.be.greaterThan(0n)
-        expect(before.claimedCount).to.equal(4n)
+        expect(before.claimedCount).to.equal(6n)
         const paidTx = await game.connect(signer).withdrawPrize()
         const paid = parsePaid(game, await paidTx.wait())
         expect(paid.length).to.equal(1)
@@ -899,7 +872,7 @@ describe("UI flow: create, view, play polygons", () => {
       expect(paidTotal).to.equal(settled.args.prize)
     } else {
       expect(settled.args.prize).to.equal(0n)
-      expect(assigned).to.be.gte(3)
+      expect(assigned).to.be.gte(5)
       expect(settled.args.owners.length).to.equal(0)
     }
   })
@@ -908,28 +881,28 @@ describe("UI flow: create, view, play polygons", () => {
     const [creator, player, other] = await ethers.getSigners()
     const factory = await deployFactory()
     const price = ethers.parseEther("0.01")
-    const createTx = await createPolygons(factory, creator, 3, price)
+    const createTx = await createPolygons(factory, creator, 6, price)
     const game = await ethers.getContractAt("Polygons", createdAddress(factory, await createTx.wait()))
     const first = await playUntilSettled(game, player, price, true)
     const firstPrize = first.settled.args.prize
     const firstOwners = first.settled.args.owners
     const heldFirst = await game.connect(player).getTable()
-    expect(heldFirst.claimedCount).to.equal(3n)
+    expect(heldFirst.claimedCount).to.equal(6n)
     expect(heldFirst.prize).to.equal(firstPrize)
-    expect(heldFirst.owners.slice(0, 3)).to.deep.equal(firstOwners)
+    expect(heldFirst.owners.slice(0, 6)).to.deep.equal(firstOwners)
 
     const second = await playUntilSettled(game, other, price, true)
     const secondPrize = second.settled.args.prize
     const secondOwners = second.settled.args.owners
     const stillFirst = await game.connect(player).getTable()
-    expect(stillFirst.claimedCount).to.equal(3n)
+    expect(stillFirst.claimedCount).to.equal(6n)
     expect(stillFirst.prize).to.equal(firstPrize)
     expect(stillFirst.myPrize).to.equal(firstPrize)
-    expect(stillFirst.owners.slice(0, 3)).to.deep.equal(firstOwners)
+    expect(stillFirst.owners.slice(0, 6)).to.deep.equal(firstOwners)
     const heldSecond = await game.connect(other).getTable()
-    expect(heldSecond.claimedCount).to.equal(3n)
+    expect(heldSecond.claimedCount).to.equal(6n)
     expect(heldSecond.prize).to.equal(secondPrize)
-    expect(heldSecond.owners.slice(0, 3)).to.deep.equal(secondOwners)
+    expect(heldSecond.owners.slice(0, 6)).to.deep.equal(secondOwners)
     const live = await game.connect(creator).getTable()
     expect(live.claimedCount).to.equal(0n)
     expect(live.prize).to.equal(0n)
@@ -939,7 +912,7 @@ describe("UI flow: create, view, play polygons", () => {
     const afterFirst = await game.connect(player).getTable()
     expect(afterFirst.myPrize).to.equal(0n)
     const stillSecond = await game.connect(other).getTable()
-    expect(stillSecond.owners.slice(0, 3)).to.deep.equal(secondOwners)
+    expect(stillSecond.owners.slice(0, 6)).to.deep.equal(secondOwners)
     expect(stillSecond.prize).to.equal(secondPrize)
   })
 
@@ -947,7 +920,7 @@ describe("UI flow: create, view, play polygons", () => {
     const [creator, player] = await ethers.getSigners()
     const factory = await deployFactory()
     const price = ethers.parseEther("0.01")
-    const createTx = await createPolygons(factory, creator, 4, price)
+    const createTx = await createPolygons(factory, creator, 6, price)
     const game = await ethers.getContractAt("Polygons", createdAddress(factory, await createTx.wait()))
     const { hit, table } = await playUntilBounce(game, player, price, false)
     const fromId = Number(hit.fromId)
@@ -956,8 +929,8 @@ describe("UI flow: create, view, play polygons", () => {
     expect(hit.split).to.equal(false)
     expect(hit.won).to.equal(true)
     expect(destId).to.not.equal(fromId)
-    expect(fromId).to.be.lt(4)
-    expect(destId).to.be.lt(4)
+    expect(fromId).to.be.lt(Number(table.polygonCount))
+    expect(destId).to.be.lt(Number(table.polygonCount))
     if (table.myPrize === 0n && table.claimedCount + table.loseLit > 0n) {
       expect(table.owners[fromId]).to.equal(player.address)
       expect(table.owners[destId]).to.equal(player.address)
@@ -968,7 +941,7 @@ describe("UI flow: create, view, play polygons", () => {
     const [creator, player] = await ethers.getSigners()
     const factory = await deployFactory()
     const price = ethers.parseEther("0.01")
-    const createTx = await createPolygons(factory, creator, 4, price)
+    const createTx = await createPolygons(factory, creator, 6, price)
     const game = await ethers.getContractAt("Polygons", createdAddress(factory, await createTx.wait()))
     const { hit, table } = await playUntilBounce(game, player, price, true)
     const fromId = Number(hit.fromId)
@@ -977,19 +950,19 @@ describe("UI flow: create, view, play polygons", () => {
     expect(hit.split).to.equal(false)
     expect(hit.won).to.equal(false)
     expect(destId).to.not.equal(fromId)
-    expect(fromId).to.be.gte(4)
-    expect(destId).to.be.gte(4)
+    expect(fromId).to.be.gte(Number(table.polygonCount))
+    expect(destId).to.be.gte(Number(table.polygonCount))
     if (table.myPrize === 0n && table.claimedCount + table.loseLit > 0n) {
       expect(table.owners[fromId]).to.equal(player.address)
       expect(table.owners[destId]).to.equal(player.address)
     }
   })
 
-  it("pays nucleus extra and closer an extra share", async () => {
+  it("pays closer an extra share", async () => {
     const [creator, player, other] = await ethers.getSigners()
     const factory = await deployFactory()
     const price = ethers.parseEther("0.01")
-    const createTx = await createPolygons(factory, creator, 4, price)
+    const createTx = await createPolygons(factory, creator, 6, price)
     const game = await ethers.getContractAt("Polygons", createdAddress(factory, await createTx.wait()))
     const buyers = [player, other]
     let settled
@@ -1008,7 +981,7 @@ describe("UI flow: create, view, play polygons", () => {
     expect(settled.args.playersWin).to.equal(true)
     const closer = settled.args.closer
     expect(closer).to.not.equal(ethers.ZeroAddress)
-    const pieces = pieceCount(settled.args.owners, settled.args.mates, closer)
+    const pieces = pieceCount(settled.args.owners, closer)
     const share = settled.args.prize / pieces
     expect(share * pieces).to.equal(settled.args.prize)
     const weights = {}
@@ -1017,14 +990,8 @@ describe("UI flow: create, view, play polygons", () => {
       if (!weights[key]) weights[key] = 0n
       weights[key] += w
     }
-    const nucleusId = 0
-    const nucleusWeight = nucleusWeightOf(settled.args.owners.length)
     for (let i = 0; i < settled.args.owners.length; i++) {
-      let w = 1n
-      if (i === nucleusId) w = nucleusWeight
-      addWeight(settled.args.owners[i], w)
-      const mate = settled.args.mates[i]
-      if (mate && mate !== ethers.ZeroAddress) addWeight(mate, w)
+      addWeight(settled.args.owners[i], 1n)
     }
     addWeight(closer, 1n)
     for (const addr of Object.keys(weights)) {
@@ -1055,7 +1022,6 @@ describe("UI flow: create, view, play polygons", () => {
       const bounce = tickets.find((ticket) => {
         if (!ticket.bounce || !ticket.won) return false
         const fromId = Number(ticket.fromId)
-        if (fromId === 0) return false
         const owner = table.owners[fromId]
         if (!owner || owner === ethers.ZeroAddress) return false
         return ethers.getAddress(owner) !== ethers.getAddress(buyer.address)
@@ -1075,45 +1041,10 @@ describe("UI flow: create, view, play polygons", () => {
     expect(destId).to.be.lt(6)
     const after = await game.connect(player).getTable()
     if (after.myPrize === 0n && after.claimedCount > 0n) {
-      expect(after.mates[fromId]).to.equal(ethers.ZeroAddress)
       expect(after.owners[fromId]).to.not.equal(ethers.ZeroAddress)
       expect(after.owners[destId]).to.not.equal(ethers.ZeroAddress)
       expect(after.owners[destId]).to.not.equal(after.owners[fromId])
     }
-  })
-
-  it("splits a foreign nucleus", async () => {
-    const [creator, player, other] = await ethers.getSigners()
-    const factory = await deployFactory()
-    const price = ethers.parseEther("0.01")
-    const createTx = await createPolygons(factory, creator, 6, price)
-    const game = await ethers.getContractAt("Polygons", createdAddress(factory, await createTx.wait()))
-    const buyers = [player, other]
-    let split
-    for (let i = 0; i < 400; i++) {
-      const buyer = buyers[i % 2]
-      const table = await game.connect(buyer).getTable()
-      if (table.myPrize > 0n) {
-        await (await game.connect(buyer).withdrawPrize()).wait()
-      }
-      const tx = await game.connect(buyer).buyTicket({ value: price })
-      const receipt = await tx.wait()
-      const tickets = parseTicket(game, receipt)
-      const hit = tickets.find((ticket) => ticket.split && Number(ticket.polygonId) === 0)
-      if (hit) {
-        split = hit
-        break
-      }
-    }
-    expect(split).to.not.equal(undefined)
-    expect(split.assigned).to.equal(true)
-    expect(split.won).to.equal(true)
-    expect(split.bounce).to.equal(false)
-    const hitter = split.player
-    const table = await game.connect(player).getTable()
-    expect(table.mates[0]).to.equal(ethers.getAddress(hitter))
-    expect(table.owners[0]).to.not.equal(ethers.ZeroAddress)
-    expect(table.owners[0]).to.not.equal(table.mates[0])
   })
 
   it("lets the house deposit and withdraw shares", async () => {
@@ -1213,7 +1144,7 @@ describe("session wallet acts as principal", () => {
     const polygonsTx = await factory.connect(session).createGame(
       TABLE_TYPE_IDS.Polygons,
       6,
-      0,
+      1,
       ethers.parseEther("0.01"),
       { value: ethers.parseEther("2") }
     )

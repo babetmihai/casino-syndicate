@@ -3,45 +3,37 @@ import { ethers } from "ethers"
 import { cn } from "app/core"
 import {
   BORDER_STROKE,
-  BORDER_WIDTH,
   LIT_LOSE_FILL,
   LIT_WIN_FILL,
   LOSE_FILL,
   ownerFill,
   SPIN_LOSE_FILL
 } from "../polygons"
-import NucleusMark from "./NucleusMark"
 
 
 const PolygonCell = React.memo(({
-  clipId,
   cellId,
   path,
-  x,
-  y,
-  points,
   owner,
   isLose,
-  isNucleus,
-  nucleusWeight,
   mineAddr,
   isFocus,
   isFlash,
   isLit,
   trailRank,
-  isSplitFlash,
   spinning,
   manyLit,
   celebrate,
   housePop,
-  popIndex
+  popIndex,
+  strokeWidth
 }) => {
   const ownerAddr = owner && ethers.getAddress(owner)
   const isMine = Boolean(ownerAddr && mineAddr && ownerAddr === mineAddr)
   const isOccupied = Boolean(owner)
   const isWinPulse = celebrate && owner && !isLose
   const isHousePop = housePop && isLose
-  let fill = ownerFill(owner, isMine, isNucleus)
+  let fill = ownerFill(owner, isMine)
   if (isLose) {
     fill = LOSE_FILL
     if (owner) fill = LIT_LOSE_FILL
@@ -53,17 +45,15 @@ const PolygonCell = React.memo(({
   if (isFlash && !isLose) fill = LIT_WIN_FILL
   let glow = "var(--cs-accent)"
   if (isLose) glow = "var(--cs-accent-2)"
-  const showGlow = spinning || isLit || trailRank > 0 || isFlash || isSplitFlash || isWinPulse || isHousePop
+  const showGlow = spinning || isLit || trailRank > 0 || isFlash || isWinPulse || isHousePop
   const flashAnim = isFlash && !manyLit
   let stroke = BORDER_STROKE
-  let strokeWidth = BORDER_WIDTH
   let popDelay = 0
   if (isHousePop && popIndex > 0) popDelay = popIndex * 38
   const popStyle = isHousePop ? { animationDelay: `${popDelay}ms` } : undefined
   const cellClass = cn(
     "polygons-map-cell",
     isLose && "polygons-map-cell-lose",
-    isNucleus && "polygons-map-cell-nucleus-fill",
     isMine && "polygons-map-cell-mine",
     owner && "polygons-map-cell-owned",
     isFocus && "polygons-map-cell-focus",
@@ -71,7 +61,6 @@ const PolygonCell = React.memo(({
     isLit && isOccupied && !isFlash && "polygons-map-cell-occupied animate-map-pass",
     isFlash && "polygons-map-cell-taken",
     flashAnim && "animate-map-taken",
-    isSplitFlash && "polygons-map-cell-split animate-map-taken",
     isWinPulse && !isFlash && "polygons-map-cell-win animate-map-win",
     isHousePop && "polygons-map-cell-pop animate-map-pop"
   )
@@ -79,7 +68,7 @@ const PolygonCell = React.memo(({
   if (isLose) loseAttr = "1"
   return (
     <g
-      className={cn("polygons-map-sector", isLose && "polygons-map-sector-lose", isNucleus && "polygons-map-sector-nucleus")}
+      className={cn("polygons-map-sector", isLose && "polygons-map-sector-lose")}
       style={popStyle}
     >
       {showGlow &&
@@ -112,28 +101,13 @@ const PolygonCell = React.memo(({
         fill={fill}
         stroke={stroke}
         strokeWidth={strokeWidth}
-        strokeLinejoin="miter"
-        strokeMiterlimit={2}
+        strokeLinejoin="round"
         style={popStyle}
       >
-        {isNucleus &&
-          <title>Nucleus · {nucleusWeight}×</title>
-        }
-        {owner && !isNucleus &&
+        {owner &&
           <title>{owner}</title>
         }
       </path>
-      {isNucleus &&
-        <NucleusMark
-          clipId={clipId}
-          path={path}
-          x={x}
-          y={y}
-          points={points}
-          isMine={isMine}
-          isFresh={isFlash || isSplitFlash}
-        />
-      }
     </g>
   )
 })

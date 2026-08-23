@@ -45,7 +45,7 @@ const PolygonsControls = React.memo(({
                 className={cn(
                   "polygons-multiplier",
                   isCurrent && "polygons-multiplier-selected",
-                  "size-8 appearance-none rounded-[0.75rem] border-2 border-transparent font-sans text-[0.75rem] font-medium",
+                  "size-8 min-w-8 w-auto px-1.5 appearance-none rounded-[0.75rem] border-2 border-transparent font-sans text-[0.75rem] font-medium",
                   "bg-cs-elevated text-cs-text outline outline-cs-border",
                   isCurrent && "border-cs-accent text-cs-accent shadow-[0_0_0.75rem_var(--color-cs-accent-glow)]",
                   "cursor-pointer disabled:cursor-default disabled:opacity-40 disabled:shadow-none"

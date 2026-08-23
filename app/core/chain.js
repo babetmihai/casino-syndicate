@@ -52,7 +52,7 @@ const CHAINS = {
     name: "Polygon Amoy",
     symbol: "POL",
     hexId: "0x13882",
-    rpcUrl: "https://polygon-amoy.drpc.org"
+    rpcUrl: "https://polygon-amoy-bor-rpc.publicnode.com"
   },
   84532: {
     id: 84532,

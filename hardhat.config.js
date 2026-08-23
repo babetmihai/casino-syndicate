@@ -30,8 +30,9 @@ module.exports = {
       allowUnlimitedContractSize: true
     },
     amoy: {
-      url: "https://polygon-amoy.drpc.org",
+      url: process.env.AMOY_RPC_URL || "https://polygon-amoy-bor-rpc.publicnode.com",
       chainId: 80002,
+      timeout: 120000,
       accounts: deployerKey ? [deployerKey] : []
     }
   }

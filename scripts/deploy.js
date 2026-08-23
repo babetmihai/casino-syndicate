@@ -28,9 +28,42 @@ async function main() {
     }
   }
 
+  const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms))
   const Factory = await hre.ethers.getContractFactory("GameFactory")
-  const factory = await Factory.deploy()
-  await factory.waitForDeployment()
+  if (!isLocal) {
+    const [signer] = await hre.ethers.getSigners()
+    const from = await signer.getAddress()
+    const balance = await hre.ethers.provider.getBalance(from)
+    const estimated = await signer.estimateGas(await Factory.getDeployTransaction())
+    const feeData = await hre.ethers.provider.getFeeData()
+    const minTip = 25000000000n
+    let gasPrice = feeData.gasPrice
+    if (!gasPrice || gasPrice < minTip) gasPrice = minTip
+    const cost = estimated * gasPrice
+    if (balance < cost) {
+      const need = hre.ethers.formatEther(cost)
+      const have = hre.ethers.formatEther(balance)
+      throw new Error(`${from} has ${have} POL, deploy needs about ${need} POL. Request another Amoy drop at https://faucet.polygon.technology/`)
+    }
+  }
+
+  let factory
+  let lastError
+  for (const delay of [0, 2000, 5000]) {
+    if (delay) await sleep(delay)
+    try {
+      factory = await Factory.deploy()
+      await factory.waitForDeployment()
+      lastError = undefined
+      break
+    } catch (error) {
+      lastError = error
+      const message = String(error.message || error)
+      if (!/Temporary|timeout|429|ECONNRESET|ETIMEDOUT/i.test(message)) throw error
+      console.log(`RPC failed, retrying: ${message}`)
+    }
+  }
+  if (!factory) throw lastError
   const address = await factory.getAddress()
   const root = path.join(__dirname, "..")
   const logPath = path.join(root, "deploy.log")

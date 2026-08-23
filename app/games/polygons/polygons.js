@@ -3,7 +3,7 @@ import _ from "lodash"
 const CX = 0.5
 const CY = 0.5
 const OUTER_R = 0.48
-const INNER_R = 0.26
+const INNER_R = 0.3
 const RING_R = 0.4
 const LLOYD_STEPS = 4
 const GOLDEN = Math.PI * (3 - Math.sqrt(5))
@@ -13,8 +13,16 @@ const BOUNDS = _.times(96, (i) => {
 })
 
 
+export const NUCLEUS_ID = 0
+export const NUCLEUS_WEIGHT = 4
+
 export const seedFromAddress = (address) => {
   return parseInt(String(address).replace("0x", "").slice(0, 8), 16)
+}
+
+export const playerHue = (address) => {
+  const n = parseInt(String(address).replace("0x", "").slice(10, 16), 16)
+  return n % 360
 }
 
 export const buildPolygons = (seed, count, winCount) => {
@@ -27,12 +35,16 @@ export const buildPolygons = (seed, count, winCount) => {
   _.times(LLOYD_STEPS, () => {
     const sites = inner.concat(outer)
     inner = _.map(inner, (site, index) => {
+      if (index === NUCLEUS_ID) return [CX, CY]
       const points = voronoiCell(site, index, sites)
       if (points.length < 3) return site
       const next = polygonCentroid(points)
       const dx = next[0] - CX
       const dy = next[1] - CY
       const dist = Math.hypot(dx, dy)
+      const minR = INNER_R * 0.76
+      if (dist < 1e-12) return [CX + minR, CY]
+      if (dist < minR) return [CX + (dx / dist) * minR, CY + (dy / dist) * minR]
       if (dist <= INNER_R) return next
       return [CX + (dx / dist) * INNER_R, CY + (dy / dist) * INNER_R]
     })
@@ -72,10 +84,11 @@ export const splitLobes = (cell) => {
 export const BORDER_STROKE = "var(--cs-elevated)"
 export const BORDER_WIDTH = 0.012
 
-export const ownerFill = (address, isMine) => {
+export const ownerFill = (address, isMine, isNucleus) => {
+  if (!address && isNucleus) return "color-mix(in srgb, var(--cs-accent) 16%, var(--cs-bg))"
   if (!address) return "color-mix(in srgb, var(--cs-accent) 10%, var(--cs-bg))"
   if (isMine) return "var(--cs-accent)"
-  return "color-mix(in srgb, var(--cs-accent-2) 42%, var(--cs-elevated))"
+  return `hsl(${playerHue(address)} 48% 46%)`
 }
 
 export const ownerStroke = (address, isMine) => {
@@ -123,7 +136,10 @@ const cellRadius = (points, center) => {
 
 const diskSites = (count, rng) => {
   return _.map(_.range(count), (i) => {
-    const r = INNER_R * Math.sqrt((i + 0.5) / count)
+    if (i === NUCLEUS_ID) return [CX, CY]
+    const rMin = INNER_R * 0.76
+    const t = Math.sqrt((i - 1) / Math.max(count - 1, 1))
+    const r = rMin + (INNER_R - rMin) * t
     const theta = i * GOLDEN + (rng() - 0.5) * 0.35
     return [CX + r * Math.cos(theta), CY + r * Math.sin(theta)]
   })

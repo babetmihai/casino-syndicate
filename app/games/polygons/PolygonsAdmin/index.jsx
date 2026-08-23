@@ -36,7 +36,7 @@ const PolygonsAdmin = ({ address }) => {
         </div>
         <div className={cn("polygons-admin-stat", "polygons-admin-stat-polygons", "rounded-[0.75rem] border border-cs-border bg-cs-surface px-3 py-2")}>
           <span className={numberClass}>{claimedCount || 0}/{polygonCount || 0}</span>
-          <span className={cn("polygons-admin-stat-label", "mt-0.5 block text-[0.75rem] text-cs-muted")}>Claimed</span>
+          <span className={cn("polygons-admin-stat-label", "mt-0.5 block text-[0.75rem] text-cs-muted")}>Cells</span>
         </div>
         <div className={cn("polygons-admin-stat", "polygons-admin-stat-lose", "rounded-[0.75rem] border border-cs-border bg-cs-surface px-3 py-2")}>
           <span className={numberClass}>{loseLit || 0}/{loseCount || 0}</span>

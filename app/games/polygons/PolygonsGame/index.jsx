@@ -12,7 +12,7 @@ import SessionModal, { requirePlayWallet } from "app/core/auth/SessionModal"
 import PolygonsMap from "../PolygonsMap"
 import { bankrollClass, clampEth, ethLabel } from "app/games/roulette/chips"
 import { selectNativeSymbol } from "app/core/chain"
-import { buildPolygons, seedFromAddress } from "../polygons"
+import { buildPolygons, NUCLEUS_ID, ownerFill, seedFromAddress } from "../polygons"
 import { ethers } from "ethers"
 
 const SPIN_MS = 24
@@ -24,6 +24,7 @@ const HOLD_FILL_MS = 1000
 const CLEAR_MS = 180
 const BANNER_MS = 2500
 const BANNER_LONG_MS = 4500
+const HOP_MS = 220
 const TRAIL = 4
 
 
@@ -35,6 +36,7 @@ const PolygonsGame = React.memo(({ address }) => {
   const [landed, setLanded] = React.useState(false)
   const [showBanner, setShowBanner] = React.useState(false)
   const [holdingSpin, setHoldingSpin] = React.useState(false)
+  const [beat, setBeat] = React.useState("")
   const stopFlash = React.useRef()
   const holdTimer = React.useRef()
   const pendingWinner = React.useRef()
@@ -52,7 +54,7 @@ const PolygonsGame = React.memo(({ address }) => {
     polygonCount, loseCount, ticketPrice, claimedCount, loseLit, prize, myPrize,
     owners = [], mates = [], lastTicket, totalBalance, livePlayers = [], lastSettle
   } = polygons
-  const { settled, playersWin, roundPrize, splitIds = [], roundMates } = lastTicket || {}
+  const { settled, playersWin, roundPrize, splitIds = [], roundMates, closer } = lastTicket || {}
   const hasPrize = clampEth(myPrize) > 0
   const pending = hasPrize
   const showClaim = Boolean(account && hasPrize && !revealing && !showBanner)
@@ -74,6 +76,9 @@ const PolygonsGame = React.memo(({ address }) => {
   if (houseWon) bannerLabel = "House wins"
   if (playersWon) {
     bannerLabel = "Players"
+    if (account && closer && ethers.getAddress(closer) === ethers.getAddress(account)) {
+      bannerLabel = "Closer"
+    }
     bannerHero = ethLabel(roundPrize, symbol)
   }
   let heroClass = "text-[3.5rem]"
@@ -81,25 +86,53 @@ const PolygonsGame = React.memo(({ address }) => {
   let cardAnim = "animate-banner-card"
   if (playersWon) cardAnim = "animate-banner-card-long"
   const hideResult = holdingSpin || revealing
+  const housePop = Boolean(showBanner && houseWon && !revealing)
   let mapOwners = owners
   let mapMates = mates
   if (pending && roundMates && roundMates.length) mapMates = roundMates
-  if (hideResult && boardSnap.current) {
+  if ((hideResult || housePop) && boardSnap.current) {
     mapOwners = boardSnap.current.owners
     mapMates = boardSnap.current.mates
   }
-  const mineCount = _.filter(_.take(mapOwners, polygonCount || 0), (owner) => {
-    return owner && account && ethers.getAddress(owner) === ethers.getAddress(account)
-  }).length + _.filter(mapMates, (mate) => {
-    return mate && account && ethers.getAddress(mate) === ethers.getAddress(account)
-  }).length
-  let shownClaimed = claimedCount || 0
+  let shownCells = claimedCount || 0
   let shownLose = loseLit || 0
-  if (hideResult && boardSnap.current) {
-    shownClaimed = boardSnap.current.claimedCount || 0
+  if ((hideResult || housePop) && boardSnap.current) {
+    shownCells = boardSnap.current.claimedCount || 0
     shownLose = boardSnap.current.loseLit || 0
   }
-  if (account) shownClaimed = mineCount
+  const playerShares = []
+  _.forEach(_.take(mapOwners, polygonCount || 0), (owner, index) => {
+    if (!owner) return
+    const mate = mapMates[index]
+    const addShare = (addr, amount) => {
+      const key = ethers.getAddress(addr)
+      const row = _.find(playerShares, { key })
+      if (row) {
+        row.amount += amount
+        return
+      }
+      playerShares.push({ key, amount })
+    }
+    if (mate) {
+      addShare(owner, 0.5)
+      addShare(mate, 0.5)
+      return
+    }
+    addShare(owner, 1)
+  })
+  const mineKey = account && ethers.getAddress(account)
+  const racePlayers = _.orderBy(playerShares, [
+    (row) => {
+      if (mineKey && row.key === mineKey) return 0
+      return 1
+    },
+    "amount"
+  ], ["asc", "desc"])
+  let housePct = 0
+  if (loseCount) housePct = (shownLose / loseCount) * 100
+  const lastGreen = shownCells > 0 && shownCells === (polygonCount || 0) - 1
+  const lastHouse = shownLose > 0 && shownLose === (loseCount || 0) - 1
+  const isHouseBeat = beat === "House"
   let spinLabel = `Hold to spin · ${ethLabel(totalPrice, symbol)}`
   if (buying || revealing) spinLabel = "Spinning"
   if (!roundOpen) spinLabel = "Closed"
@@ -143,6 +176,12 @@ const PolygonsGame = React.memo(({ address }) => {
   }, [showBanner])
 
   React.useEffect(() => {
+    if (!beat) return
+    const timer = _.delay(() => setBeat(""), BANNER_MS)
+    return () => clearTimeout(timer)
+  }, [beat])
+
+  React.useEffect(() => {
     if (revealing) return
     if (!landed) return
     if (showBanner) return
@@ -173,13 +212,23 @@ const PolygonsGame = React.memo(({ address }) => {
       const ticket = await buyPolygonsTicket(address)
       if (!ticket) return
       const draws = ticket.draws || []
-      const winner = _.last(_.map(draws, "polygonId"))
-      pendingWinner.current = winner
-      if (_.isNumber(winner) && spinDone.current) await spinDone.current
+      const last = _.last(draws) || ticket
+      let landId = last.polygonId
+      if (last.bounce) landId = last.fromId
+      pendingWinner.current = landId
+      if (_.isNumber(landId) && spinDone.current) await spinDone.current
       if (stopFlash.current) stopFlash.current()
       stopFlash.current = undefined
       spinDone.current = undefined
       const showResult = ticket.settled
+      if (last.bounce && _.isNumber(last.polygonId)) {
+        setLitIds([last.fromId])
+        setLanded(true)
+        await new Promise((resolve) => {
+          _.delay(resolve, HOP_MS)
+        })
+        setLitIds([last.polygonId])
+      }
       await fetchPolygons(address)
       fetchBalance()
       keepLit = true
@@ -187,6 +236,12 @@ const PolygonsGame = React.memo(({ address }) => {
       setRevealing(false)
       if (showResult) {
         setShowBanner(true)
+      }
+      if (!showResult) {
+        if (last.split) setBeat("Split")
+        else if (last.assigned && !last.won) setBeat("House")
+        else if (last.assigned && last.polygonId === NUCLEUS_ID) setBeat("Nucleus")
+        else if (last.assigned) setBeat("Cell")
       }
     } finally {
       if (stopFlash.current) stopFlash.current()
@@ -215,6 +270,7 @@ const PolygonsGame = React.memo(({ address }) => {
       setRevealing(false)
       setLitIds([])
       setLanded(false)
+      setBeat("")
     }
     setHoldingSpin(false)
   }
@@ -228,6 +284,7 @@ const PolygonsGame = React.memo(({ address }) => {
     unwatchPolygons(address)
     setHoldingSpin(true)
     setLanded(false)
+    setBeat("")
     pendingWinner.current = undefined
     committed.current = false
     boardSnap.current = {
@@ -264,20 +321,48 @@ const PolygonsGame = React.memo(({ address }) => {
       <div
         className={cn(
           "polygons-status",
-          "flex w-full shrink-0 flex-wrap items-baseline justify-between gap-x-2 gap-y-0.5",
+          "flex w-full shrink-0 items-center justify-between gap-2",
           "font-mono text-[0.75rem] tracking-[0.04em]"
         )}
       >
-        <Text className={cn("polygons-claimed", "whitespace-nowrap text-cs-muted")} size="xs">
-          <span className={cn("polygons-claimed-count", "text-cs-accent tabular-nums")}>{shownClaimed}</span>
-          /{polygonCount || 0} claimed
-          <span className={cn("polygons-lose")}>
-            {" · "}
-            <span className={cn("polygons-lose-count", "text-cs-accent-2 tabular-nums")}>{shownLose}</span>
-            /{loseCount || 0} house
-          </span>
-        </Text>
-        <Text className={cn("polygons-bankroll", "whitespace-nowrap", bankrollClass(bankroll, ticketPrice))} size="xs">
+        <div className={cn("polygons-race", "flex min-w-0 flex-1 flex-col gap-1")}>
+          <div className={cn("polygons-race-players", lastGreen && "polygons-race-hot")}>
+            <div className={cn("polygons-race-track", "polygons-race-track-players", "flex h-1 overflow-hidden rounded-full bg-cs-elevated")}>
+              {_.map(racePlayers, (row) => {
+                const isMine = mineKey && row.key === mineKey
+                return (
+                  <div
+                    key={row.key}
+                    className={cn(
+                      "polygons-race-fill",
+                      "polygons-race-fill-player",
+                      lastGreen && "polygons-race-fill-hot animate-race-hot",
+                      "h-full shrink-0"
+                    )}
+                    style={{
+                      width: `${(row.amount / polygonCount) * 100}%`,
+                      background: ownerFill(row.key, isMine)
+                    }}
+                  />
+                )
+              })}
+            </div>
+          </div>
+          <div className={cn("polygons-race-house", lastHouse && "polygons-race-hot")}>
+            <div className={cn("polygons-race-track", "h-1 overflow-hidden rounded-full bg-cs-elevated")}>
+              <div
+                className={cn(
+                  "polygons-race-fill",
+                  "polygons-race-fill-house",
+                  lastHouse && "polygons-race-fill-hot animate-race-hot",
+                  "h-full bg-cs-accent-2 transition-[width] duration-300"
+                )}
+                style={{ width: `${housePct}%` }}
+              />
+            </div>
+          </div>
+        </div>
+        <Text className={cn("polygons-bankroll", "shrink-0 whitespace-nowrap", bankrollClass(bankroll, ticketPrice))} size="xs">
           {ethLabel(bankroll, symbol)}
         </Text>
       </div>
@@ -303,6 +388,7 @@ const PolygonsGame = React.memo(({ address }) => {
               splitIds={isSplit && !hideResult && !showClaim ? splitIds : []}
               spinning={revealing}
               celebrate={showBanner && playersWon}
+              housePop={housePop}
             />
             <div className={cn("polygons-prize", "flex h-[1.25rem] shrink-0 items-center justify-center")}>
               <span className={cn("polygons-prize-value", "font-headings text-[1rem] font-extrabold leading-none tabular-nums text-cs-accent")}>
@@ -372,7 +458,31 @@ const PolygonsGame = React.memo(({ address }) => {
         }
       </div>
       {createPortal(
-        showBanner && !revealing && bannerLabel &&
+        beat && !revealing &&
+          <div className={cn(
+            "polygons-toast",
+            "pointer-events-none fixed inset-0 z-[200] flex items-center justify-center bg-cs-bg/72 animate-banner"
+          )}>
+            <Card
+              className={cn(
+                "polygons-toast-card",
+                "relative z-[1] flex min-w-36 flex-col items-center gap-1 rounded-[0.75rem] px-6 py-4 text-center",
+                "animate-banner-card",
+                isHouseBeat && "polygons-toast-house border-transparent bg-cs-accent-2 text-white",
+                !isHouseBeat && "polygons-toast-hit border-transparent bg-cs-accent text-cs-bg"
+              )}
+              shadow="md"
+              withBorder={false}
+            >
+              <Text className={cn("polygons-toast-label", "opacity-80")} size="sm">
+                {beat}
+              </Text>
+            </Card>
+          </div>,
+        document.body
+      )}
+      {createPortal(
+        showBanner && !revealing && playersWon && bannerLabel &&
           <div className={cn(
             "polygons-banner",
             "pointer-events-none fixed inset-0 z-[200] flex items-center justify-center"
@@ -381,11 +491,9 @@ const PolygonsGame = React.memo(({ address }) => {
             <Card
               className={cn(
                 "polygons-banner-card",
-                houseWon && "polygons-banner-house",
                 "relative z-[1] flex min-w-36 flex-col items-center gap-1 rounded-[0.75rem] px-6 py-4 text-center",
                 cardAnim,
-                playersWon && "border-transparent bg-cs-accent text-cs-bg",
-                houseWon && "border-transparent bg-cs-accent-2 text-white"
+                "border-transparent bg-cs-accent text-cs-bg"
               )}
               shadow="md"
               withBorder={false}

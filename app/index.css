@@ -25,6 +25,11 @@
   --animate-map-pass: map-pass 0.22s ease-out;
   --animate-map-glow-flash: map-glow-flash 0.5s ease-out forwards;
   --animate-map-glow-win: map-glow-win 1.15s ease-in-out infinite;
+  --animate-map-pop: map-pop 0.55s cubic-bezier(0.2, 0.8, 0.32, 1) forwards;
+  --animate-nucleus: nucleus-pulse 1.8s ease-in-out infinite;
+  --animate-nucleus-in: nucleus-in 0.62s cubic-bezier(0.22, 1, 0.36, 1) both;
+  --animate-nucleus-glow-in: nucleus-glow-in 0.7s ease-out both;
+  --animate-race-hot: race-hot 0.9s ease-in-out infinite;
   --animate-claim: claim-pulse 1.8s ease-in-out infinite;
   --animate-overlay-in: overlay-in 0.32s ease-out;
 }
@@ -83,6 +88,34 @@
 @keyframes map-glow-win {
   0%, 100% { opacity: 0.2; transform: scale(1.1); }
   50% { opacity: 0.42; transform: scale(1.2); }
+}
+
+@keyframes map-pop {
+  0% { transform: scale(1); opacity: 1; }
+  32% { transform: scale(1.22); opacity: 1; }
+  100% { transform: scale(0); opacity: 0; }
+}
+
+@keyframes nucleus-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(0.84); opacity: 0.78; }
+}
+
+@keyframes nucleus-in {
+  0% { transform: scale(0); opacity: 0; }
+  58% { transform: scale(1.28); opacity: 1; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+@keyframes nucleus-glow-in {
+  0% { transform: scale(0.2); opacity: 0; }
+  42% { transform: scale(2.35); opacity: 0.5; }
+  100% { transform: scale(1.7); opacity: 0.22; }
+}
+
+@keyframes race-hot {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.72; }
 }
 
 @keyframes claim-pulse {
@@ -181,7 +214,9 @@
   }
 
   .polygons-map-cell,
-  .polygons-map-cell-glow {
+  .polygons-map-cell-glow,
+  .polygons-map-nucleus,
+  .polygons-map-nucleus-glow {
     transform-box: fill-box;
     transform-origin: center;
   }
@@ -225,6 +260,14 @@
     transform: scale(1.08);
   }
 
+  .polygons-map-nucleus-fresh {
+    animation: nucleus-in 0.62s cubic-bezier(0.22, 1, 0.36, 1) both, nucleus-pulse 1.8s ease-in-out 0.62s infinite;
+  }
+
+  .polygons-map-nucleus-glow-fresh {
+    animation: nucleus-glow-in 0.7s ease-out both;
+  }
+
   .polygons-map-card,
   .polygons-map-frame,
   .polygons-claim-wrap {
@@ -247,11 +290,13 @@
   }
 
   .polygons-banner-card,
+  .polygons-toast-hit,
   .roulette-banner-card {
     box-shadow: 0 0 2.5rem rgb(45 212 191 / 0.22);
   }
 
   .polygons-banner-house,
+  .polygons-toast-house,
   .roulette-banner-black {
     box-shadow: 0 0 2.5rem rgb(129 140 248 / 0.24);
   }
@@ -273,12 +318,18 @@
   @media (prefers-reduced-motion: reduce) {
     .polygons-map-cell,
     .polygons-map-cell-glow,
+    .polygons-map-cell-pop,
+    .polygons-map-nucleus,
+    .polygons-map-nucleus-glow,
     .polygons-banner,
     .polygons-banner-card,
+    .polygons-toast,
+    .polygons-toast-card,
     .roulette-banner,
     .roulette-banner-card,
     .polygons-claim,
     .polygons-claim-wrap,
+    .polygons-race-fill-hot,
     .roulette-spot-rect {
       animation: none !important;
       transition: none !important;

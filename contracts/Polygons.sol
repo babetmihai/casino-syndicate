@@ -35,6 +35,8 @@ contract Polygons {
 
 	uint256 public constant MIN_POLYGONS = 3;
 	uint256 public constant MAX_POLYGONS = 48;
+	uint256 public constant NUCLEUS_ID = 0;
+	uint256 public constant NUCLEUS_WEIGHT = 4;
 	uint256 public constant CHIP = 0.01 ether;
 	uint256 public constant MIN_DEPOSIT = 1 ether;
 	uint256 public constant WITHDRAW_INTERVAL = 1 days;
@@ -57,9 +59,9 @@ contract Polygons {
 		address[] mates;
 	}
 
-	event TicketBought(address indexed player, bool won, uint256 polygonId, bool assigned, bool split);
+	event TicketBought(address indexed player, bool won, uint256 polygonId, bool assigned, bool split, bool bounce, uint256 fromId);
 	event PrizePaid(address indexed player, uint256 amount);
-	event Settled(uint256 prize, address[] owners, bool playersWin, address[] mates);
+	event Settled(uint256 prize, address[] owners, bool playersWin, address[] mates, address closer);
 	event Deposited(address indexed user, uint256 amount);
 
 	constructor(
@@ -208,7 +210,7 @@ contract Polygons {
 		require(address(this).balance >= reserved + pot * 2, "Bankroll");
 		uint8 outcome = drawTicket(player);
 		if (outcome == 1) {
-			settlePlayers();
+			settlePlayers(player);
 		} else if (outcome == 2) {
 			settleHouse();
 		}
@@ -224,54 +226,90 @@ contract Polygons {
 			bool won = cellId < polygonCount;
 			if (won && cellMate[cellId] == address(0) && owner != player) {
 				cellMate[cellId] = player;
-				emit TicketBought(player, true, cellId, true, true);
+				emit TicketBought(player, true, cellId, true, true, false, cellId);
 				return 0;
 			}
-			emit TicketBought(player, won, cellId, false, false);
+			if (owner == player) {
+				uint256 dest = nextEmpty(cellId);
+				return assignCell(player, dest, true, cellId);
+			}
+			emit TicketBought(player, won, cellId, false, false, false, cellId);
 			return 0;
 		}
+		return assignCell(player, cellId, false, cellId);
+	}
 
+	function assignCell(address player, uint256 cellId, bool bounce, uint256 fromId) private returns (uint8 outcome) {
 		cellOwner[cellId] = player;
 		if (cellId < polygonCount) {
 			winLit++;
-			emit TicketBought(player, true, cellId, true, false);
+			emit TicketBought(player, true, cellId, true, false, bounce, fromId);
 			if (winLit == polygonCount) {
 				return 1;
 			}
 			return 0;
 		}
 		loseLit++;
-		emit TicketBought(player, false, cellId, true, false);
+		emit TicketBought(player, false, cellId, true, false, bounce, fromId);
 		if (loseLit == loseCount) {
 			return 2;
 		}
 		return 0;
 	}
 
-	function settlePlayers() private {
+	function nextEmpty(uint256 fromId) private view returns (uint256) {
+		uint256 total = polygonCount + loseCount;
+		for (uint256 i = 1; i < total; i++) {
+			uint256 id = (fromId + i) % total;
+			if (id < polygonCount && cellOwner[id] == address(0)) {
+				return id;
+			}
+		}
+		for (uint256 i = 1; i < total; i++) {
+			uint256 id = (fromId + i) % total;
+			if (cellOwner[id] == address(0)) {
+				return id;
+			}
+		}
+		revert("Full");
+	}
+
+	function cellWeight(uint256 id) private pure returns (uint256) {
+		if (id == NUCLEUS_ID) {
+			return NUCLEUS_WEIGHT;
+		}
+		return 1;
+	}
+
+	function settlePlayers(address closer) private {
 		address[] memory roundOwners = new address[](polygonCount);
 		address[] memory roundMates = new address[](polygonCount);
-		uint256 pieces = 0;
+		uint256 pieces = 1;
 		for (uint256 i = 0; i < polygonCount; i++) {
 			roundOwners[i] = cellOwner[i];
-			pieces++;
+			uint256 weight = cellWeight(i);
+			pieces += weight;
 			address mate = cellMate[i];
 			if (mate != address(0)) {
 				roundMates[i] = mate;
-				pieces++;
+				pieces += weight;
 			}
 		}
 		uint256 share = (pot * 2) / pieces;
 		uint256 payout = 0;
 		for (uint256 i = 0; i < polygonCount; i++) {
-			prizes[roundOwners[i]] += share;
-			payout += share;
+			uint256 weight = cellWeight(i);
+			uint256 cut = share * weight;
+			prizes[roundOwners[i]] += cut;
+			payout += cut;
 			if (roundMates[i] == address(0)) {
 				continue;
 			}
-			prizes[roundMates[i]] += share;
-			payout += share;
+			prizes[roundMates[i]] += cut;
+			payout += cut;
 		}
+		prizes[closer] += share;
+		payout += share;
 		pot = 0;
 		resetBoard();
 		reserved += payout;
@@ -297,13 +335,13 @@ contract Polygons {
 			settledPrize[id] = payout;
 			heldCount[id] = holdersCount;
 		}
-		emit Settled(payout, roundOwners, true, roundMates);
+		emit Settled(payout, roundOwners, true, roundMates, closer);
 	}
 
 	function settleHouse() private {
 		pot = 0;
 		resetBoard();
-		emit Settled(0, new address[](0), false, new address[](0));
+		emit Settled(0, new address[](0), false, new address[](0), address(0));
 	}
 
 	function resetBoard() private {

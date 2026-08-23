@@ -138,6 +138,7 @@ const readTicket = (contract, receipt) => {
   let roundPrize
   let roundOwners
   let roundMates
+  let closer
   for (const log of logs) {
     try {
       const parsed = contract.interface.parseLog(log)
@@ -154,13 +155,17 @@ const readTicket = (contract, receipt) => {
           if (!item || item === ethers.ZeroAddress) return null
           return ethers.getAddress(item)
         })
+        const closerRaw = args.closer
+        if (closerRaw && closerRaw !== ethers.ZeroAddress) closer = ethers.getAddress(closerRaw)
       }
       if (name !== "TicketBought") continue
       draws.push({
         won: args.won,
         polygonId: Number(args.polygonId),
         assigned: args.assigned,
-        split: Boolean(args.split)
+        split: Boolean(args.split),
+        bounce: Boolean(args.bounce),
+        fromId: Number(args.fromId)
       })
     } catch {
       // ignore logs from other contracts
@@ -189,6 +194,7 @@ const readTicket = (contract, receipt) => {
     playersWin,
     roundPrize,
     roundOwners,
-    roundMates
+    roundMates,
+    closer
   }
 }

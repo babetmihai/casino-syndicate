@@ -58,8 +58,7 @@ const clearSpinPaint = (address) => {
   updateGame(address, { litIds: {}, landed: false, revealedOwners: {}, revealedMates: {} })
 }
 
-export const showResultBanner = (address) => {
-  updateGame(address, { showBanner: true })
+export const showResultBanner = (address, house) => {
   const spin = spinOf(address)
   clearTimeout(spin.bannerTimer)
   const game = selectPolygons(address) || {}
@@ -68,6 +67,25 @@ export const showResultBanner = (address) => {
   let wait = BANNER_MS
   if (settled && playersWin) wait = BANNER_LONG_MS
   if (!settled && playersWin == null) wait = HOLD_MS
+  if (house) {
+    wait = BANNER_MS
+    spin.boardSnap = undefined
+    setBeat(address, "House wins")
+    updateGame(address, {
+      showBanner: true,
+      litIds: {},
+      landed: false,
+      revealedOwners: {},
+      revealedMates: {},
+      owners: {},
+      mates: {},
+      claimedCount: 0,
+      loseLit: 0,
+      prize: 0
+    })
+  } else {
+    updateGame(address, { showBanner: true })
+  }
   spin.bannerTimer = _.delay(() => {
     updateGame(address, { showBanner: false })
     clearSpinPaint(address)
@@ -127,6 +145,16 @@ export const finishSpin = async (address, ids) => {
       litIds[draw.polygonId] = { id: draw.polygonId, rank: draw.id }
     })
   }
+  const houseWin = ticket.settled && !ticket.playersWin
+  if (houseWin) {
+    spin.spinning = false
+    spin.seenHouseSettle = ticket.id
+    updateGame(address, { revealing: false, buying: false })
+    fetchPolygons(address)
+    fetchBalance()
+    showResultBanner(address, true)
+    return
+  }
   updateGame(address, { landed: true, litIds })
   fetchPolygons(address)
   fetchBalance()
@@ -152,7 +180,7 @@ const buyTicket = async (address) => {
     const ticket = await buyPolygonsTicket(address, multiplier)
     if (!ticket) {
       spin.spinning = false
-      spin.landing = undefined
+      spin.landing = []
       updateGame(address, { revealing: false, buying: false })
       return
     }
@@ -160,7 +188,7 @@ const buyTicket = async (address) => {
     spin.landing = _.map(_.sortBy(_.filter(Object.values(ticket.draws || {}), "assigned"), "id"), "polygonId")
   } catch {
     spin.spinning = false
-    spin.landing = undefined
+    spin.landing = []
     updateGame(address, { revealing: false, buying: false, litIds: {}, landed: false })
   }
 }
@@ -220,7 +248,7 @@ export const noteHouseSettle = (address, settleId) => {
   spin.seenHouseSettle = settleId
   const { revealing, buying, holdingSpin } = selectPolygons(address) || {}
   if (revealing || buying || holdingSpin) return
-  showResultBanner(address)
+  showResultBanner(address, true)
 }
 
 export const unmountPolygonsGame = (address) => {

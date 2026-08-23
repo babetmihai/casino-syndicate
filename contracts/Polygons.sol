@@ -260,33 +260,73 @@ contract Polygons {
 		address owner = cellOwner[cellId];
 		if (owner != address(0)) {
 			bool won = cellId < polygonCount;
-			if (won && cellMate[cellId] == address(0) && owner != player) {
+			if (cellId == NUCLEUS_ID && cellMate[cellId] == address(0) && owner != player) {
 				cellMate[cellId] = player;
 				emit TicketBought(player, true, cellId, true, true, false, cellId);
 				return 0;
 			}
-			emit TicketBought(player, won, cellId, false, false, false, cellId);
-			return 0;
+			uint256 bounceSeed = uint256(keccak256(abi.encodePacked(seed, cellId, nonce)));
+			(uint256 dest, bool found) = nextEmpty(!won, bounceSeed);
+			if (!found) {
+				emit TicketBought(player, won, cellId, false, false, false, cellId);
+				return 0;
+			}
+			return assignCell(player, dest, true, cellId);
 		}
-		return assignCell(player, cellId);
+		return assignCell(player, cellId, false, cellId);
 	}
 
-	function assignCell(address player, uint256 cellId) private returns (uint8 outcome) {
+	function assignCell(address player, uint256 cellId, bool bounce, uint256 fromId) private returns (uint8 outcome) {
 		cellOwner[cellId] = player;
 		if (cellId < polygonCount) {
 			winLit++;
-			emit TicketBought(player, true, cellId, true, false, false, cellId);
+			emit TicketBought(player, true, cellId, true, false, bounce, fromId);
 			if (winLit == polygonCount) {
 				return 1;
 			}
 			return 0;
 		}
 		loseLit++;
-		emit TicketBought(player, false, cellId, true, false, false, cellId);
+		emit TicketBought(player, false, cellId, true, false, bounce, fromId);
 		if (loseLit == loseCount) {
 			return 2;
 		}
 		return 0;
+	}
+
+	function nextEmpty(bool house, uint256 seed) private view returns (uint256 dest, bool found) {
+		uint256 total = polygonCount + loseCount;
+		uint256 emptyCount = 0;
+		for (uint256 i = 0; i < total; i++) {
+			if (cellOwner[i] != address(0)) {
+				continue;
+			}
+			if (house && i >= polygonCount) {
+				emptyCount++;
+			} else if (!house && i < polygonCount) {
+				emptyCount++;
+			}
+		}
+		if (emptyCount == 0) {
+			return (0, false);
+		}
+		uint256 pick = seed % emptyCount;
+		uint256 seen = 0;
+		for (uint256 i = 0; i < total; i++) {
+			if (cellOwner[i] != address(0)) {
+				continue;
+			}
+			if (house && i < polygonCount) {
+				continue;
+			}
+			if (!house && i >= polygonCount) {
+				continue;
+			}
+			if (seen == pick) {
+				return (i, true);
+			}
+			seen++;
+		}
 	}
 
 	function cellWeight(uint256 id) private view returns (uint256) {

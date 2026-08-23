@@ -81,20 +81,19 @@ const PolygonsGame = React.memo(({ address }) => {
   let mapSplit = EMPTY_OBJECT
   if (hideResult || showClaim) mapSplit = revealedMates
   if (!hideResult && !showClaim && isSplit) mapSplit = splitIds
-  const housePop = Boolean(showBanner && houseWon && !revealing)
   const spin = spinOf(address)
   let mapOwners = owners
   let mapMates = mates
-  if (pending && !_.isEmpty(roundMates) && (hideResult || housePop || landed || showClaim)) {
+  if (pending && !_.isEmpty(roundMates) && (hideResult || landed || showClaim)) {
     mapMates = roundMates
   }
-  if ((hideResult || housePop || landed) && spin.boardSnap) {
+  if ((hideResult || landed) && spin.boardSnap) {
     mapOwners = { ...spin.boardSnap.owners, ...revealedOwners }
     mapMates = { ...spin.boardSnap.mates, ...revealedMates }
   }
   let shownCells = claimedCount || 0
   let shownLose = loseLit || 0
-  if ((hideResult || housePop) && spin.boardSnap) {
+  if (hideResult && spin.boardSnap) {
     shownCells = spin.boardSnap.claimedCount || 0
     shownLose = spin.boardSnap.loseLit || 0
   }
@@ -205,10 +204,9 @@ const PolygonsGame = React.memo(({ address }) => {
               flashIds={flashIds}
               litIds={showClaim ? EMPTY_OBJECT : litIds}
               splitIds={mapSplit}
-              spinning={holdingSpin || revealing || landed}
+              spinning={holdingSpin || revealing}
               manyLit={multiplier > 1}
               celebrate={showBanner && playersWon}
-              housePop={housePop}
             />
             <PolygonsPrize label={ethLabel(pot, symbol)} />
           </div>
@@ -235,7 +233,12 @@ const PolygonsGame = React.memo(({ address }) => {
         onSpinDown={(event) => startSpinHold(address, event)}
         onSpinUp={() => cancelSpinHold(address)}
       />
-      <PolygonsToast beat={beat} revealing={revealing} hero={`x${nucleusWeight(polygonCount)}`} />
+      <PolygonsToast
+        beat={beat}
+        revealing={revealing}
+        hero={beat === "Nucleus" && `x${nucleusWeight(polygonCount)}`}
+        house={beat === "House wins"}
+      />
       <PolygonsBanner
         show={showBanner}
         revealing={revealing}

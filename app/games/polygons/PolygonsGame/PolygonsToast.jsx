@@ -4,12 +4,13 @@ import { Card, Text } from "@mantine/core"
 import { cn } from "app/core"
 
 
-const PolygonsToast = React.memo(({ beat, revealing, hero }) => {
+const PolygonsToast = React.memo(({ beat, revealing, hero, house }) => {
   return createPortal(
     beat && !revealing &&
       <div
         className={cn(
           "polygons-toast",
+          house && "polygons-toast-house",
           "pointer-events-none fixed inset-0 z-[200] flex items-center justify-center bg-cs-bg/72 animate-banner"
         )}
       >
@@ -17,7 +18,9 @@ const PolygonsToast = React.memo(({ beat, revealing, hero }) => {
           className={cn(
             "polygons-toast-card",
             "relative z-[1] flex min-w-36 flex-col items-center gap-1 rounded-[0.75rem] px-6 py-4 text-center",
-            "animate-banner-card polygons-toast-hit border-transparent bg-cs-accent text-cs-bg"
+            "animate-banner-card border-transparent text-cs-bg",
+            house && "polygons-toast-house bg-cs-accent-2",
+            !house && "polygons-toast-hit bg-cs-accent"
           )}
           shadow="md"
           withBorder={false}

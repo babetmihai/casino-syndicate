@@ -292,6 +292,8 @@ const runWheel = ({ wheel, getWinners, delay, onTick, onHold, onDone }) => {
   const span = wheel.length
   let index = 0
   let remaining
+  let hits = []
+  let loaded = false
   let fanStep = 0
   let raf = 0
   let stopped = false
@@ -329,15 +331,19 @@ const runWheel = ({ wheel, getWinners, delay, onTick, onHold, onDone }) => {
   }
 
   const loadHits = () => {
-    if (remaining) return
+    if (loaded) return
     const winners = getWinners()
     if (!_.isArray(winners)) return
+    loaded = true
     remaining = {}
+    hits = []
     _.forEach(winners, (raw) => {
       const id = Number(raw)
       if (!_.isFinite(id)) return
       if (_.indexOf(wheel, id) < 0) return
+      if (remaining[id]) return
       remaining[id] = { id }
+      hits.push(id)
     })
   }
 
@@ -352,7 +358,7 @@ const runWheel = ({ wheel, getWinners, delay, onTick, onHold, onDone }) => {
     paintHead(Math.min(span, TRAIL + fanStep))
     fanStep += 1
     if (fanStep >= span) {
-      _.forEach(_.map(remaining, "id"), stamp)
+      _.forEach(hits, stamp)
       schedule(LOCK_MS, finish)
       return
     }
@@ -368,7 +374,11 @@ const runWheel = ({ wheel, getWinners, delay, onTick, onHold, onDone }) => {
     if (stopped || finished) return
     loadHits()
     if (finished || stopped) return
-    if (remaining) {
+    if (loaded) {
+      if (_.isEmpty(remaining)) {
+        schedule(LOCK_MS, finish)
+        return
+      }
       fanTick()
       return
     }

@@ -5,20 +5,28 @@ const CY = 0.5
 const OUTER_R = 0.48
 const LLOYD_STEPS = 12
 const GOLDEN = Math.PI * (3 - Math.sqrt(5))
-const RING_ASPECT = 6.2
-const RING_T_MIN = 0.03
-const RING_T_MAX = 0.048
-const circlePoly = (radius) => {
-  return _.times(96, (i) => {
-    const t = (i / 96) * Math.PI * 2 - Math.PI / 2
-    return [CX + radius * Math.cos(t), CY + radius * Math.sin(t)]
-  })
-}
-const BOUNDS = circlePoly(OUTER_R)
+const SITE_LIMIT = 0.93
 
 
 export const seedFromAddress = (address) => {
   return parseInt(String(address).replace("0x", "").slice(0, 8), 16)
+}
+
+export const seedFromSettle = (settle) => {
+  const { id } = settle || {}
+  if (!id) return
+  const n = parseInt(String(id).replace("0x", "").slice(0, 8), 16)
+  if (!_.isFinite(n)) return
+  return n
+}
+
+export const randomMapSeed = () => {
+  const bytes = new Uint32Array(1)
+  if (globalThis.crypto && globalThis.crypto.getRandomValues) {
+    globalThis.crypto.getRandomValues(bytes)
+    return bytes[0]
+  }
+  return Math.floor(Math.random() * 0xffffffff) >>> 0
 }
 
 export const playerHue = (address) => {
@@ -31,39 +39,36 @@ export const buildPolygons = (seed, count, winCount) => {
   let wins = count
   if (winCount) wins = winCount
   const loses = count - wins
-  const band = houseBand(loses)
-  let innerR = OUTER_R
-  if (loses) innerR = band.innerR
-  const rim = makeRim(innerR, rng)
-  const innerBounds = wavyPoly(rim)
-  let inner = diskSites(wins, rng, innerR)
+  const shape = mapShape()
+  const split = houseSplit(wins, count)
+  let sites = radialSites(wins, rng, 0, split * 0.96, shape)
+  if (loses) sites = sites.concat(radialSites(loses, rng, split * 1.04, SITE_LIMIT, shape))
   _.times(LLOYD_STEPS, () => {
-    inner = _.map(inner, (site, index) => {
-      const points = voronoiCell(site, index, inner, innerBounds)
+    sites = _.map(sites, (site, index) => {
+      const points = voronoiCell(site, index, sites, shape.bounds)
       if (points.length < 3) return site
-      const next = polygonCentroid(points)
-      const dx = next[0] - CX
-      const dy = next[1] - CY
-      const dist = Math.hypot(dx, dy)
-      const limit = rim(Math.atan2(dy, dx)) * 0.94
-      if (dist <= limit) return next
-      return [CX + (dx / dist) * limit, CY + (dy / dist) * limit]
+      return keepBand(polygonCentroid(points), shape, index >= wins, split)
     })
   })
-  const innerShapes = _.map(inner, (site, index) => voronoiCell(site, index, inner, innerBounds))
-  const rot = rng() * Math.PI * 2
-  const outerShapes = ringWedges(band, rot, rng, rim)
-  return _.keyBy(_.map(innerShapes.concat(outerShapes), (points, index) => {
+  const packed = _.map(sites, (site, index) => {
+    let points = voronoiCell(site, index, sites, shape.bounds)
+    if (index >= wins) points = flattenRim(points, shape, rng)
     const center = polygonCentroid(points)
-    const r = cellRadius(points, center)
-    let round = r * 0.28
-    if (index >= wins) {
-      round = band.t * 0.2
-      if (round < 0.001) round = 0.001
-    } else {
-      if (round > 0.018) round = 0.018
-      if (round < 0.003) round = 0.003
+    return {
+      points,
+      center,
+      rho: shapeRho(center, shape),
+      ang: Math.atan2(center[1] - CY, center[0] - CX)
     }
+  })
+  const inner = _.sortBy(packed.slice(0, wins), "rho")
+  const outer = _.sortBy(packed.slice(wins), "ang")
+  return _.keyBy(_.map(inner.concat(outer), (cell, index) => {
+    const { points, center } = cell
+    const r = cellRadius(points, center)
+    let round = r * 0.22
+    if (round > 0.016) round = 0.016
+    if (round < 0.003) round = 0.003
     return {
       id: index,
       x: center[0],
@@ -119,6 +124,124 @@ const mulberry32 = (seed) => {
   }
 }
 
+const mapShape = () => {
+  const rim = () => OUTER_R
+  const bounds = _.times(96, (i) => {
+    const ang = (i / 96) * Math.PI * 2 - Math.PI / 2
+    return [CX + OUTER_R * Math.cos(ang), CY + OUTER_R * Math.sin(ang)]
+  })
+  return { rim, bounds }
+}
+
+const flattenRim = (points, shape, rng) => {
+  if (!points || points.length < 4) return points
+  const n = points.length
+  const onRim = _.map(points, (point) => shapeRho(point, shape) >= 0.97)
+  const rimCount = _.sumBy(onRim, (hit) => {
+    if (hit) return 1
+    return 0
+  })
+  if (rimCount < 3) return points
+  let origin = 0
+  if (onRim[0]) {
+    origin = _.findLastIndex(onRim, (hit) => !hit)
+    if (origin < 0) return points
+    origin = (origin + 1) % n
+  }
+  const ordered = _.times(n, (k) => points[(origin + k) % n])
+  const orderedRim = _.times(n, (k) => onRim[(origin + k) % n])
+  const out = []
+  let i = 0
+  while (i < n) {
+    if (!orderedRim[i]) {
+      out.push(ordered[i])
+      i += 1
+      continue
+    }
+    const a = ordered[i]
+    let j = i
+    while (j < n && orderedRim[j]) j += 1
+    const b = ordered[j - 1]
+    out.push(a)
+    if (j - 1 > i) {
+      const mx = (a[0] + b[0]) * 0.5
+      const my = (a[1] + b[1]) * 0.5
+      const dx = mx - CX
+      const dy = my - CY
+      const dist = Math.hypot(dx, dy) || 1
+      const bump = (rng() - 0.38) * 0.034
+      let px = mx + dx / dist * bump
+      let py = my + dy / dist * bump
+      const pr = Math.hypot(px - CX, py - CY)
+      if (pr > 0.495) {
+        const s = 0.495 / pr
+        px = CX + (px - CX) * s
+        py = CY + (py - CY) * s
+      }
+      out.push([px, py])
+      out.push(b)
+    }
+    i = j
+  }
+  if (out.length < 3) return points
+  return out
+}
+
+const shapePoint = (rho, theta, shape) => {
+  const r = shape.rim(theta) * rho
+  return [CX + r * Math.cos(theta), CY + r * Math.sin(theta)]
+}
+
+const shapeRho = (point, shape) => {
+  const dx = point[0] - CX
+  const dy = point[1] - CY
+  const dist = Math.hypot(dx, dy)
+  const r = shape.rim(Math.atan2(dy, dx))
+  if (r < 1e-6) return 0
+  return dist / r
+}
+
+const houseSplit = (wins, count) => {
+  if (count <= wins) return 1
+  return Math.sqrt(wins / count)
+}
+
+const radialSites = (count, rng, rho0, rho1, shape) => {
+  if (count <= 0) return []
+  if (count === 1 && rho0 < 0.08) return [[CX, CY]]
+  const turn = rng() * Math.PI * 2
+  const a = rho0 * rho0
+  const b = rho1 * rho1
+  return _.map(_.range(count), (i) => {
+    const rho = Math.sqrt(a + (b - a) * (i + 0.5) / count)
+    const theta = i * GOLDEN + turn
+    return shapePoint(rho, theta, shape)
+  })
+}
+
+const clampSite = (point, shape, limit) => {
+  const rho = shapeRho(point, shape)
+  if (rho <= limit) return point
+  const s = limit / rho
+  return [CX + (point[0] - CX) * s, CY + (point[1] - CY) * s]
+}
+
+const keepBand = (point, shape, isHouse, split) => {
+  const next = clampSite(point, shape, SITE_LIMIT)
+  if (split >= 1) return next
+  const rho = shapeRho(next, shape)
+  if (isHouse) {
+    const minR = split + 0.03
+    if (rho >= minR) return next
+    const s = minR / Math.max(rho, 1e-6)
+    return clampSite([CX + (next[0] - CX) * s, CY + (next[1] - CY) * s], shape, SITE_LIMIT)
+  }
+  const maxR = split - 0.02
+  if (rho <= maxR) return next
+  const s = maxR / rho
+  return [CX + (next[0] - CX) * s, CY + (next[1] - CY) * s]
+}
+
 const roundedPolygonPath = (points, radius) => {
   if (!points || points.length < 3) return ""
   const n = points.length
@@ -160,115 +283,6 @@ const cellRadius = (points, center) => {
   return max
 }
 
-const diskSites = (count, rng, innerR) => {
-  if (count <= 1) return _.times(count, () => [CX, CY])
-  const rot = rng() * Math.PI * 2
-  return _.map(_.range(count), (i) => {
-    const r = innerR * Math.sqrt((i + 0.5) / (count + 0.8))
-    const theta = i * GOLDEN + rot
-    return [CX + r * Math.cos(theta), CY + r * Math.sin(theta)]
-  })
-}
-
-const houseThickness = (count) => {
-  const t = 0.155 / Math.sqrt(Math.max(count, 1))
-  if (t < RING_T_MIN) return RING_T_MIN
-  if (t > RING_T_MAX) return RING_T_MAX
-  return t
-}
-
-const houseGap = (t) => {
-  const g = t * 0.28
-  if (g < 0.006) return 0.006
-  return g
-}
-
-const rowCapacity = (radius, t) => {
-  return Math.max(1, Math.floor((Math.PI * 2 * radius) / (RING_ASPECT * t)))
-}
-
-const houseBand = (count) => {
-  if (count <= 0) return { t: 0, gap: 0, rows: [], innerR: OUTER_R }
-  const t = houseThickness(count)
-  const gap = houseGap(t)
-  const rows = []
-  let left = count
-  let rOuter = OUTER_R
-  while (left > 0) {
-    const n = Math.min(left, rowCapacity(rOuter - t / 2, t))
-    const rInner = rOuter - t
-    rows.push({ n, rOuter, rInner })
-    left -= n
-    rOuter = rInner - gap
-  }
-  return { t, gap, rows, innerR: rows[rows.length - 1].rInner }
-}
-
-const makeRim = (baseR, rng) => {
-  const amp = baseR * 0.05
-  const p1 = rng() * Math.PI * 2
-  const p2 = rng() * Math.PI * 2
-  const p3 = rng() * Math.PI * 2
-  const a1 = 0.52 + rng() * 0.22
-  const a2 = 0.28 + rng() * 0.16
-  const a3 = 0.14 + rng() * 0.1
-  return (ang) => {
-    const w = a1 * Math.sin(2 * ang + p1) + a2 * Math.sin(3 * ang + p2) + a3 * Math.sin(5 * ang + p3)
-    return baseR + amp * w
-  }
-}
-
-const wavyPoly = (radiusAt) => {
-  return _.times(96, (i) => {
-    const ang = (i / 96) * Math.PI * 2 - Math.PI / 2
-    const r = radiusAt(ang)
-    return [CX + r * Math.cos(ang), CY + r * Math.sin(ang)]
-  })
-}
-
-const ringWedges = (band, rot, rng, rim) => {
-  const { rows = [], t = 0.03 } = band || {}
-  if (!rows.length) return []
-  const steps = 16
-  const shapes = []
-  const last = rows.length - 1
-  _.forEach(rows, (row, rowIndex) => {
-    const { n, rOuter, rInner } = row
-    const turn = rot + rowIndex * 0.41
-    const weights = _.times(n, () => 0.7 + rng() * 0.6)
-    const total = _.sum(weights)
-    let a = turn
-    _.times(n, (i) => {
-      const span = (weights[i] / total) * Math.PI * 2
-      const a0 = a
-      const a1 = a + span
-      a = a1
-      const skew = (rng() - 0.5) * span * 0.16
-      const outerBump = (rng() - 0.5) * t * 0.22
-      const innerBump = (rng() - 0.5) * t * 0.22
-      const phase = rng() * Math.PI * 2
-      const wobble = t * (0.06 + rng() * 0.08)
-      const outer = _.map(_.range(steps + 1), (k) => {
-        const u = k / steps
-        const ang = a0 + (a1 - a0) * u
-        const r = rOuter + outerBump + Math.sin(u * Math.PI * 2 + phase) * wobble
-        return [CX + r * Math.cos(ang), CY + r * Math.sin(ang)]
-      })
-      const innerFrom = a1 + skew
-      const innerTo = a0 - skew
-      const inner = _.map(_.range(steps + 1), (k) => {
-        const u = k / steps
-        const ang = innerFrom + (innerTo - innerFrom) * u
-        let r = rInner + innerBump + Math.sin(u * Math.PI * 2 + phase + 0.9) * wobble * 0.7
-        if (rowIndex === last && rim) r = rim(ang)
-        return [CX + r * Math.cos(ang), CY + r * Math.sin(ang)]
-      })
-      shapes.push(outer.concat(inner))
-    })
-  })
-  return shapes
-}
-
 const voronoiCell = (site, index, sites, bounds) => {
   let poly = bounds
   _.forEach(sites, (other, otherIndex) => {
@@ -281,47 +295,6 @@ const voronoiCell = (site, index, sites, bounds) => {
     poly = clipHalfPlane(poly, dx, dy, mx, my)
   })
   return poly
-}
-
-const clipOutsideCircle = (poly, radius) => {
-  const r2 = radius * radius
-  const dist2 = (point) => {
-    const dx = point[0] - CX
-    const dy = point[1] - CY
-    return dx * dx + dy * dy
-  }
-  const outside = (point) => dist2(point) >= r2 - 1e-16
-  const intersect = (a, b) => {
-    const ax = a[0] - CX
-    const ay = a[1] - CY
-    const dx = b[0] - a[0]
-    const dy = b[1] - a[1]
-    const A = dx * dx + dy * dy
-    const B = 2 * (ax * dx + ay * dy)
-    const C = ax * ax + ay * ay - r2
-    const disc = B * B - 4 * A * C
-    if (A < 1e-16 || disc < 0) return a
-    const sqrt = Math.sqrt(disc)
-    const t0 = (-B - sqrt) / (2 * A)
-    const t1 = (-B + sqrt) / (2 * A)
-    let t = t0
-    if (t < -1e-9 || t > 1 + 1e-9) t = t1
-    t = _.clamp(t, 0, 1)
-    return [a[0] + t * dx, a[1] + t * dy]
-  }
-  const out = []
-  _.forEach(poly, (cur, i) => {
-    const prev = poly[(i + poly.length - 1) % poly.length]
-    const curOut = outside(cur)
-    const prevOut = outside(prev)
-    if (curOut) {
-      if (!prevOut) out.push(intersect(prev, cur))
-      out.push(cur)
-    } else if (prevOut) {
-      out.push(intersect(prev, cur))
-    }
-  })
-  return out
 }
 
 const clipHalfPlane = (poly, nx, ny, px, py) => {

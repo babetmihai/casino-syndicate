@@ -1,4 +1,5 @@
 import { buyPolygonsTicket, fetchPolygons, fromRankedIds, packedTickets, polygonsActions, selectPolygons, unwatchPolygons, withdrawPolygonsPrize } from ".."
+import { randomMapSeed, seedFromSettle } from "../polygons"
 import { fetchBalance, selectAuth } from "app/core/auth"
 import { requirePlayWallet } from "app/core/auth/SessionModal"
 import { clampEth } from "app/games/roulette/chips"
@@ -58,7 +59,8 @@ export const claimPrize = async (address) => {
       owners: {},
       claimedCount: 0,
       loseLit: 0,
-      prize: 0
+      prize: 0,
+      mapSeed: seedFromSettle(game.lastSettle) || randomMapSeed()
     })
     fetchPolygons(address)
     fetchBalance()
@@ -87,7 +89,8 @@ export const ackMapPrompt = (address) => {
     prize: 0,
     litIds: {},
     landed: false,
-    revealedOwners: {}
+    revealedOwners: {},
+    mapSeed: seedFromSettle(game.lastSettle) || randomMapSeed()
   })
   fetchPolygons(address)
 }

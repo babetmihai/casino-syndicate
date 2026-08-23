@@ -5,8 +5,7 @@ import {
   buildPolygons,
   cellBorder,
   LIT_LOSE_FILL,
-  ownerFill,
-  seedFromAddress
+  ownerFill
 } from "../polygons"
 import { ethers } from "ethers"
 import PolygonCellGroup from "./PolygonCellGroup"
@@ -28,7 +27,9 @@ const PolygonsMap = ({
   manyLit,
   spinning,
   celebrate,
-  housePop
+  housePop,
+  mapSeed,
+  pack = 1
 }) => {
   const svgRef = React.useRef(null)
   const winCount = polygonCount || 0
@@ -36,8 +37,11 @@ const PolygonsMap = ({
   const strokeWidth = cellBorder(count)
   const polygons = React.useMemo(() => {
     if (!address || !count) return EMPTY_OBJECT
-    return buildPolygons(seedFromAddress(address), count, winCount)
-  }, [address, count, winCount])
+    if (!_.isFinite(mapSeed)) return EMPTY_OBJECT
+    return buildPolygons(mapSeed, count, winCount)
+  }, [address, count, winCount, mapSeed])
+  let pulse = Number(pack) || 1
+  if (pulse < 1) pulse = 1
   const mineAddr = React.useMemo(() => {
     if (!account) return
     return ethers.getAddress(account)
@@ -67,14 +71,16 @@ const PolygonsMap = ({
   return (
     <svg
       ref={svgRef}
-      overflow="hidden"
+      overflow={spinning ? "visible" : "hidden"}
       className={cn(
         "polygons-map",
         spinning && "polygons-map-spinning",
-        "block aspect-square h-auto overflow-hidden"
+        "block aspect-square h-auto",
+        spinning ? "overflow-visible" : "overflow-hidden"
       )}
       viewBox="0 0 1 1"
       preserveAspectRatio="xMidYMid meet"
+      style={{ "--pulse": pulse }}
     >
       {_.map(_.sortBy(Object.values(polygons), (polygon) => polygon.id < winCount), (polygon) => {
         const lit = litIds[polygon.id]
@@ -120,6 +126,7 @@ const mapEqual = (prev, next) => {
       && prev.owners === next.owners
       && prev.flashIds === next.flashIds
       && prev.account === next.account
+      && prev.pack === next.pack
   }
   return prev.address === next.address
     && prev.owners === next.owners
@@ -133,6 +140,8 @@ const mapEqual = (prev, next) => {
     && prev.spinning === next.spinning
     && prev.celebrate === next.celebrate
     && prev.housePop === next.housePop
+    && prev.mapSeed === next.mapSeed
+    && prev.pack === next.pack
 }
 
 

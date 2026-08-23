@@ -20,15 +20,15 @@
   --animate-banner-card-long: banner-card-long 4.5s cubic-bezier(0.22, 1, 0.36, 1) forwards;
   --animate-chip-drop: chip-drop 0.2s cubic-bezier(0.22, 1, 0.36, 1);
   --animate-number-flash: number-flash 0.12s ease-out;
-  --animate-map-win: map-win 1.15s ease-in-out infinite;
+  --animate-map-win: map-win 1.05s cubic-bezier(0.22, 0.8, 0.28, 1) infinite;
   --animate-map-taken: map-taken 0.5s cubic-bezier(0.2, 0.9, 0.32, 1);
   --animate-map-pass: map-pass 0.22s ease-out;
   --animate-map-glow-flash: map-glow-flash 0.5s ease-out forwards;
-  --animate-map-glow-win: map-glow-win 1.15s ease-in-out infinite;
+  --animate-map-glow-win: map-glow-win 1.05s cubic-bezier(0.22, 0.8, 0.28, 1) infinite;
   --animate-map-pop: map-pop 0.55s cubic-bezier(0.2, 0.8, 0.32, 1) forwards;
-  --animate-map-spin: map-spin-pulse 0.7s ease-in-out infinite;
-  --animate-map-spin-lose: map-spin-pulse-lose 0.7s ease-in-out infinite;
-  --animate-map-spin-glow: map-spin-glow 0.7s ease-in-out infinite;
+  --animate-map-spin: map-spin-pulse 0.78s cubic-bezier(0.22, 0.7, 0.25, 1) infinite;
+  --animate-map-spin-lose: map-spin-pulse-lose 0.78s cubic-bezier(0.22, 0.7, 0.25, 1) infinite;
+  --animate-map-spin-glow: map-spin-glow 0.78s cubic-bezier(0.22, 0.7, 0.25, 1) infinite;
   --animate-race-hot: race-hot 0.9s ease-in-out infinite;
   --animate-claim: claim-pulse 1.8s ease-in-out infinite;
   --animate-overlay-in: overlay-in 0.32s ease-out;
@@ -66,60 +66,80 @@
 
 @keyframes map-win {
   0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.04); }
+  40% { transform: scale(1.14); }
 }
 
 @keyframes map-taken {
   0% { transform: scale(1); }
-  32% { transform: scale(1.08); }
+  28% { transform: scale(1.2); }
   100% { transform: scale(1); }
 }
 
 @keyframes map-pass {
-  0% { transform: scale(1.035); }
+  0% { transform: scale(1.1); }
   100% { transform: scale(1); }
 }
 
 @keyframes map-glow-flash {
-  0% { opacity: 0.62; transform: scale(1.28); }
+  0% { opacity: 0.62; transform: scale(1.32); }
   100% { opacity: 0.32; transform: scale(1.16); }
 }
 
 @keyframes map-glow-win {
   0%, 100% { opacity: 0.2; transform: scale(1.1); }
-  50% { opacity: 0.42; transform: scale(1.2); }
+  40% { opacity: 0.5; transform: scale(1.32); }
 }
 
 @keyframes map-spin-pulse {
   0%, 100% {
-    fill: color-mix(in srgb, var(--cs-accent) 10%, var(--cs-bg));
-    transform: scale(1);
+    fill: color-mix(in srgb, var(--cs-accent) calc(6% + 2% * sqrt(var(--pulse, 1))), var(--cs-bg));
+    transform:
+      translate(
+        calc(var(--nx, 0) * 0.9% * sqrt(var(--pulse, 1))),
+        calc(var(--ny, 0) * 0.9% * sqrt(var(--pulse, 1)))
+      )
+      scale(calc(1 - 0.07 * sqrt(var(--pulse, 1))));
   }
-  50% {
-    fill: color-mix(in srgb, var(--cs-accent) 46%, var(--cs-bg));
-    transform: scale(1.03);
+  36% {
+    fill: color-mix(in srgb, var(--cs-accent) calc(38% + 8% * sqrt(var(--pulse, 1))), var(--cs-bg));
+    transform:
+      translate(
+        calc(var(--nx, 0) * -1.6% * sqrt(var(--pulse, 1))),
+        calc(var(--ny, 0) * -1.6% * sqrt(var(--pulse, 1)))
+      )
+      scale(calc(1 + 0.09 * sqrt(var(--pulse, 1))));
   }
 }
 
 @keyframes map-spin-pulse-lose {
   0%, 100% {
-    fill: color-mix(in srgb, var(--cs-accent-2) 10%, var(--cs-bg));
-    transform: scale(1);
+    fill: color-mix(in srgb, var(--cs-accent-2) calc(6% + 2% * sqrt(var(--pulse, 1))), var(--cs-bg));
+    transform:
+      translate(
+        calc(var(--nx, 0) * 0.9% * sqrt(var(--pulse, 1))),
+        calc(var(--ny, 0) * 0.9% * sqrt(var(--pulse, 1)))
+      )
+      scale(calc(1 - 0.07 * sqrt(var(--pulse, 1))));
   }
-  50% {
-    fill: color-mix(in srgb, var(--cs-accent-2) 46%, var(--cs-bg));
-    transform: scale(1.03);
+  36% {
+    fill: color-mix(in srgb, var(--cs-accent-2) calc(38% + 8% * sqrt(var(--pulse, 1))), var(--cs-bg));
+    transform:
+      translate(
+        calc(var(--nx, 0) * -1.6% * sqrt(var(--pulse, 1))),
+        calc(var(--ny, 0) * -1.6% * sqrt(var(--pulse, 1)))
+      )
+      scale(calc(1 + 0.09 * sqrt(var(--pulse, 1))));
   }
 }
 
 @keyframes map-spin-glow {
   0%, 100% {
-    opacity: 0.06;
-    transform: scale(1.08);
+    opacity: 0.05;
+    transform: scale(1.06);
   }
-  50% {
-    opacity: 0.3;
-    transform: scale(1.18);
+  36% {
+    opacity: 0.38;
+    transform: scale(1.34);
   }
 }
 
@@ -229,6 +249,7 @@
     border-color: var(--color-cs-border);
   }
 
+  .polygons-map-sector,
   .polygons-map-cell,
   .polygons-map-cell-glow {
     transform-box: view-box;
@@ -244,11 +265,15 @@
 
   .polygons-map-spinning .polygons-map-cell:not(.polygons-map-cell-owned):not(.polygons-map-cell-taken) {
     animation: var(--animate-map-spin);
+    animation-duration: calc(0.82s / sqrt(var(--pulse, 1)));
+    animation-delay: calc(var(--rho, 0) * -0.22s + var(--phase, 0) * -0.14s);
     transition: none;
   }
 
   .polygons-map-spinning .polygons-map-cell-lose:not(.polygons-map-cell-owned):not(.polygons-map-cell-taken) {
     animation: var(--animate-map-spin-lose);
+    animation-duration: calc(0.82s / sqrt(var(--pulse, 1)));
+    animation-delay: calc(var(--rho, 0) * -0.22s + var(--phase, 0) * -0.14s);
   }
 
   .polygons-map-spinning .polygons-map-cell-taken {

@@ -36,7 +36,7 @@ const PolygonsGame = React.memo(({ address }) => {
     polygonCount, loseCount, ticketPrice, claimedCount, loseLit, prize, myPrize,
     owners = {}, lastTicket, totalBalance, livePlayers = {}, lastSettle,
     buying, claiming, revealing, litIds = {}, landed, showBanner, holdingSpin, beat, multiplier = 1,
-    revealedOwners = {}, awaitNewGame, holdBoard
+    revealedOwners = {}, awaitNewGame, holdBoard, mapSeed
   } = polygons
   const { settled, playersWin, roundPrize, closer, refunded } = lastTicket || {}
   const hasPrize = clampEth(myPrize) > 0
@@ -195,6 +195,8 @@ const PolygonsGame = React.memo(({ address }) => {
               spinning={holdingSpin || revealing}
               manyLit={pack > 1}
               celebrate={showBanner && playersWon}
+              mapSeed={mapSeed}
+              pack={pack}
             />
             <PolygonsPrize label={ethLabel(shownPot, symbol)} />
           </div>

@@ -4,6 +4,7 @@
     "ui": "vite",
     "chain": "node scripts/chain.js",
     "build": "hardhat compile && vite build",
+    "deploy:amoy": "node scripts/publish.js",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix"
   },

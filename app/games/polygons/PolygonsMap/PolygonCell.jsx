@@ -53,7 +53,19 @@ const PolygonCell = React.memo(({
   let popDelay = 0
   if (isHousePop && popIndex > 0) popDelay = popIndex * 38
   const popStyle = isHousePop ? { animationDelay: `${popDelay}ms` } : undefined
-  const origin = { transformOrigin: `${cx * 100}% ${cy * 100}%` }
+  const dx = cx - 0.5
+  const dy = cy - 0.5
+  const dist = Math.hypot(dx, dy) || 1
+  let rho = dist / 0.48
+  if (rho > 1) rho = 1
+  const phase = (Math.atan2(dy, dx) + Math.PI) / (Math.PI * 2)
+  const origin = {
+    transformOrigin: `${cx * 100}% ${cy * 100}%`,
+    "--nx": dx / dist,
+    "--ny": dy / dist,
+    "--rho": rho,
+    "--phase": phase
+  }
   const cellStyle = popStyle ? { ...origin, ...popStyle } : origin
   const cellClass = cn(
     "polygons-map-cell",

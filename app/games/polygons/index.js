@@ -5,6 +5,7 @@ import { generateContract, getContract, sendTx, sendWalletTx } from "app/core/co
 import { selectAuth } from "app/core/auth"
 import { clampEth, formatEth, parseEth } from "app/games/roulette/chips"
 import PolygonsArtifact from "artifacts/contracts/Polygons.sol/Polygons.json"
+import { randomMapSeed, seedFromSettle } from "./polygons"
 import _ from "lodash"
 
 export const MIN_POLYGONS = 6
@@ -47,7 +48,7 @@ export const fetchPolygons = async (address) => {
   if (occupied > 0) livePlayers = fromPlayers(owners)
   let lastSettle = prev.lastSettle
   const wasOccupied = (prev.claimedCount || 0) + (prev.loseLit || 0) > 0
-  if (occupied === 0 && wasOccupied) {
+  if (!lastSettle || (occupied === 0 && wasOccupied)) {
     const logs = await contract.queryFilter(contract.filters.Settled(), -32)
     const latest = _.last(logs)
     if (latest) {
@@ -62,8 +63,15 @@ export const fetchPolygons = async (address) => {
   const houseJustSettled = occupied === 0 && wasOccupied && lastSettle && !lastSettle.playersWin
   const prizeOpen = clampEth(prev.myPrize) > 0
   const freezeBoard = prev.awaitNewGame || prev.holdBoard || houseJustSettled || prizeOpen
-  if (occupied === 0 && wasOccupied && !spinBusy && !freezeBoard) {
+  const isNewRound = occupied === 0 && wasOccupied && !spinBusy && !freezeBoard
+  if (isNewRound) {
     overlay = { revealedOwners: {}, litIds: {}, landed: false }
+  }
+  let mapSeed = prev.mapSeed
+  if (isNewRound || !_.isFinite(mapSeed)) {
+    const fromSettle = seedFromSettle(lastSettle)
+    if (_.isFinite(fromSettle) && (isNewRound || !_.isFinite(mapSeed))) mapSeed = fromSettle
+    if (!_.isFinite(mapSeed)) mapSeed = randomMapSeed()
   }
   let nextOwners = owners
   let nextClaimed = claimedCount
@@ -92,6 +100,7 @@ export const fetchPolygons = async (address) => {
     owners: nextOwners,
     livePlayers: nextLive,
     lastSettle,
+    mapSeed,
     ...overlay
   })
 }

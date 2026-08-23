@@ -239,7 +239,6 @@ const PolygonsGame = React.memo(({ address }) => {
       if (!showResult) {
         if (last.split) setBeat("Split")
         else if (last.assigned && last.won && last.polygonId === NUCLEUS_ID) setBeat("Nucleus")
-        else if (last.assigned && last.won) setBeat("Cell")
       }
     } finally {
       if (stopFlash.current) stopFlash.current()

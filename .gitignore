@@ -1,8 +1,7 @@
 node_modules
 dist
 db
-.env.local
-.env.production
+.env*
 .gh-pages
 
 # Hardhat files

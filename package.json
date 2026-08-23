@@ -1,12 +1,12 @@
 {
   "name": "casino-syndicate",
   "scripts": {
-    "ui": "vite",
-    "chain": "node scripts/chain.js",
-    "build": "hardhat compile && vite build",
-    "deploy:amoy": "node scripts/publish.js",
-    "lint": "eslint .",
-    "lint:fix": "eslint . --fix"
+    "hardhat": "node scripts/hardhat.js",
+    "hardhat:amoy": "node scripts/hardhat.js --amoy",
+    "vite": "vite --mode hardhat",
+    "pages:amoy": "node scripts/pages.js --amoy",
+    "eslint": "eslint .",
+    "eslint:fix": "eslint . --fix"
   },
   "dependencies": {
     "@mantine/core": "^9.5.1",

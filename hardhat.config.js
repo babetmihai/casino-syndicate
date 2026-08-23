@@ -1,11 +1,30 @@
-const path = require("path")
+const fs = require("fs")
+const { readEnvFile, envFile, loadEnv, root } = require("./scripts/env")
 
-require("dotenv").config()
-require("dotenv").config({ path: path.join(__dirname, ".env.local") })
+loadEnv(".env.hardhat")
 require("@nomicfoundation/hardhat-toolbox")
 require("events").EventEmitter.defaultMaxListeners = 32
 
-const deployerKey = process.env.PRIVATE_KEY && `0x${process.env.PRIVATE_KEY.replace(/^0x/, "")}`
+const account = (key) => key && `0x${key.replace(/^0x/, "")}`
+
+const remoteNetworks = () => {
+  const networks = {}
+  for (const file of fs.readdirSync(root)) {
+    const match = file.match(/^\.env\.([a-z][a-z0-9]*)$/)
+    if (!match) continue
+    const name = match[1]
+    if (name === "hardhat") continue
+    const env = readEnvFile(envFile(name))
+    const key = account(env.PRIVATE_KEY)
+    networks[name] = {
+      url: env.RPC_URL,
+      chainId: Number(env.VITE_CHAIN_ID),
+      timeout: 120000,
+      accounts: key ? [key] : []
+    }
+  }
+  return networks
+}
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
@@ -14,7 +33,7 @@ module.exports = {
     settings: {
       optimizer: {
         enabled: true,
-        runs: 50
+        runs: 1
       },
       viaIR: true
     }
@@ -29,11 +48,6 @@ module.exports = {
       chainId: 1337,
       allowUnlimitedContractSize: true
     },
-    amoy: {
-      url: process.env.AMOY_RPC_URL || "https://polygon-amoy-bor-rpc.publicnode.com",
-      chainId: 80002,
-      timeout: 120000,
-      accounts: deployerKey ? [deployerKey] : []
-    }
+    ...remoteNetworks()
   }
 }

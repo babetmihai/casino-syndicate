@@ -15,6 +15,19 @@ const toTable = ({ game, createdBy, createdAt, gameType }) => {
   }
 }
 
+const deployFactory = async () => {
+  const Roulette = await ethers.getContractFactory("Roulette")
+  const Polygons = await ethers.getContractFactory("Polygons")
+  const roulette = await Roulette.deploy()
+  await roulette.waitForDeployment()
+  const polygons = await Polygons.deploy()
+  await polygons.waitForDeployment()
+  const Factory = await ethers.getContractFactory("GameFactory")
+  const factory = await Factory.deploy(await roulette.getAddress(), await polygons.getAddress())
+  await factory.waitForDeployment()
+  return factory
+}
+
 const forceWheel = async (player, number) => {
   const latest = await ethers.provider.getBlock("latest")
   const timestamp = latest.timestamp + 1
@@ -35,9 +48,7 @@ describe("UI flow: create, view, play roulette", () => {
   it("creates a table, lists it, loads it, funds it, and posts a bet", async () => {
     const [creator, player] = await ethers.getSigners()
 
-    const Factory = await ethers.getContractFactory("GameFactory")
-    const factory = await Factory.deploy()
-    await factory.waitForDeployment()
+    const factory = await deployFactory()
 
     const createTx = await factory.connect(creator).createGame(
       TABLE_TYPE_IDS.Roulette,
@@ -121,9 +132,7 @@ describe("UI flow: create, view, play roulette", () => {
 
   it("keeps the owner at 100% of the bankroll after a house win and a top-up", async () => {
     const [creator, player] = await ethers.getSigners()
-    const Factory = await ethers.getContractFactory("GameFactory")
-    const factory = await Factory.deploy()
-    await factory.waitForDeployment()
+    const factory = await deployFactory()
 
     const createTx = await factory.connect(creator).createGame(
       TABLE_TYPE_IDS.Roulette,
@@ -163,9 +172,7 @@ describe("UI flow: create, view, play roulette", () => {
 
   it("pays even-money and dozen bets from the winning number", async () => {
     const [creator, player] = await ethers.getSigners()
-    const Factory = await ethers.getContractFactory("GameFactory")
-    const factory = await Factory.deploy()
-    await factory.waitForDeployment()
+    const factory = await deployFactory()
     const createTx = await factory.connect(creator).createGame(
       TABLE_TYPE_IDS.Roulette,
       ethers.parseEther("0.01"),
@@ -215,9 +222,7 @@ describe("UI flow: create, view, play roulette", () => {
 
   it("pays splits, streets, corners, and lines from the winning number", async () => {
     const [creator, player] = await ethers.getSigners()
-    const Factory = await ethers.getContractFactory("GameFactory")
-    const factory = await Factory.deploy()
-    await factory.waitForDeployment()
+    const factory = await deployFactory()
     const createTx = await factory.connect(creator).createGame(
       TABLE_TYPE_IDS.Roulette,
       ethers.parseEther("0.01"),
@@ -273,9 +278,7 @@ describe("UI flow: create, view, play roulette", () => {
 
   it("sets min and max when the table is created", async () => {
     const [creator] = await ethers.getSigners()
-    const Factory = await ethers.getContractFactory("GameFactory")
-    const factory = await Factory.deploy()
-    await factory.waitForDeployment()
+    const factory = await deployFactory()
     const createTx = await factory.connect(creator).createGame(
       TABLE_TYPE_IDS.Roulette,
       ethers.parseEther("0.05"),
@@ -314,9 +317,7 @@ describe("UI flow: create, view, play roulette", () => {
 
   it("rejects bets outside table limits", async () => {
     const [creator, player] = await ethers.getSigners()
-    const Factory = await ethers.getContractFactory("GameFactory")
-    const factory = await Factory.deploy()
-    await factory.waitForDeployment()
+    const factory = await deployFactory()
     const createTx = await factory.connect(creator).createGame(
       TABLE_TYPE_IDS.Roulette,
       ethers.parseEther("0.01"),
@@ -353,9 +354,7 @@ describe("UI flow: create, view, play roulette", () => {
 
   it("pays the remaining bankroll when a win is larger than the table", async () => {
     const [creator, player] = await ethers.getSigners()
-    const Factory = await ethers.getContractFactory("GameFactory")
-    const factory = await Factory.deploy()
-    await factory.waitForDeployment()
+    const factory = await deployFactory()
     const createTx = await factory.connect(creator).createGame(
       TABLE_TYPE_IDS.Roulette,
       ethers.parseEther("0.01"),
@@ -401,9 +400,7 @@ describe("UI flow: create, view, play roulette", () => {
 
   it("requires a 1 ETH deposit and allows withdraw once per day", async () => {
     const [creator, player] = await ethers.getSigners()
-    const Factory = await ethers.getContractFactory("GameFactory")
-    const factory = await Factory.deploy()
-    await factory.waitForDeployment()
+    const factory = await deployFactory()
 
     await expect(
       factory.connect(creator).createGame(
@@ -462,9 +459,7 @@ describe("UI flow: create, view, play roulette", () => {
 
   it("keeps the creator as owner after another player deposits and withdraws", async () => {
     const [creator, player] = await ethers.getSigners()
-    const Factory = await ethers.getContractFactory("GameFactory")
-    const factory = await Factory.deploy()
-    await factory.waitForDeployment()
+    const factory = await deployFactory()
     const createTx = await factory.connect(creator).createGame(
       TABLE_TYPE_IDS.Roulette,
       ethers.parseEther("0.01"),
@@ -512,13 +507,6 @@ describe("UI flow: create, view, play roulette", () => {
 
 describe("UI flow: create, view, play polygons", () => {
   const DEPOSIT = ethers.parseEther("1")
-
-  const deployFactory = async () => {
-    const Factory = await ethers.getContractFactory("GameFactory")
-    const factory = await Factory.deploy()
-    await factory.waitForDeployment()
-    return factory
-  }
 
   const createdAddress = (factory, receipt) => {
     const created = receipt.logs
@@ -1106,9 +1094,7 @@ describe("session wallet acts as principal", () => {
 
   it("authorizes a session that plays and funds in the owner's name", async () => {
     const [creator, player] = await ethers.getSigners()
-    const Factory = await ethers.getContractFactory("GameFactory")
-    const factory = await Factory.deploy()
-    await factory.waitForDeployment()
+    const factory = await deployFactory()
     const session = ethers.Wallet.createRandom().connect(ethers.provider)
     const deposit = ethers.parseEther("5")
     await (await factory.connect(player).authorizeSession(session.address, { value: deposit })).wait()
@@ -1148,9 +1134,7 @@ describe("session wallet acts as principal", () => {
 
   it("creates games and polygons cells as the authorizing account", async () => {
     const [player] = await ethers.getSigners()
-    const Factory = await ethers.getContractFactory("GameFactory")
-    const factory = await Factory.deploy()
-    await factory.waitForDeployment()
+    const factory = await deployFactory()
     const session = ethers.Wallet.createRandom().connect(ethers.provider)
     await (await factory.connect(player).authorizeSession(session.address, {
       value: ethers.parseEther("10")

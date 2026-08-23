@@ -18,11 +18,31 @@ contract GameFactory {
 		uint256 createdAt;
 	}
 
+	address public immutable rouletteImpl;
+	address public immutable polygonsImpl;
+
 	GameInfo[] public games;
 	mapping(address => uint256[]) private gameIndexesByCreator;
 	mapping(address => uint256) private gameIndexByAddress;
 	mapping(address => address) public sessionOf;
 	mapping(address => address) private sessionPrincipal;
+
+	constructor(address _rouletteImpl, address _polygonsImpl) {
+		require(_rouletteImpl != address(0) && _polygonsImpl != address(0), "Impl");
+		rouletteImpl = _rouletteImpl;
+		polygonsImpl = _polygonsImpl;
+	}
+
+	function clone(address impl) private returns (address instance) {
+		assembly {
+			let ptr := mload(0x40)
+			mstore(ptr, 0x3d602d80600a3d3981f3363d3d373d3d3d363d73000000000000000000000000)
+			mstore(add(ptr, 0x14), shl(0x60, impl))
+			mstore(add(ptr, 0x28), 0x5af43d82803e903d91602b57fd5bf30000000000000000000000000000000000)
+			instance := create(0, ptr, 0x37)
+		}
+		require(instance != address(0), "Clone failed");
+	}
 
 	event GameCreated(
 		address indexed game,
@@ -60,9 +80,11 @@ contract GameFactory {
 		address creator = principalOf(msg.sender);
 		if (gameType == GameType.Roulette) {
 			require(msg.value >= 1 ether, "Min deposit 1");
-			game = address(new Roulette{value: msg.value}(creator, a, b));
+			game = clone(rouletteImpl);
+			Roulette(payable(game)).initialize{value: msg.value}(creator, a, b);
 		} else if (gameType == GameType.Polygons) {
-			game = address(new Polygons{value: msg.value}(creator, a, b, c));
+			game = clone(polygonsImpl);
+			Polygons(payable(game)).initialize{value: msg.value}(creator, a, b, c);
 		} else {
 			revert("Unsupported game type");
 		}

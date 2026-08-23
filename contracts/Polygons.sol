@@ -61,12 +61,17 @@ contract Polygons {
 	event Settled(uint256 prize, address[] owners, bool playersWin, address[] mates, address closer);
 	event Deposited(address indexed user, uint256 amount);
 
-	constructor(
+	constructor() {
+		createdBy = address(1);
+	}
+
+	function initialize(
 		address _createdBy,
 		uint256 _polygonCount,
 		uint256,
 		uint256 _ticketPrice
-	) payable {
+	) external payable {
+		require(createdBy == address(0), "Init");
 		require(_polygonCount >= MIN_POLYGONS && _polygonCount <= MAX_POLYGONS, "Bad polygons");
 		require(_ticketPrice >= CHIP, "Price too small");
 		createdBy = _createdBy;

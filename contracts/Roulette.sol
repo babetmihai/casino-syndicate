@@ -36,7 +36,12 @@ contract Roulette {
 	event Deposited(address indexed user, uint256 amount);
 	event WinningNumber(uint256 number, uint256 totalBetAmount, uint256 winningAmount, uint256 playerBalance);
 
-	constructor(address _createdBy, uint256 _minBet, uint256 _maxBet) payable {
+	constructor() {
+		createdBy = address(1);
+	}
+
+	function initialize(address _createdBy, uint256 _minBet, uint256 _maxBet) external payable {
+		require(createdBy == address(0), "Init");
 		require(msg.value >= MIN_DEPOSIT, "Min deposit 1");
 		require(_minBet >= CHIP, "Min too small");
 		require(_maxBet >= _minBet, "Max below min");

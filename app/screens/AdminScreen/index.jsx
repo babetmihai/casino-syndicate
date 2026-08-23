@@ -5,10 +5,8 @@ import { useParams } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import RouletteAdmin from "app/games/roulette/RouletteAdmin"
 import PolygonsAdmin from "app/games/polygons/PolygonsAdmin"
-import BlackjackAdmin from "app/games/blackjack/BlackjackAdmin"
 import { buyTableShares, selectRoulette, withdrawTableShares } from "app/games/roulette"
 import { depositPolygonsShares, selectPolygons, withdrawPolygonsShares } from "app/games/polygons"
-import { depositBlackjackShares, selectBlackjack, withdrawBlackjackShares } from "app/games/blackjack"
 import { clampEth } from "app/games/roulette/chips"
 import AppScreen from "app/components/AppScreen"
 import history from "app/core/history"
@@ -27,24 +25,17 @@ const AdminScreen = () => {
   const table = useSelector(() => selectTable(address))
   const roulette = useSelector(() => selectRoulette(address)) || {}
   const polygons = useSelector(() => selectPolygons(address)) || {}
-  const blackjack = useSelector(() => selectBlackjack(address)) || {}
   const { memberShares, lastWithdrawAt } = roulette
   const polygonsShares = polygons.memberShares
   const polygonsWithdrawAt = polygons.lastWithdrawAt
-  const { memberShares: blackjackShares, lastWithdrawAt: blackjackWithdrawAt } = blackjack
   const { type } = table || {}
   const isRoulette = type === TABLE_TYPES.Roulette
   const isPolygons = type === TABLE_TYPES.Polygons
-  const isBlackjack = type === TABLE_TYPES.Blackjack
   let shareAmount = memberShares
   let withdrawAt = lastWithdrawAt
   if (isPolygons) {
     shareAmount = polygonsShares
     withdrawAt = polygonsWithdrawAt
-  }
-  if (isBlackjack) {
-    shareAmount = blackjackShares
-    withdrawAt = blackjackWithdrawAt
   }
   const hasShare = clampEth(shareAmount) > 0
 
@@ -58,8 +49,6 @@ const AdminScreen = () => {
       onSubmit: async ({ balance }) => {
         if (isPolygons) {
           await depositPolygonsShares({ balance }, address)
-        } else if (isBlackjack) {
-          await depositBlackjackShares({ balance }, address)
         } else {
           await buyTableShares({ balance }, address)
         }
@@ -74,8 +63,6 @@ const AdminScreen = () => {
       onSubmit: async ({ balance }) => {
         if (isPolygons) {
           await withdrawPolygonsShares({ balance }, address)
-        } else if (isBlackjack) {
-          await withdrawBlackjackShares({ balance }, address)
         } else {
           await withdrawTableShares({ balance }, address)
         }
@@ -94,7 +81,7 @@ const AdminScreen = () => {
           <Button className={cn("admin-play")} onClick={() => history.push(`/tables/${address}`)}>
             Play
           </Button>
-          {(isRoulette || isPolygons || isBlackjack) && account &&
+          {(isRoulette || isPolygons) && account &&
             <Button
               className={cn("admin-deposit")}
               variant="outline"
@@ -120,9 +107,6 @@ const AdminScreen = () => {
         }
         {address && isPolygons &&
           <PolygonsAdmin address={address} />
-        }
-        {address && isBlackjack &&
-          <BlackjackAdmin address={address} />
         }
       </div>
     </AppScreen>

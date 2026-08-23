@@ -3,14 +3,12 @@ pragma solidity ^0.8.0;
 
 import "./Roulette.sol";
 import "./Polygons.sol";
-import "./Blackjack.sol";
 
 
 contract GameFactory {
 	enum GameType {
 		Roulette,
-		Polygons,
-		Blackjack
+		Polygons
 	}
 
 	struct GameInfo {
@@ -66,9 +64,6 @@ contract GameFactory {
 		} else if (gameType == GameType.Polygons) {
 			require(msg.value >= 1 ether, "Min deposit 1");
 			game = address(new Polygons{value: msg.value}(creator, a, c));
-		} else if (gameType == GameType.Blackjack) {
-			require(msg.value >= 1 ether, "Min deposit 1");
-			game = address(new Blackjack{value: msg.value}(creator, a, b));
 		} else {
 			revert("Unsupported game type");
 		}

@@ -6,30 +6,25 @@ import { generateContract, getFactory, sendWalletTx } from "../contracts"
 import { selectAuth } from "../auth"
 import { fetchRoulette } from "app/games/roulette"
 import { fetchPolygons } from "app/games/polygons"
-import { fetchBlackjack } from "app/games/blackjack"
 import { parseEth } from "app/games/roulette/chips"
 import history from "../history"
-import BlackjackArtifact from "artifacts/contracts/Blackjack.sol/Blackjack.json"
 import PolygonsArtifact from "artifacts/contracts/Polygons.sol/Polygons.json"
 import RouletteArtifact from "artifacts/contracts/Roulette.sol/Roulette.json"
 import _ from "lodash"
 
 export const TABLE_TYPES = {
   Roulette: "Roulette",
-  Polygons: "Polygons",
-  Blackjack: "Blackjack"
+  Polygons: "Polygons"
 }
 
 export const TABLE_TYPE_IDS = {
   [TABLE_TYPES.Roulette]: 0,
-  [TABLE_TYPES.Polygons]: 1,
-  [TABLE_TYPES.Blackjack]: 2
+  [TABLE_TYPES.Polygons]: 1
 }
 
 const TABLE_TYPE_BY_ID = {
   0: TABLE_TYPES.Roulette,
-  1: TABLE_TYPES.Polygons,
-  2: TABLE_TYPES.Blackjack
+  1: TABLE_TYPES.Polygons
 }
 
 
@@ -75,7 +70,6 @@ export const fetchTables = async () => {
   actions.set("tables", tables)
   await Promise.all(_.map(tables, (table) => {
     if (table.type === TABLE_TYPES.Polygons) return fetchPolygons(table.address)
-    if (table.type === TABLE_TYPES.Blackjack) return fetchBlackjack(table.address)
     return fetchRoulette(table.address)
   }))
 }
@@ -116,7 +110,6 @@ export const createTable = async (values) => {
 
 const abiForType = (type) => {
   if (type === TABLE_TYPES.Polygons) return PolygonsArtifact.abi
-  if (type === TABLE_TYPES.Blackjack) return BlackjackArtifact.abi
   return RouletteArtifact.abi
 }
 

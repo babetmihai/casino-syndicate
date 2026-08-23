@@ -27,9 +27,6 @@
   --animate-map-glow-win: map-glow-win 1.15s ease-in-out infinite;
   --animate-claim: claim-pulse 1.8s ease-in-out infinite;
   --animate-overlay-in: overlay-in 0.32s ease-out;
-  --animate-card-deal: card-deal 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
-  --animate-bj-load: bj-load 1.05s ease-in-out infinite;
-  --animate-bj-spot: bj-spot 1.6s ease-in-out infinite;
 }
 
 @keyframes banner-in-out {
@@ -96,27 +93,6 @@
 @keyframes overlay-in {
   from { opacity: 0; }
   to { opacity: 1; }
-}
-
-@keyframes card-deal {
-  from {
-    opacity: 0;
-    transform: translateY(-1.1rem) rotate(-10deg) scale(0.88);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) rotate(0) scale(1);
-  }
-}
-
-@keyframes bj-load {
-  0% { transform: rotate(0deg); }
-  100% { transform: rotate(360deg); }
-}
-
-@keyframes bj-spot {
-  0%, 100% { box-shadow: 0 0 0 0 rgb(45 212 191 / 0.28); }
-  50% { box-shadow: 0 0 0 0.45rem rgb(45 212 191 / 0); }
 }
 
 @keyframes chip-drop {
@@ -262,8 +238,7 @@
     max-height: calc(100% - 1.25rem);
   }
 
-  .polygons-map-card,
-  .blackjack-table-card {
+  .polygons-map-card {
     transition: border-color 0.35s ease;
   }
 
@@ -271,25 +246,13 @@
     border-color: rgb(45 212 191 / 35%);
   }
 
-  .blackjack-table-frame {
-    background: radial-gradient(80% 40% at 50% 0%, rgb(45 212 191 / 0.05), transparent 55%);
-  }
-
-  .blackjack-spot-tray,
-  .blackjack-dealer-tray,
-  .blackjack-spot-box {
-    transition: border-color 0.25s ease;
-  }
-
   .polygons-banner-card,
-  .roulette-banner-card,
-  .blackjack-banner-card {
+  .roulette-banner-card {
     box-shadow: 0 0 2.5rem rgb(45 212 191 / 0.22);
   }
 
   .polygons-banner-house,
-  .roulette-banner-black,
-  .blackjack-banner-house {
+  .roulette-banner-black {
     box-shadow: 0 0 2.5rem rgb(129 140 248 / 0.24);
   }
 
@@ -298,14 +261,12 @@
   }
 
   .polygons-spin,
-  .roulette-spin,
-  .blackjack-deal {
+  .roulette-spin {
     transition: border-color 0.2s ease, color 0.2s ease, transform 0.15s ease;
   }
 
   .polygons-spin[data-holding="true"],
-  .roulette-spin[data-holding="true"],
-  .blackjack-deal[data-holding="true"] {
+  .roulette-spin[data-holding="true"] {
     transform: scale(0.985);
   }
 
@@ -316,15 +277,9 @@
     .polygons-banner-card,
     .roulette-banner,
     .roulette-banner-card,
-    .blackjack-banner,
-    .blackjack-banner-card,
     .polygons-claim,
     .polygons-claim-wrap,
-    .roulette-spot-rect,
-    .playing-card,
-    .blackjack-loading-ring,
-    .blackjack-spot-circle-current,
-    .blackjack-spot-box-current {
+    .roulette-spot-rect {
       animation: none !important;
       transition: none !important;
     }

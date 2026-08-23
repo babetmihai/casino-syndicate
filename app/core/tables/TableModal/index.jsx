@@ -87,7 +87,6 @@ const TableModal = ({ onSubmit }) => {
         }}
         data={[
           { label: "Roulette", value: TABLE_TYPES.Roulette },
-          { label: "Blackjack", value: TABLE_TYPES.Blackjack },
           { label: "Polygons", value: TABLE_TYPES.Polygons }
         ]}
       />

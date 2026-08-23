@@ -15,7 +15,10 @@ const BOUNDS = _.times(96, (i) => {
 
 
 export const NUCLEUS_ID = 0
-export const NUCLEUS_WEIGHT = 4
+
+export const nucleusWeight = (polygonCount) => {
+  return 3 * _.clamp(_.ceil(Number(polygonCount) / 12), 1, 4)
+}
 
 export const seedFromAddress = (address) => {
   return parseInt(String(address).replace("0x", "").slice(0, 8), 16)

@@ -1,11 +1,11 @@
 import React from "react"
 import _ from "lodash"
 import { cn } from "app/core"
-import { NUCLEUS_ID, splitLobes } from "../polygons"
+import { NUCLEUS_ID, nucleusWeight, splitLobes } from "../polygons"
 import PolygonCell from "./PolygonCell"
 
 
-const PolygonCellGroup = React.memo(({
+const PolygonCellGroup = ({
   polygon,
   owner,
   mate,
@@ -50,6 +50,7 @@ const PolygonCellGroup = React.memo(({
             owner={piece.owner}
             isLose={isLose}
             isNucleus={isNucleus}
+            nucleusWeight={nucleusWeight(winCount)}
             mineAddr={mineAddr}
             isFocus={isFocus}
             isFlash={isFlash}
@@ -66,6 +67,34 @@ const PolygonCellGroup = React.memo(({
       })}
     </g>
   )
-})
+}
 
-export default PolygonCellGroup
+
+const groupEqual = (prev, next) => {
+  if (prev.spinning && next.spinning) {
+    return prev.owner === next.owner
+      && prev.mate === next.mate
+      && prev.isFlash === next.isFlash
+      && prev.isSplitFlash === next.isSplitFlash
+      && prev.polygon === next.polygon
+      && prev.winCount === next.winCount
+      && prev.mineAddr === next.mineAddr
+  }
+  return prev.polygon === next.polygon
+    && prev.owner === next.owner
+    && prev.mate === next.mate
+    && prev.winCount === next.winCount
+    && prev.mineAddr === next.mineAddr
+    && prev.isFocus === next.isFocus
+    && prev.isFlash === next.isFlash
+    && prev.isLit === next.isLit
+    && prev.trailRank === next.trailRank
+    && prev.isSplitFlash === next.isSplitFlash
+    && prev.spinning === next.spinning
+    && prev.manyLit === next.manyLit
+    && prev.celebrate === next.celebrate
+    && prev.housePop === next.housePop
+}
+
+
+export default React.memo(PolygonCellGroup, groupEqual)

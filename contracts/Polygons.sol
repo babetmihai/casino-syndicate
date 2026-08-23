@@ -36,10 +36,10 @@ contract Polygons {
 	uint256 public constant MIN_POLYGONS = 3;
 	uint256 public constant MAX_POLYGONS = 48;
 	uint256 public constant NUCLEUS_ID = 0;
-	uint256 public constant NUCLEUS_WEIGHT = 4;
 	uint256 public constant CHIP = 0.01 ether;
 	uint256 public constant MIN_DEPOSIT = 1 ether;
 	uint256 public constant WITHDRAW_INTERVAL = 1 days;
+	uint256 public constant MAX_TICKETS = 100;
 
 	uint256 private nonce;
 
@@ -60,6 +60,7 @@ contract Polygons {
 	}
 
 	event TicketBought(address indexed player, bool won, uint256 polygonId, bool assigned, bool split, bool bounce, uint256 fromId);
+	event TicketsRefunded(address indexed player, uint256 count, uint256 amount);
 	event PrizePaid(address indexed player, uint256 amount);
 	event Settled(uint256 prize, address[] owners, bool playersWin, address[] mates, address closer);
 	event Deposited(address indexed user, uint256 amount);
@@ -218,29 +219,31 @@ contract Polygons {
 	function takeTickets(uint256 count) private {
 		address player = principal();
 		require(prizes[player] == 0, "Claim first");
-		require(count == 1 || count == 5 || count == 10, "Bad count");
+		require(count > 0 && count <= MAX_TICKETS, "Bad count");
 		require(msg.value == ticketPrice * count, "Wrong price");
 		uint256 used = 0;
 		uint8 outcome = 0;
-		for (; used < count; used++) {
+		while (used < count) {
 			uint256 nextPot = pot + ticketPrice;
-			uint256 uncommitted = ticketPrice * (count - used - 1);
-			if (address(this).balance < uncommitted + reserved + nextPot * 2) {
+			uint256 unspent = ticketPrice * (count - used - 1);
+			if (address(this).balance < unspent + reserved + nextPot * 2) {
 				require(winLit > 0, "Bankroll");
 				settlePlayers(address(0));
 				break;
 			}
 			pot += ticketPrice;
+			used += 1;
 			outcome = drawTicket(player);
 			if (outcome != 0) {
-				used++;
 				break;
 			}
 		}
 		uint256 leftover = count - used;
-		uint256 refund = ticketPrice * leftover;
-		if (refund > 0) {
-			payable(msg.sender).transfer(refund);
+		if (leftover > 0) {
+			uint256 refund = ticketPrice * leftover;
+			(bool ok, ) = payable(msg.sender).call{value: refund}("");
+			require(ok, "Refund failed");
+			emit TicketsRefunded(player, leftover, refund);
 		}
 		if (outcome == 1) {
 			settlePlayers(player);
@@ -307,11 +310,11 @@ contract Polygons {
 		revert("Full");
 	}
 
-	function cellWeight(uint256 id) private pure returns (uint256) {
-		if (id == NUCLEUS_ID) {
-			return NUCLEUS_WEIGHT;
+	function cellWeight(uint256 id) private view returns (uint256) {
+		if (id != NUCLEUS_ID) {
+			return 1;
 		}
-		return 1;
+		return 3 * ((polygonCount + 11) / 12);
 	}
 
 	function settlePlayers(address closer) private {

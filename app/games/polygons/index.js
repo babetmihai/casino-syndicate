@@ -9,7 +9,7 @@ import _ from "lodash"
 
 export const MIN_POLYGONS = 3
 export const MAX_POLYGONS = 48
-export const TICKET_MULTIPLIERS = [1, 5, 10]
+export const TICKET_MULTIPLIERS = [1, 5, 10, 25]
 export const ticketGas = (count) => 3000000n + BigInt(_.max([count - 1, 0])) * 200000n
 
 export const polygonsActions = (address) => actions.create("games.polygons").create(() => ethers.getAddress(address))
@@ -50,6 +50,11 @@ export const fetchPolygons = async (address) => {
       }
     }
   }
+  let overlay = {}
+  const spinBusy = prev.revealing || prev.holdingSpin || prev.buying || prev.showBanner || prev.landed
+  if (occupied === 0 && wasOccupied && !spinBusy) {
+    overlay = { revealedOwners: {}, revealedMates: {}, litIds: {}, landed: false }
+  }
   polygonsActions(address).update({
     polygonCount: Number(row.polygonCount),
     loseCount: Number(row.loseCount),
@@ -65,7 +70,8 @@ export const fetchPolygons = async (address) => {
     owner,
     owners,
     livePlayers,
-    lastSettle
+    lastSettle,
+    ...overlay
   })
 }
 
@@ -165,11 +171,17 @@ const readTicket = (contract, receipt) => {
   let roundOwners
   let roundMates
   let closer
+  let refundedCount = 0
+  let refunded = 0
   let drawId = 0
   _.forEach(logs, (log) => {
     try {
       const parsed = contract.interface.parseLog(log)
       const { name, args = {} } = parsed || {}
+      if (name === "TicketsRefunded") {
+        refundedCount = Number(args.count)
+        refunded = formatEth(args.amount)
+      }
       if (name === "Settled") {
         settled = true
         roundPrize = formatEth(args.prize)
@@ -222,6 +234,8 @@ const readTicket = (contract, receipt) => {
     roundPrize,
     roundOwners,
     roundMates,
-    closer
+    closer,
+    refundedCount,
+    refunded
   }
 }

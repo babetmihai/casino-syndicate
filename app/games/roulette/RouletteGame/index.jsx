@@ -10,7 +10,7 @@ import { cn } from "app/core"
 import AuthModal from "app/core/auth/AuthModal"
 import SessionModal from "app/core/auth/SessionModal"
 import RouletteTable from "./RouletteTable"
-import { CHIP_VALUES, bankrollClass, chipLabel, clampEth, ethLabel, tableMaxBet } from "../chips"
+import { CHIP_VALUES, bankrollClass, chipLabel, clampEth, ethLabel, MIN_BET, tableMaxBet } from "../chips"
 import { BLACK_NUMBERS } from "../bets"
 import { selectNativeSymbol } from "app/core/chain"
 import {
@@ -31,7 +31,7 @@ const RouletteGame = React.memo(({ address }) => {
   const { authorized } = session || {}
   const roulette = useSelector(() => selectRoulette(address)) || {}
   const {
-    lastSpin, history = {}, maxBet, totalBalance, bets = {}, chip = CHIP_VALUES[0],
+    lastSpin, history = {}, minBet, maxBet, totalBalance, bets = {}, chip = CHIP_VALUES[0],
     revealing, landingNumber, showBanner, holdingSpin, hideResult
   } = roulette
   const symbol = useSelector(() => selectNativeSymbol())
@@ -39,6 +39,7 @@ const RouletteGame = React.memo(({ address }) => {
   const spinning = revealing || holdingSpin
   const showResult = lastSpin && !spinning && !hideResult
   const bankroll = clampEth(totalBalance)
+  const minBetAmount = clampEth(minBet) || MIN_BET
   const maxBetAmount = tableMaxBet(maxBet)
   const canSpin = canSpinRoulette(address)
   let bannerColor = "red"
@@ -122,9 +123,14 @@ const RouletteGame = React.memo(({ address }) => {
             )
           })}
         </div>
-        <Text className={cn("roulette-bankroll", "shrink-0 whitespace-nowrap", bankrollClass(bankroll, maxBet))} size="xs">
-          {ethLabel(bankroll, symbol)}
-        </Text>
+        <div className={cn("roulette-status-meta", "flex shrink-0 items-center gap-2")}>
+          <Text className={cn("roulette-limits", "whitespace-nowrap")} size="xs" c="dimmed">
+            {clampEth(minBetAmount)}–{ethLabel(maxBetAmount, symbol)}
+          </Text>
+          <Text className={cn("roulette-bankroll", "whitespace-nowrap", bankrollClass(bankroll, maxBet))} size="xs">
+            {ethLabel(bankroll, symbol)}
+          </Text>
+        </div>
       </div>
       <Card className={cn("roulette-table-card", "flex min-h-0 w-full flex-1 flex-col overflow-hidden")} padding={0}>
         <div className={cn("roulette-table-frame", "flex min-h-0 w-full flex-1 flex-col touch-none p-1.5")}>

@@ -15,6 +15,22 @@ const toTable = ({ game, createdBy, createdAt, gameType }) => {
   }
 }
 
+const forceWheel = async (player, number) => {
+  const latest = await ethers.provider.getBlock("latest")
+  const timestamp = latest.timestamp + 1
+  let prevrandao = 1n
+  for (;;) {
+    const hash = ethers.keccak256(ethers.solidityPacked(
+      ["uint256", "uint256", "address"],
+      [timestamp, prevrandao, player.address]
+    ))
+    if (BigInt(hash) % 37n === BigInt(number)) break
+    prevrandao += 1n
+  }
+  await ethers.provider.send("evm_setNextBlockTimestamp", [timestamp])
+  await ethers.provider.send("hardhat_setPrevRandao", [ethers.toBeHex(prevrandao, 32)])
+}
+
 describe("UI flow: create, view, play roulette", () => {
   it("creates a table, lists it, loads it, funds it, and posts a bet", async () => {
     const [creator, player] = await ethers.getSigners()
@@ -335,6 +351,54 @@ describe("UI flow: create, view, play roulette", () => {
     ).to.be.revertedWith("Bet amount must be less than maxBetAmount")
   })
 
+  it("pays the remaining bankroll when a win is larger than the table", async () => {
+    const [creator, player] = await ethers.getSigners()
+    const Factory = await ethers.getContractFactory("GameFactory")
+    const factory = await Factory.deploy()
+    await factory.waitForDeployment()
+    const createTx = await factory.connect(creator).createGame(
+      TABLE_TYPE_IDS.Roulette,
+      ethers.parseEther("0.01"),
+      ethers.parseEther("1"),
+      0,
+      {
+        value: ethers.parseEther("1")
+      }
+    )
+    const receipt = await createTx.wait()
+    const created = receipt.logs
+      .map((log) => {
+        try {
+          return factory.interface.parseLog(log)
+        } catch {
+          return null
+        }
+      })
+      .find((parsed) => parsed && parsed.name === "GameCreated")
+    const roulette = await ethers.getContractAt("Roulette", created.args.game)
+
+    const bets = Array(157).fill(0n)
+    bets[0] = ethers.parseEther("1")
+    await forceWheel(player, 0)
+    const betTx = await roulette.connect(player).postBet(bets, { value: ethers.parseEther("1") })
+    const betReceipt = await betTx.wait()
+    const winEvent = betReceipt.logs
+      .map((log) => {
+        try {
+          return roulette.interface.parseLog(log)
+        } catch {
+          return null
+        }
+      })
+      .find((parsed) => parsed && parsed.name === "WinningNumber")
+
+    expect(winEvent.args.number).to.equal(0n)
+    expect(winEvent.args.winningAmount).to.equal(ethers.parseEther("2"))
+    expect(await ethers.provider.getBalance(roulette.target)).to.equal(0n)
+    const table = await roulette.connect(creator).getTable()
+    expect(table.totalBalance).to.equal(0n)
+  })
+
   it("requires a 1 ETH deposit and allows withdraw once per day", async () => {
     const [creator, player] = await ethers.getSigners()
     const Factory = await ethers.getContractFactory("GameFactory")
@@ -517,9 +581,17 @@ describe("UI flow: create, view, play polygons", () => {
       .find((parsed) => parsed && parsed.name === "Settled")
   }
 
+  const nucleusWeightOf = (count) => {
+    const n = Number(count)
+    let step = Math.ceil(n / 12)
+    if (step < 1) step = 1
+    if (step > 4) step = 4
+    return BigInt(3 * step)
+  }
+
   const pieceCount = (owners, mates, closer) => {
     const nucleusId = 0
-    const nucleusWeight = 4n
+    const nucleusWeight = nucleusWeightOf(owners.length)
     let n = 0n
     for (let i = 0; i < owners.length; i++) {
       const owner = owners[i]
@@ -634,24 +706,39 @@ describe("UI flow: create, view, play polygons", () => {
     const createTx = await createPolygons(factory, creator, 3, price)
     const game = await ethers.getContractAt("Polygons", createdAddress(factory, await createTx.wait()))
     await expect(
-      game.connect(player).buyTickets(3, { value: price * 3n })
+      game.connect(player).buyTickets(0, { value: 0 })
     ).to.be.revertedWith("Bad count")
     await expect(
-      game.connect(player).buyTickets(25, { value: price * 25n })
+      game.connect(player).buyTickets(101, { value: price * 101n })
     ).to.be.revertedWith("Bad count")
     await expect(
       game.connect(player).buyTickets(5, { value: price })
     ).to.be.revertedWith("Wrong price")
+    const before = await ethers.provider.getBalance(player.address)
     const tx = await game.connect(player).buyTickets(10, { value: price * 10n })
     const receipt = await tx.wait()
+    const after = await ethers.provider.getBalance(player.address)
     const tickets = parseTicket(game, receipt)
     expect(tickets.length).to.be.gte(1)
     expect(tickets.length).to.be.lte(10)
     const settled = parseSettled(game, receipt)
     expect(settled).to.not.equal(undefined)
     const used = BigInt(tickets.length)
+    expect(before - after - receipt.fee).to.equal(price * used)
     const leftover = 10n - used
-    expect(leftover).to.be.gte(0n)
+    const refunded = receipt.logs
+      .map((log) => {
+        try {
+          return game.interface.parseLog(log)
+        } catch {
+          return null
+        }
+      })
+      .find((parsed) => parsed && parsed.name === "TicketsRefunded")
+    if (leftover > 0n) {
+      expect(refunded.args.count).to.equal(leftover)
+      expect(refunded.args.amount).to.equal(price * leftover)
+    }
     const live = await game.connect(player).getTable()
     if (settled.args.playersWin) {
       const matched = price * used * 2n
@@ -904,7 +991,7 @@ describe("UI flow: create, view, play polygons", () => {
       weights[key] += w
     }
     const nucleusId = 0
-    const nucleusWeight = 4n
+    const nucleusWeight = nucleusWeightOf(settled.args.owners.length)
     for (let i = 0; i < settled.args.owners.length; i++) {
       let w = 1n
       if (i === nucleusId) w = nucleusWeight

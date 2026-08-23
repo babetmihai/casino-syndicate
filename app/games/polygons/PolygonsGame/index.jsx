@@ -8,7 +8,7 @@ import { cn, EMPTY_OBJECT } from "app/core"
 import PolygonsMap from "../PolygonsMap"
 import { bankrollClass, clampEth, ethLabel } from "app/games/roulette/chips"
 import { selectNativeSymbol } from "app/core/chain"
-import { NUCLEUS_WEIGHT } from "../polygons"
+import { nucleusWeight } from "../polygons"
 import { ethers } from "ethers"
 import PolygonsRace from "./PolygonsRace"
 import PolygonsPrize from "./PolygonsPrize"
@@ -36,9 +36,10 @@ const PolygonsGame = React.memo(({ address }) => {
   const {
     polygonCount, loseCount, ticketPrice, claimedCount, loseLit, prize, myPrize,
     owners = {}, mates = {}, lastTicket, totalBalance, livePlayers = {}, lastSettle,
-    buying, claiming, revealing, litIds = {}, landed, showBanner, holdingSpin, beat, multiplier = 1
+    buying, claiming, revealing, litIds = {}, landed, showBanner, holdingSpin, beat, multiplier = 1,
+    revealedOwners = {}, revealedMates = {}
   } = polygons
-  const { settled, playersWin, roundPrize, splitIds = {}, roundMates, closer } = lastTicket || {}
+  const { settled, playersWin, roundPrize, splitIds = {}, roundMates, closer, refunded } = lastTicket || {}
   const hasPrize = clampEth(myPrize) > 0
   const pending = hasPrize
   const showClaim = Boolean(account && hasPrize && !revealing && !showBanner)
@@ -52,8 +53,14 @@ const PolygonsGame = React.memo(({ address }) => {
   const houseFromWatch = lastSettle && !lastSettle.playersWin && mineKey && livePlayers[mineKey]
   const houseWon = (settled && !playersWin) || houseFromWatch
   const playersWon = settled && playersWin
+  const hideResult = holdingSpin || revealing
   let flashIds = EMPTY_OBJECT
-  if (landed) flashIds = litIds
+  if (hideResult || landed) {
+    if (landed) flashIds = litIds
+    if (!_.isEmpty(revealedOwners) || !_.isEmpty(revealedMates)) {
+      flashIds = { ...flashIds, ...revealedOwners, ...revealedMates }
+    }
+  }
   if (showClaim) flashIds = EMPTY_OBJECT
   let bannerLabel
   let bannerHero
@@ -65,19 +72,25 @@ const PolygonsGame = React.memo(({ address }) => {
     }
     bannerHero = ethLabel(roundPrize, symbol)
   }
+  let refundLabel
+  if (clampEth(refunded) > 0) refundLabel = `Refunded ${ethLabel(refunded, symbol)}`
   let heroClass = "text-[3.5rem]"
   if (playersWon) heroClass = "text-[1.75rem]"
   let cardAnim = "animate-banner-card"
   if (playersWon) cardAnim = "animate-banner-card-long"
-  const hideResult = holdingSpin || revealing
+  let mapSplit = EMPTY_OBJECT
+  if (hideResult || showClaim) mapSplit = revealedMates
+  if (!hideResult && !showClaim && isSplit) mapSplit = splitIds
   const housePop = Boolean(showBanner && houseWon && !revealing)
   const spin = spinOf(address)
   let mapOwners = owners
   let mapMates = mates
-  if (pending && !_.isEmpty(roundMates)) mapMates = roundMates
+  if (pending && !_.isEmpty(roundMates) && (hideResult || housePop || landed || showClaim)) {
+    mapMates = roundMates
+  }
   if ((hideResult || housePop || landed) && spin.boardSnap) {
-    mapOwners = spin.boardSnap.owners
-    mapMates = spin.boardSnap.mates
+    mapOwners = { ...spin.boardSnap.owners, ...revealedOwners }
+    mapMates = { ...spin.boardSnap.mates, ...revealedMates }
   }
   let shownCells = claimedCount || 0
   let shownLose = loseLit || 0
@@ -191,7 +204,7 @@ const PolygonsGame = React.memo(({ address }) => {
               account={account}
               flashIds={flashIds}
               litIds={showClaim ? EMPTY_OBJECT : litIds}
-              splitIds={isSplit && !hideResult && !showClaim ? splitIds : EMPTY_OBJECT}
+              splitIds={mapSplit}
               spinning={holdingSpin || revealing || landed}
               manyLit={multiplier > 1}
               celebrate={showBanner && playersWon}
@@ -222,13 +235,14 @@ const PolygonsGame = React.memo(({ address }) => {
         onSpinDown={(event) => startSpinHold(address, event)}
         onSpinUp={() => cancelSpinHold(address)}
       />
-      <PolygonsToast beat={beat} revealing={revealing} hero={`x${NUCLEUS_WEIGHT}`} />
+      <PolygonsToast beat={beat} revealing={revealing} hero={`x${nucleusWeight(polygonCount)}`} />
       <PolygonsBanner
         show={showBanner}
         revealing={revealing}
         playersWon={playersWon}
         label={bannerLabel}
         hero={bannerHero}
+        refund={refundLabel}
         cardAnim={cardAnim}
         heroClass={heroClass}
       />

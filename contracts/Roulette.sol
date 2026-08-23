@@ -153,16 +153,11 @@ contract Roulette {
 		require(totalBetAmount > 0, "Must bet some Ether");
 		require(msg.value == totalBetAmount, "Total bet amount must equal sent Ether");
 
-		uint256 maxPayout = 0;
-		for (uint256 n = 0; n < 37; n++) {
-			uint256 payout = payoutForNumber(_bets, n);
-			if (payout > maxPayout) {
-				maxPayout = payout;
-			}
-		}
-		require(address(this).balance >= maxPayout, "Table cannot cover this bet");
-
 		uint256 winningAmount = payoutForNumber(_bets, randomNumber);
+		uint256 available = address(this).balance;
+		if (winningAmount > available) {
+			winningAmount = available;
+		}
 		if (winningAmount > 0) {
 			payable(msg.sender).transfer(winningAmount);
 		}

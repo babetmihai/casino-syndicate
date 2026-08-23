@@ -4,7 +4,7 @@ import { Card, Text } from "@mantine/core"
 import { cn } from "app/core"
 
 
-const PolygonsBanner = React.memo(({ show, revealing, playersWon, label, hero, cardAnim, heroClass }) => {
+const PolygonsBanner = React.memo(({ show, revealing, playersWon, label, hero, refund, cardAnim, heroClass }) => {
   return createPortal(
     show && !revealing && playersWon && label &&
       <div
@@ -30,6 +30,11 @@ const PolygonsBanner = React.memo(({ show, revealing, playersWon, label, hero, c
           {hero &&
             <Text className={cn("polygons-banner-number", "font-headings leading-none font-extrabold", heroClass)}>
               {hero}
+            </Text>
+          }
+          {refund &&
+            <Text className={cn("polygons-banner-refund", "opacity-80")} size="xs">
+              {refund}
             </Text>
           }
         </Card>

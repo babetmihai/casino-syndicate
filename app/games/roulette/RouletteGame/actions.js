@@ -1,7 +1,7 @@
 import { fetchRoulette, postRouletteBet, pushSpinHistory, rouletteActions, selectRoulette } from ".."
 import { fetchBalance, selectAuth, setPendingBet } from "app/core/auth"
 import { addEth, clampEth, MIN_BET, tableMaxBet } from "../chips"
-import { betWins, maxPotentialPayout } from "../bets"
+import { betWins } from "../bets"
 import { ethers } from "ethers"
 import _ from "lodash"
 
@@ -25,24 +25,18 @@ export const canSpinRoulette = (address) => {
   const game = selectRoulette(address) || {}
   const { session, balance } = selectAuth() || {}
   const { authorized } = session || {}
-  const { bets = {}, revealing, holdingSpin, showBanner, totalBalance } = game
+  const { bets = {}, revealing, holdingSpin, showBanner } = game
   const total = betTotal(bets)
-  const bankroll = clampEth(totalBalance)
   const playBalance = clampEth(balance)
   const spinning = revealing || holdingSpin
-  const canCover = clampEth(maxPotentialPayout(bets)) <= bankroll + total
-  return authorized && total > 0 && total <= playBalance && !spinning && !showBanner && canCover
+  return authorized && total > 0 && total <= playBalance && !spinning && !showBanner
 }
 
 const commitBets = (address, nextBets) => {
-  const game = selectRoulette(address) || {}
   const { balance } = selectAuth() || {}
-  const { totalBalance } = game
   const nextTotal = betTotal(nextBets)
   const playBalance = clampEth(balance)
-  const bankroll = clampEth(totalBalance)
   if (nextTotal > playBalance) return
-  if (clampEth(maxPotentialPayout(nextBets)) > bankroll + nextTotal) return
   updateGame(address, { bets: nextBets })
   setPendingBet(nextTotal)
 }

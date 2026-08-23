@@ -4,18 +4,21 @@ import { cn, EMPTY_OBJECT } from "app/core"
 import {
   buildPolygons,
   LIT_LOSE_FILL,
-  LIT_WIN_FILL,
+  NUCLEUS_ID,
+  ownerFill,
   seedFromAddress
 } from "../polygons"
 import { ethers } from "ethers"
 import PolygonCellGroup from "./PolygonCellGroup"
-import { finishSpin, spinOf } from "../PolygonsGame/actions"
+import { finishSpin, revealCell, spinOf } from "../PolygonsGame/actions"
 
 const TRAIL = 4
-const SPIN_MS = 45
+const SPIN_MS = 42
+const SWEEP_MS = 18
 const WIND_MS = 200
-const SLOW_STEPS = 10
 const HOLD_FILL_MS = 1000
+const FAN_EASE = 12
+const LOCK_MS = 280
 
 
 const PolygonsMap = ({
@@ -58,11 +61,21 @@ const PolygonsMap = ({
     const nodes = collectNodes(svg)
     let chase = []
     const held = []
-    const paint = (ids) => {
+    const paint = (ids, sweep) => {
       restoreChase(nodes, chase, held)
-      chase = _.take(_.compact([ids[0], ...chase]), TRAIL)
-      lightChase(nodes, chase, false)
-      lightHeld(nodes, held)
+      if (!ids || !ids.length) {
+        chase = []
+        lightHeld(nodes, held)
+        return
+      }
+      if (sweep) {
+        chase = _.uniq(_.filter([ids[0], ...chase], (id) => _.isFinite(id)))
+        if (_.isFinite(sweep)) chase = _.take(chase, Math.max(TRAIL, sweep))
+      } else {
+        chase = _.take(_.filter([ids[0], ...chase], (id) => _.isFinite(id)), TRAIL)
+      }
+      lightChase(nodes, chase, Boolean(sweep))
+      lightHeld(nodes, held, mineAddr)
     }
     const holdStart = Date.now()
     const stop = runWheel({
@@ -78,15 +91,15 @@ const PolygonsMap = ({
         if (!_.isFinite(id)) return
         if (_.includes(held, id)) return
         held.push(id)
-        lightHeld(nodes, [id])
+        lightHeld(nodes, [id], mineAddr)
+        const draw = _.find(Object.values(spin.ticket && spin.ticket.draws || {}), (row) => {
+          return row.assigned && row.polygonId === id
+        })
+        revealCell(address, id, draw)
       },
       onDone: (ids) => finishSpin(address, ids)
     })
-    return () => {
-      stop()
-      restoreChase(nodes, chase, held)
-      lightHeld(nodes, held)
-    }
+    return () => stop()
   }, [spinning, wheel, address])
 
   return (
@@ -113,8 +126,6 @@ const PolygonsMap = ({
         if (spinning) {
           isLit = false
         }
-        let flash = isFlash
-        if (spinning) flash = false
         return (
           <PolygonCellGroup
             key={polygon.id}
@@ -124,7 +135,7 @@ const PolygonsMap = ({
             winCount={winCount}
             mineAddr={mineAddr}
             isFocus={focusId === polygon.id}
-            isFlash={flash}
+            isFlash={isFlash}
             isLit={isLit}
             trailRank={trailRank}
             isSplitFlash={Boolean(splitIds[polygon.id])}
@@ -145,6 +156,10 @@ const mapEqual = (prev, next) => {
     return prev.address === next.address
       && prev.polygonCount === next.polygonCount
       && prev.loseCount === next.loseCount
+      && prev.owners === next.owners
+      && prev.mates === next.mates
+      && prev.flashIds === next.flashIds
+      && prev.account === next.account
   }
   return prev.address === next.address
     && prev.owners === next.owners
@@ -166,18 +181,29 @@ const mapEqual = (prev, next) => {
 export default React.memo(PolygonsMap, mapEqual)
 
 
-const GLOW_RANKS = ["polygons-map-cell-glow-on", "polygons-map-cell-glow-1", "polygons-map-cell-glow-2", "polygons-map-cell-glow-3"]
+const GLOW_RANKS = [
+  "polygons-map-cell-glow-on",
+  "polygons-map-cell-glow-1",
+  "polygons-map-cell-glow-2",
+  "polygons-map-cell-glow-3",
+  "polygons-map-cell-glow-3",
+  "polygons-map-cell-glow-3"
+]
 const CHASE_WIN = [
-  "color-mix(in srgb, var(--cs-accent) 48%, var(--cs-bg))",
-  "color-mix(in srgb, var(--cs-accent) 28%, var(--cs-bg))",
-  "color-mix(in srgb, var(--cs-accent) 16%, var(--cs-bg))",
-  "color-mix(in srgb, var(--cs-accent) 8%, var(--cs-bg))"
+  "color-mix(in srgb, var(--cs-accent) 52%, var(--cs-bg))",
+  "color-mix(in srgb, var(--cs-accent) 32%, var(--cs-bg))",
+  "color-mix(in srgb, var(--cs-accent) 20%, var(--cs-bg))",
+  "color-mix(in srgb, var(--cs-accent) 12%, var(--cs-bg))",
+  "color-mix(in srgb, var(--cs-accent) 8%, var(--cs-bg))",
+  "color-mix(in srgb, var(--cs-accent) 5%, var(--cs-bg))"
 ]
 const CHASE_LOSE = [
-  "color-mix(in srgb, var(--cs-accent-2) 48%, var(--cs-bg))",
-  "color-mix(in srgb, var(--cs-accent-2) 28%, var(--cs-bg))",
-  "color-mix(in srgb, var(--cs-accent-2) 16%, var(--cs-bg))",
-  "color-mix(in srgb, var(--cs-accent-2) 8%, var(--cs-bg))"
+  "color-mix(in srgb, var(--cs-accent-2) 52%, var(--cs-bg))",
+  "color-mix(in srgb, var(--cs-accent-2) 32%, var(--cs-bg))",
+  "color-mix(in srgb, var(--cs-accent-2) 20%, var(--cs-bg))",
+  "color-mix(in srgb, var(--cs-accent-2) 12%, var(--cs-bg))",
+  "color-mix(in srgb, var(--cs-accent-2) 8%, var(--cs-bg))",
+  "color-mix(in srgb, var(--cs-accent-2) 5%, var(--cs-bg))"
 ]
 
 
@@ -243,11 +269,13 @@ const lightChase = (nodes, ids, many) => {
 }
 
 
-const lightHeld = (nodes, ids) => {
+const lightHeld = (nodes, ids, player) => {
   _.forEach(_.uniq(ids), (id) => {
     const row = nodes[id]
     if (!row) return
-    let fill = LIT_WIN_FILL
+    const isNucleus = id === NUCLEUS_ID
+    let fill = "var(--cs-accent)"
+    if (player) fill = ownerFill(player, true, isNucleus)
     if (row.lose) fill = LIT_LOSE_FILL
     _.forEach(row.cells, (el) => {
       el.setAttribute("fill", fill)
@@ -260,16 +288,11 @@ const lightHeld = (nodes, ids) => {
 }
 
 
-const LAND_GAP_MS = 280
-
-
-const cwDist = (from, to, span) => (to - from + span) % span
-
-
 const runWheel = ({ wheel, getWinners, delay, onTick, onHold, onDone }) => {
   const span = wheel.length
   let index = 0
-  let queue = null
+  let remaining
+  let fanStep = 0
   let raf = 0
   let stopped = false
   let finished = false
@@ -280,8 +303,8 @@ const runWheel = ({ wheel, getWinners, delay, onTick, onHold, onDone }) => {
     finished = true
     if (raf) cancelAnimationFrame(raf)
     raf = 0
-    onTick([wheel[index]])
     onDone(held)
+    onTick([])
   }
 
   const schedule = (ms, next) => {
@@ -297,65 +320,64 @@ const runWheel = ({ wheel, getWinners, delay, onTick, onHold, onDone }) => {
     raf = requestAnimationFrame(wait)
   }
 
-  const loadQueue = () => {
-    if (queue) return
+  const stamp = (id) => {
+    if (!_.isFinite(id)) return
+    if (!remaining || !remaining[id]) return
+    held.push(id)
+    delete remaining[id]
+    if (onHold) onHold(id)
+  }
+
+  const loadHits = () => {
+    if (remaining) return
     const winners = getWinners()
-    if (!winners || !winners.length) return
-    const seen = {}
-    queue = []
+    if (!_.isArray(winners)) return
+    remaining = {}
     _.forEach(winners, (raw) => {
       const id = Number(raw)
       if (!_.isFinite(id)) return
-      if (seen[id]) return
       if (_.indexOf(wheel, id) < 0) return
-      seen[id] = true
-      queue.push(id)
+      remaining[id] = { id }
     })
-    if (!queue.length) finish()
   }
 
-  const landCurrent = () => {
-    const target = queue[0]
-    if (!_.includes(held, target)) {
-      held.push(target)
-      if (onHold) onHold(target)
-    }
-    queue.shift()
-    onTick([wheel[index]])
-    if (!queue.length) {
-      schedule(LAND_GAP_MS, finish)
+  const paintHead = (sweep) => {
+    onTick([wheel[index]], sweep)
+  }
+
+  const fanTick = () => {
+    if (stopped || finished) return
+    stamp(wheel[index])
+    const t = _.clamp(fanStep / FAN_EASE, 0, 1)
+    paintHead(Math.min(span, TRAIL + fanStep))
+    fanStep += 1
+    if (fanStep >= span) {
+      _.forEach(_.map(remaining, "id"), stamp)
+      schedule(LOCK_MS, finish)
       return
     }
-    schedule(LAND_GAP_MS, tick)
+    const wait = SPIN_MS + t * t * (SWEEP_MS - SPIN_MS)
+    schedule(wait, () => {
+      if (stopped || finished) return
+      index = (index + 1) % span
+      fanTick()
+    })
   }
 
   const tick = () => {
     if (stopped || finished) return
-    loadQueue()
+    loadHits()
     if (finished || stopped) return
-    const target = queue && queue[0]
-    if (_.isFinite(target) && wheel[index] === target) {
-      landCurrent()
+    if (remaining) {
+      fanTick()
       return
     }
     index = (index + 1) % span
-    let wait = delay()
-    const lastTarget = queue && queue.length === 1
-    if (lastTarget && _.isFinite(target)) {
-      const at = _.indexOf(wheel, target)
-      if (at >= 0) {
-        const left = cwDist(index, at, span)
-        if (left <= SLOW_STEPS) {
-          const t = 1 - left / SLOW_STEPS
-          wait = SPIN_MS + t * t * t * 220
-        }
-      }
-    }
-    onTick([wheel[index]])
-    schedule(wait, tick)
+    paintHead(false)
+    schedule(delay(), tick)
   }
 
-  onTick([wheel[index]])
+  paintHead(false)
   schedule(delay(), tick)
 
   return () => {

@@ -7,7 +7,6 @@ import {
   LIT_LOSE_FILL,
   LIT_WIN_FILL,
   LOSE_FILL,
-  NUCLEUS_WEIGHT,
   ownerFill,
   SPIN_LOSE_FILL
 } from "../polygons"
@@ -24,6 +23,7 @@ const PolygonCell = React.memo(({
   owner,
   isLose,
   isNucleus,
+  nucleusWeight,
   mineAddr,
   isFocus,
   isFlash,
@@ -54,7 +54,7 @@ const PolygonCell = React.memo(({
   let glow = "var(--cs-accent)"
   if (isLose) glow = "var(--cs-accent-2)"
   const showGlow = spinning || isLit || trailRank > 0 || isFlash || isSplitFlash || isWinPulse || isHousePop
-  const flashAnim = isFlash && !spinning && !manyLit
+  const flashAnim = isFlash && !manyLit
   let stroke = BORDER_STROKE
   let strokeWidth = BORDER_WIDTH
   let popDelay = 0
@@ -117,7 +117,7 @@ const PolygonCell = React.memo(({
         style={popStyle}
       >
         {isNucleus &&
-          <title>Nucleus · {NUCLEUS_WEIGHT}×</title>
+          <title>Nucleus · {nucleusWeight}×</title>
         }
         {owner && !isNucleus &&
           <title>{owner}</title>

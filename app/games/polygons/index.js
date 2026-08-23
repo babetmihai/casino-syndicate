@@ -10,9 +10,13 @@ import _ from "lodash"
 export const MIN_POLYGONS = 6
 export const MAX_POLYGONS = 128
 export const TICKET_MULTIPLIERS = [1, 5, 10, 25]
-export const packedTickets = (multiplier = 1) => {
-  if (_.includes(TICKET_MULTIPLIERS, multiplier)) return multiplier
-  return 1
+export const allowedTicketMultipliers = (polygonCount) => {
+  return _.filter(TICKET_MULTIPLIERS, (value) => value * 2 < Number(polygonCount || 0))
+}
+export const packedTickets = (polygonCount, multiplier = 1) => {
+  const options = allowedTicketMultipliers(polygonCount)
+  if (_.includes(options, multiplier)) return multiplier
+  return _.last(options) || 1
 }
 export const ticketGas = (count) => 3000000n + BigInt(_.max([count - 1, 0])) * 200000n
 

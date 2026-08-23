@@ -1,7 +1,7 @@
 import React from "react"
 import _ from "lodash"
 import { Card, Text } from "@mantine/core"
-import { fetchPolygons, packedTickets, selectPolygons, TICKET_MULTIPLIERS, unwatchPolygons, watchPolygons } from ".."
+import { fetchPolygons, packedTickets, selectPolygons, allowedTicketMultipliers, unwatchPolygons, watchPolygons } from ".."
 import { useSelector } from "react-redux"
 import { fetchBalance, selectAuth } from "app/core/auth"
 import { cn, EMPTY_OBJECT } from "app/core"
@@ -46,7 +46,8 @@ const PolygonsGame = React.memo(({ address }) => {
   const showPrompt = showClaim || showNewGame
   let promptLabel = "New game"
   if (showClaim) promptLabel = `Claim ${ethLabel(myPrize, symbol)}`
-  const pack = packedTickets(multiplier)
+  const pack = packedTickets(polygonCount, multiplier)
+  const packOptions = allowedTicketMultipliers(polygonCount)
   const totalPrice = clampEth(ticketPrice) * pack
   const bankroll = clampEth(totalBalance)
   const pot = clampEth(prize)
@@ -211,7 +212,7 @@ const PolygonsGame = React.memo(({ address }) => {
         authorized={authorized}
         pending={pending}
         multiplier={pack}
-        multipliers={TICKET_MULTIPLIERS}
+        multipliers={packOptions}
         buying={buying}
         revealing={revealing}
         holdingSpin={holdingSpin}

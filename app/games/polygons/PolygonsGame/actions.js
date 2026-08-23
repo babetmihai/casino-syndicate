@@ -33,7 +33,7 @@ export const canSpinPolygons = (address) => {
   } = game
   const hasPrize = clampEth(myPrize) > 0
   const roundOpen = (claimedCount || 0) < (polygonCount || 0) && (loseLit || 0) < (loseCount || 0)
-  const pack = packedTickets(multiplier)
+  const pack = packedTickets(polygonCount, multiplier)
   const totalPrice = clampEth(ticketPrice) * pack
   return authorized && clampEth(balance) >= totalPrice && !buying && roundOpen && !showBanner && !hasPrize && !revealing && !awaitNewGame
 }
@@ -249,8 +249,8 @@ export const finishSpin = async (address, ids) => {
 
 const buyTicket = async (address) => {
   const game = selectPolygons(address) || {}
-  const { multiplier = 1 } = game
-  const pack = packedTickets(multiplier)
+  const { multiplier = 1, polygonCount } = game
+  const pack = packedTickets(polygonCount, multiplier)
   updateGame(address, { buying: true, revealing: true, litIds: {}, landed: false, revealedOwners: {} })
   const spin = spinOf(address)
   try {

@@ -132,7 +132,6 @@ const PolygonsGame = React.memo(({ address }) => {
   if (loseCount) housePct = (shownLose / loseCount) * 100
   const lastGreen = shownCells > 0 && shownCells === (polygonCount || 0) - 1
   const lastHouse = shownLose > 0 && shownLose === (loseCount || 0) - 1
-  const isHouseBeat = beat === "House"
   let spinLabel = `Hold to spin · ${ethLabel(totalPrice, symbol)}`
   if (buying || revealing) spinLabel = "Spinning"
   if (!roundOpen) spinLabel = "Closed"
@@ -239,9 +238,8 @@ const PolygonsGame = React.memo(({ address }) => {
       }
       if (!showResult) {
         if (last.split) setBeat("Split")
-        else if (last.assigned && !last.won) setBeat("House")
-        else if (last.assigned && last.polygonId === NUCLEUS_ID) setBeat("Nucleus")
-        else if (last.assigned) setBeat("Cell")
+        else if (last.assigned && last.won && last.polygonId === NUCLEUS_ID) setBeat("Nucleus")
+        else if (last.assigned && last.won) setBeat("Cell")
       }
     } finally {
       if (stopFlash.current) stopFlash.current()
@@ -467,9 +465,7 @@ const PolygonsGame = React.memo(({ address }) => {
               className={cn(
                 "polygons-toast-card",
                 "relative z-[1] flex min-w-36 flex-col items-center gap-1 rounded-[0.75rem] px-6 py-4 text-center",
-                "animate-banner-card",
-                isHouseBeat && "polygons-toast-house border-transparent bg-cs-accent-2 text-white",
-                !isHouseBeat && "polygons-toast-hit border-transparent bg-cs-accent text-cs-bg"
+                "animate-banner-card polygons-toast-hit border-transparent bg-cs-accent text-cs-bg"
               )}
               shadow="md"
               withBorder={false}

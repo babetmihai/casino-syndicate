@@ -4,6 +4,7 @@ const CX = 0.5
 const CY = 0.5
 const OUTER_R = 0.48
 const INNER_R = 0.3
+const NUCLEUS_CLEAR = INNER_R * 0.5
 const RING_R = 0.4
 const LLOYD_STEPS = 4
 const GOLDEN = Math.PI * (3 - Math.sqrt(5))
@@ -42,7 +43,7 @@ export const buildPolygons = (seed, count, winCount) => {
       const dx = next[0] - CX
       const dy = next[1] - CY
       const dist = Math.hypot(dx, dy)
-      const minR = INNER_R * 0.76
+      const minR = NUCLEUS_CLEAR
       if (dist < 1e-12) return [CX + minR, CY]
       if (dist < minR) return [CX + (dx / dist) * minR, CY + (dy / dist) * minR]
       if (dist <= INNER_R) return next
@@ -137,7 +138,7 @@ const cellRadius = (points, center) => {
 const diskSites = (count, rng) => {
   return _.map(_.range(count), (i) => {
     if (i === NUCLEUS_ID) return [CX, CY]
-    const rMin = INNER_R * 0.76
+    const rMin = NUCLEUS_CLEAR
     const t = Math.sqrt((i - 1) / Math.max(count - 1, 1))
     const r = rMin + (INNER_R - rMin) * t
     const theta = i * GOLDEN + (rng() - 0.5) * 0.35

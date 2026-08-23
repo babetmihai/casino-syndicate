@@ -229,12 +229,12 @@ const paintNucleus = ({ clipId, path, x, y, points, isMine, isFresh }) => {
   })
   if (!inner) return
   const pad = BORDER_WIDTH / 2 + 0.006
-  let radius = inner * 0.24
+  let radius = inner * 0.22
   if (radius > inner - pad) radius = inner - pad
   if (radius <= 0) return
   let fill = "var(--cs-accent)"
   if (isMine) fill = "var(--cs-bg)"
-  const glowR = radius * 1.55
+  const glowR = radius * 1.45
   return (
     <g className={cn("polygons-map-nucleus-wrap", "pointer-events-none")}>
       <clipPath id={clipId}>
@@ -263,7 +263,7 @@ const paintNucleus = ({ clipId, path, x, y, points, isMine, isFresh }) => {
           r={radius}
           fill={fill}
           stroke="var(--cs-bg)"
-          strokeWidth={0.008}
+          strokeWidth={0.006}
         />
       </g>
     </g>

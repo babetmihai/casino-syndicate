@@ -26,6 +26,8 @@ const PolygonCell = React.memo(({
   celebrate,
   housePop,
   popIndex,
+  cx = 0.5,
+  cy = 0.5,
   strokeWidth
 }) => {
   const ownerAddr = owner && ethers.getAddress(owner)
@@ -45,12 +47,14 @@ const PolygonCell = React.memo(({
   if (isFlash && !isLose) fill = LIT_WIN_FILL
   let glow = "var(--cs-accent)"
   if (isLose) glow = "var(--cs-accent-2)"
-  const showGlow = spinning || isLit || trailRank > 0 || isFlash || isWinPulse || isHousePop
+  const showGlow = isLit || trailRank > 0 || isFlash || isWinPulse || isHousePop
   const flashAnim = isFlash && !manyLit
   let stroke = BORDER_STROKE
   let popDelay = 0
   if (isHousePop && popIndex > 0) popDelay = popIndex * 38
   const popStyle = isHousePop ? { animationDelay: `${popDelay}ms` } : undefined
+  const origin = { transformOrigin: `${cx * 100}% ${cy * 100}%` }
+  const cellStyle = popStyle ? { ...origin, ...popStyle } : origin
   const cellClass = cn(
     "polygons-map-cell",
     isLose && "polygons-map-cell-lose",
@@ -69,7 +73,7 @@ const PolygonCell = React.memo(({
   return (
     <g
       className={cn("polygons-map-sector", isLose && "polygons-map-sector-lose")}
-      style={popStyle}
+      style={cellStyle}
     >
       {showGlow &&
         <path
@@ -88,7 +92,7 @@ const PolygonCell = React.memo(({
           data-cell-glow={cellId}
           d={path}
           fill={glow}
-          style={popStyle}
+          style={cellStyle}
         />
       }
       <path
@@ -102,7 +106,7 @@ const PolygonCell = React.memo(({
         stroke={stroke}
         strokeWidth={strokeWidth}
         strokeLinejoin="round"
-        style={popStyle}
+        style={cellStyle}
       >
         {owner &&
           <title>{owner}</title>

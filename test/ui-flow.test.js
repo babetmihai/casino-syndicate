@@ -660,12 +660,12 @@ describe("UI flow: create, view, play polygons", () => {
     const [creator, player] = await ethers.getSigners()
     const factory = await deployFactory()
     const price = ethers.parseEther("0.01")
-    const createTx = await createPolygons(factory, creator, 128, price)
+    const createTx = await createPolygons(factory, creator, 36, price)
     const game = await ethers.getContractAt("Polygons", createdAddress(factory, await createTx.wait()))
     const table = await game.connect(creator).getTable()
-    expect(table.polygonCount).to.equal(128n)
-    expect(table.loseCount).to.equal(115n)
-    expect(table.owners.length).to.equal(243)
+    expect(table.polygonCount).to.equal(36n)
+    expect(table.loseCount).to.equal(32n)
+    expect(table.owners.length).to.equal(68)
     const receipt = await (await game.connect(player).buyTicket({ value: price })).wait()
     const tickets = parseTicket(game, receipt)
     expect(tickets.length).to.equal(1)
@@ -690,7 +690,7 @@ describe("UI flow: create, view, play polygons", () => {
     await expect(
       factory.connect(creator).createGame(
         TABLE_TYPE_IDS.Polygons,
-        129,
+        37,
         0,
         ethers.parseEther("0.01"),
         { value: DEPOSIT }

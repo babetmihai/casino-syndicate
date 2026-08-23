@@ -231,8 +231,7 @@
 
   .polygons-map-cell,
   .polygons-map-cell-glow {
-    transform-box: fill-box;
-    transform-origin: center;
+    transform-box: view-box;
   }
 
   .polygons-map-cell {
@@ -258,7 +257,9 @@
   }
 
   .polygons-map-spinning .polygons-map-cell-glow {
-    animation: var(--animate-map-spin-glow);
+    animation: none;
+    opacity: 0;
+    transform: none;
     transition: none;
   }
 
@@ -266,7 +267,7 @@
   .polygons-map-spinning .polygons-map-cell-glow-flash {
     animation: none;
     opacity: 0.4;
-    transform: scale(1.2);
+    transform: none;
   }
 
   .polygons-map-cell-glow {
@@ -311,6 +312,8 @@
     height: auto;
     max-width: 100%;
     max-height: calc(100% - 1.25rem);
+    overflow: hidden;
+    isolation: isolate;
   }
 
   .polygons-map-card {

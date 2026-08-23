@@ -67,6 +67,7 @@ const PolygonsMap = ({
   return (
     <svg
       ref={svgRef}
+      overflow="hidden"
       className={cn(
         "polygons-map",
         spinning && "polygons-map-spinning",

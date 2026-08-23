@@ -32,7 +32,7 @@ contract Polygons {
 	mapping(address => uint256) private heldSettle;
 
 	uint256 public constant MIN_POLYGONS = 6;
-	uint256 public constant MAX_POLYGONS = 128;
+	uint256 public constant MAX_POLYGONS = 36;
 	uint256 public constant CHIP = 0.01 ether;
 	uint256 public constant WITHDRAW_INTERVAL = 1 days;
 	uint256 public constant MAX_TICKETS = 25;

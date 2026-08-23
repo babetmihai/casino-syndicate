@@ -37,6 +37,8 @@ const PolygonCellGroup = ({
         celebrate={celebrate}
         housePop={housePop}
         popIndex={popIndex}
+        cx={polygon.x}
+        cy={polygon.y}
         strokeWidth={strokeWidth}
       />
     </g>

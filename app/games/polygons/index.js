@@ -8,7 +8,7 @@ import PolygonsArtifact from "artifacts/contracts/Polygons.sol/Polygons.json"
 import _ from "lodash"
 
 export const MIN_POLYGONS = 6
-export const MAX_POLYGONS = 128
+export const MAX_POLYGONS = 36
 export const TICKET_MULTIPLIERS = [1, 5, 10, 25]
 export const allowedTicketMultipliers = (polygonCount) => {
   return _.filter(TICKET_MULTIPLIERS, (value) => value * 2 < Number(polygonCount || 0))

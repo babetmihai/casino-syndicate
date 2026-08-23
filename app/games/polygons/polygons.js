@@ -5,9 +5,9 @@ const CY = 0.5
 const OUTER_R = 0.48
 const LLOYD_STEPS = 12
 const GOLDEN = Math.PI * (3 - Math.sqrt(5))
-const RING_ASPECT = 6.4
-const RING_T = 0.028
-const RING_GAP = 0.01
+const RING_ASPECT = 6.2
+const RING_T_MIN = 0.03
+const RING_T_MAX = 0.048
 const circlePoly = (radius) => {
   return _.times(96, (i) => {
     const t = (i / 96) * Math.PI * 2 - Math.PI / 2
@@ -31,9 +31,11 @@ export const buildPolygons = (seed, count, winCount) => {
   let wins = count
   if (winCount) wins = winCount
   const loses = count - wins
+  const band = houseBand(loses)
   let innerR = OUTER_R
-  if (loses) innerR = houseInnerR(loses)
-  const innerBounds = circlePoly(innerR)
+  if (loses) innerR = band.innerR
+  const rim = makeRim(innerR, rng)
+  const innerBounds = wavyPoly(rim)
   let inner = diskSites(wins, rng, innerR)
   _.times(LLOYD_STEPS, () => {
     inner = _.map(inner, (site, index) => {
@@ -43,21 +45,25 @@ export const buildPolygons = (seed, count, winCount) => {
       const dx = next[0] - CX
       const dy = next[1] - CY
       const dist = Math.hypot(dx, dy)
-      const limit = innerR * 0.94
+      const limit = rim(Math.atan2(dy, dx)) * 0.94
       if (dist <= limit) return next
       return [CX + (dx / dist) * limit, CY + (dy / dist) * limit]
     })
   })
   const innerShapes = _.map(inner, (site, index) => voronoiCell(site, index, inner, innerBounds))
   const rot = rng() * Math.PI * 2
-  const outerShapes = ringWedges(loses, rot)
+  const outerShapes = ringWedges(band, rot, rng, rim)
   return _.keyBy(_.map(innerShapes.concat(outerShapes), (points, index) => {
     const center = polygonCentroid(points)
     const r = cellRadius(points, center)
     let round = r * 0.28
-    if (index >= wins) round = RING_T * 0.22
-    if (round > 0.018) round = 0.018
-    if (round < 0.003) round = 0.003
+    if (index >= wins) {
+      round = band.t * 0.2
+      if (round < 0.001) round = 0.001
+    } else {
+      if (round > 0.018) round = 0.018
+      if (round < 0.003) round = 0.003
+    }
     return {
       id: index,
       x: center[0],
@@ -164,46 +170,101 @@ const diskSites = (count, rng, innerR) => {
   })
 }
 
-const houseRows = (count) => {
-  if (count <= 0) return 0
-  const perRow = Math.floor((Math.PI * 2 * (OUTER_R - RING_T / 2)) / (RING_ASPECT * RING_T))
-  let rows = Math.ceil(count / Math.max(perRow, 1))
-  if (rows < 1) rows = 1
-  return rows
+const houseThickness = (count) => {
+  const t = 0.155 / Math.sqrt(Math.max(count, 1))
+  if (t < RING_T_MIN) return RING_T_MIN
+  if (t > RING_T_MAX) return RING_T_MAX
+  return t
 }
 
-const houseInnerR = (count) => {
-  const rows = houseRows(count)
-  if (!rows) return OUTER_R
-  return OUTER_R - rows * RING_T - (rows - 1) * RING_GAP
+const houseGap = (t) => {
+  const g = t * 0.28
+  if (g < 0.006) return 0.006
+  return g
 }
 
-const ringWedges = (count, rot) => {
-  if (count <= 0) return []
-  const rows = houseRows(count)
-  const base = Math.floor(count / rows)
-  const extra = count % rows
-  const steps = 12
-  const shapes = []
+const rowCapacity = (radius, t) => {
+  return Math.max(1, Math.floor((Math.PI * 2 * radius) / (RING_ASPECT * t)))
+}
+
+const houseBand = (count) => {
+  if (count <= 0) return { t: 0, gap: 0, rows: [], innerR: OUTER_R }
+  const t = houseThickness(count)
+  const gap = houseGap(t)
+  const rows = []
+  let left = count
   let rOuter = OUTER_R
-  _.times(rows, (row) => {
-    const n = base + (row < extra ? 1 : 0)
-    const rInner = rOuter - RING_T
-    const turn = rot + row * 0.41
+  while (left > 0) {
+    const n = Math.min(left, rowCapacity(rOuter - t / 2, t))
+    const rInner = rOuter - t
+    rows.push({ n, rOuter, rInner })
+    left -= n
+    rOuter = rInner - gap
+  }
+  return { t, gap, rows, innerR: rows[rows.length - 1].rInner }
+}
+
+const makeRim = (baseR, rng) => {
+  const amp = baseR * 0.05
+  const p1 = rng() * Math.PI * 2
+  const p2 = rng() * Math.PI * 2
+  const p3 = rng() * Math.PI * 2
+  const a1 = 0.52 + rng() * 0.22
+  const a2 = 0.28 + rng() * 0.16
+  const a3 = 0.14 + rng() * 0.1
+  return (ang) => {
+    const w = a1 * Math.sin(2 * ang + p1) + a2 * Math.sin(3 * ang + p2) + a3 * Math.sin(5 * ang + p3)
+    return baseR + amp * w
+  }
+}
+
+const wavyPoly = (radiusAt) => {
+  return _.times(96, (i) => {
+    const ang = (i / 96) * Math.PI * 2 - Math.PI / 2
+    const r = radiusAt(ang)
+    return [CX + r * Math.cos(ang), CY + r * Math.sin(ang)]
+  })
+}
+
+const ringWedges = (band, rot, rng, rim) => {
+  const { rows = [], t = 0.03 } = band || {}
+  if (!rows.length) return []
+  const steps = 16
+  const shapes = []
+  const last = rows.length - 1
+  _.forEach(rows, (row, rowIndex) => {
+    const { n, rOuter, rInner } = row
+    const turn = rot + rowIndex * 0.41
+    const weights = _.times(n, () => 0.7 + rng() * 0.6)
+    const total = _.sum(weights)
+    let a = turn
     _.times(n, (i) => {
-      const a0 = turn + (i / n) * Math.PI * 2
-      const a1 = turn + ((i + 1) / n) * Math.PI * 2
+      const span = (weights[i] / total) * Math.PI * 2
+      const a0 = a
+      const a1 = a + span
+      a = a1
+      const skew = (rng() - 0.5) * span * 0.16
+      const outerBump = (rng() - 0.5) * t * 0.22
+      const innerBump = (rng() - 0.5) * t * 0.22
+      const phase = rng() * Math.PI * 2
+      const wobble = t * (0.06 + rng() * 0.08)
       const outer = _.map(_.range(steps + 1), (k) => {
-        const t = a0 + (a1 - a0) * (k / steps)
-        return [CX + rOuter * Math.cos(t), CY + rOuter * Math.sin(t)]
+        const u = k / steps
+        const ang = a0 + (a1 - a0) * u
+        const r = rOuter + outerBump + Math.sin(u * Math.PI * 2 + phase) * wobble
+        return [CX + r * Math.cos(ang), CY + r * Math.sin(ang)]
       })
+      const innerFrom = a1 + skew
+      const innerTo = a0 - skew
       const inner = _.map(_.range(steps + 1), (k) => {
-        const t = a1 + (a0 - a1) * (k / steps)
-        return [CX + rInner * Math.cos(t), CY + rInner * Math.sin(t)]
+        const u = k / steps
+        const ang = innerFrom + (innerTo - innerFrom) * u
+        let r = rInner + innerBump + Math.sin(u * Math.PI * 2 + phase + 0.9) * wobble * 0.7
+        if (rowIndex === last && rim) r = rim(ang)
+        return [CX + r * Math.cos(ang), CY + r * Math.sin(ang)]
       })
       shapes.push(outer.concat(inner))
     })
-    rOuter = rInner - RING_GAP
   })
   return shapes
 }

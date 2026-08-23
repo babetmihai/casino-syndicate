@@ -108,7 +108,12 @@ contract Polygons {
 			}
 		}
 		if (holding) {
-			shownWin = polygonCount;
+			shownWin = 0;
+			for (uint256 i = 0; i < polygonCount; i++) {
+				if (owners[i] != address(0)) {
+					shownWin++;
+				}
+			}
 			shownPrize = settledPrize[held];
 		}
 		uint256 bankroll = houseBankroll();
@@ -203,12 +208,40 @@ contract Polygons {
 	}
 
 	function buyTicket() external payable {
+		takeTickets(1);
+	}
+
+	function buyTickets(uint256 count) external payable {
+		takeTickets(count);
+	}
+
+	function takeTickets(uint256 count) private {
 		address player = principal();
 		require(prizes[player] == 0, "Claim first");
-		require(msg.value == ticketPrice, "Wrong price");
-		pot += msg.value;
-		require(address(this).balance >= reserved + pot * 2, "Bankroll");
-		uint8 outcome = drawTicket(player);
+		require(count == 1 || count == 5 || count == 10, "Bad count");
+		require(msg.value == ticketPrice * count, "Wrong price");
+		uint256 used = 0;
+		uint8 outcome = 0;
+		for (; used < count; used++) {
+			uint256 nextPot = pot + ticketPrice;
+			uint256 uncommitted = ticketPrice * (count - used - 1);
+			if (address(this).balance < uncommitted + reserved + nextPot * 2) {
+				require(winLit > 0, "Bankroll");
+				settlePlayers(address(0));
+				break;
+			}
+			pot += ticketPrice;
+			outcome = drawTicket(player);
+			if (outcome != 0) {
+				used++;
+				break;
+			}
+		}
+		uint256 leftover = count - used;
+		uint256 refund = ticketPrice * leftover;
+		if (refund > 0) {
+			payable(msg.sender).transfer(refund);
+		}
 		if (outcome == 1) {
 			settlePlayers(player);
 		} else if (outcome == 2) {
@@ -284,9 +317,13 @@ contract Polygons {
 	function settlePlayers(address closer) private {
 		address[] memory roundOwners = new address[](polygonCount);
 		address[] memory roundMates = new address[](polygonCount);
-		uint256 pieces = 1;
+		uint256 pieces = 0;
 		for (uint256 i = 0; i < polygonCount; i++) {
-			roundOwners[i] = cellOwner[i];
+			address owner = cellOwner[i];
+			if (owner == address(0)) {
+				continue;
+			}
+			roundOwners[i] = owner;
 			uint256 weight = cellWeight(i);
 			pieces += weight;
 			address mate = cellMate[i];
@@ -295,9 +332,15 @@ contract Polygons {
 				pieces += weight;
 			}
 		}
+		if (closer != address(0)) {
+			pieces += 1;
+		}
 		uint256 share = (pot * 2) / pieces;
 		uint256 payout = 0;
 		for (uint256 i = 0; i < polygonCount; i++) {
+			if (roundOwners[i] == address(0)) {
+				continue;
+			}
 			uint256 weight = cellWeight(i);
 			uint256 cut = share * weight;
 			prizes[roundOwners[i]] += cut;
@@ -308,8 +351,10 @@ contract Polygons {
 			prizes[roundMates[i]] += cut;
 			payout += cut;
 		}
-		prizes[closer] += share;
-		payout += share;
+		if (closer != address(0)) {
+			prizes[closer] += share;
+			payout += share;
+		}
 		pot = 0;
 		resetBoard();
 		reserved += payout;

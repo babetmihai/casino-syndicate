@@ -9,7 +9,8 @@ import _ from "lodash"
 
 export const MIN_POLYGONS = 3
 export const MAX_POLYGONS = 48
-export const ticketGas = 3000000n
+export const TICKET_MULTIPLIERS = [1, 5, 10]
+export const ticketGas = (count) => 3000000n + BigInt(_.max([count - 1, 0])) * 200000n
 
 const polygonsPath = (address) => `games.polygons.${ethers.getAddress(address)}`
 
@@ -96,12 +97,13 @@ export const unwatchPolygons = (address) => {
   delete polygonsWatches[key]
 }
 
-export const buyPolygonsTicket = async (address) => {
+export const buyPolygonsTicket = async (address, count = 1) => {
   const contract = await generateContract(address, PolygonsArtifact.abi)
+  const tickets = Number(count) || 1
   const price = await contract.ticketPrice()
-  const receipt = await sendTx(contract.buyTicket, [], {
-    value: price,
-    gasLimit: ticketGas
+  const receipt = await sendTx(contract.buyTickets, [tickets], {
+    value: price * BigInt(tickets),
+    gasLimit: ticketGas(tickets)
   })
   const lastTicket = readTicket(contract, receipt)
   if (lastTicket) actions.update(polygonsPath(address), { lastTicket })
@@ -171,9 +173,9 @@ const readTicket = (contract, receipt) => {
       // ignore logs from other contracts
     }
   }
-  if (draws.length === 0) return
+  if (draws.length === 0 && !settled) return
   const claimed = _.filter(draws, "assigned")
-  const last = _.last(claimed) || _.last(draws)
+  const last = _.last(claimed) || _.last(draws) || {}
   const splitIds = _.uniq(_.map(_.filter(draws, "split"), "polygonId"))
   const takenIds = _.uniq(_.map(_.filter(draws, (draw) => {
     return draw.won && !draw.assigned && !draw.split

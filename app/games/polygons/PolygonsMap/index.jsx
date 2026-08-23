@@ -2,20 +2,19 @@ import React from "react"
 import _ from "lodash"
 import { cn } from "app/core"
 import {
-  BORDER_STROKE,
-  BORDER_WIDTH,
   buildPolygons,
-  NUCLEUS_ID,
-  NUCLEUS_WEIGHT,
   LIT_LOSE_FILL,
   LIT_WIN_FILL,
-  LOSE_FILL,
-  ownerFill,
-  seedFromAddress,
-  SPIN_LOSE_FILL,
-  splitLobes
+  seedFromAddress
 } from "../polygons"
 import { ethers } from "ethers"
+import PolygonCellGroup from "./PolygonCellGroup"
+
+const TRAIL = 4
+const SPIN_MS = 45
+const WIND_MS = 200
+const SLOW_STEPS = 10
+const HOLD_FILL_MS = 1000
 
 
 const PolygonsMap = ({
@@ -28,20 +27,75 @@ const PolygonsMap = ({
   focusId,
   flashIds = [],
   litIds = [],
+  manyLit,
   splitIds = [],
   spinning,
+  holdingRef,
+  landingRef,
+  onLandRef,
   celebrate,
   housePop
 }) => {
+  const svgRef = React.useRef(null)
   const winCount = polygonCount || 0
   const count = winCount + (loseCount || 0)
   const polygons = React.useMemo(() => {
     if (!address || !count) return []
     return buildPolygons(seedFromAddress(address), count, winCount)
   }, [address, count, winCount])
+  const wheel = React.useMemo(() => {
+    return _.map(_.sortBy(polygons, (cell) => Math.atan2(cell.y - 0.5, cell.x - 0.5)), "id")
+  }, [polygons])
+  const mineAddr = React.useMemo(() => {
+    if (!account) return
+    return ethers.getAddress(account)
+  }, [account])
+
+  React.useEffect(() => {
+    if (!spinning) return
+    const svg = svgRef.current
+    if (!svg) return
+    if (!wheel.length) return
+    const nodes = collectNodes(svg)
+    let chase = []
+    const held = []
+    const paint = (ids) => {
+      restoreChase(nodes, chase, held)
+      chase = _.take(_.compact([ids[0], ...chase]), TRAIL)
+      lightChase(nodes, chase, false)
+      lightHeld(nodes, held)
+    }
+    const holdStart = Date.now()
+    const stop = runWheel({
+      wheel,
+      getWinners: () => landingRef && landingRef.current,
+      delay: () => {
+        if (!holdingRef || !holdingRef.current) return SPIN_MS
+        const t = _.clamp((Date.now() - holdStart) / HOLD_FILL_MS, 0, 1)
+        return WIND_MS + t * t * (SPIN_MS - WIND_MS)
+      },
+      onTick: paint,
+      onHold: (id) => {
+        if (!_.isFinite(id)) return
+        if (_.includes(held, id)) return
+        held.push(id)
+        lightHeld(nodes, [id])
+      },
+      onDone: (ids) => {
+        const land = onLandRef && onLandRef.current
+        if (land) land(ids)
+      }
+    })
+    return () => {
+      stop()
+      restoreChase(nodes, chase, held)
+      lightHeld(nodes, held)
+    }
+  }, [spinning, wheel, holdingRef, landingRef, onLandRef])
 
   return (
     <svg
+      ref={svgRef}
       className={cn(
         "polygons-map",
         spinning && "polygons-map-spinning",
@@ -51,221 +105,260 @@ const PolygonsMap = ({
       preserveAspectRatio="xMidYMid meet"
     >
       {_.map(polygons, (polygon) => {
-        const isNucleus = polygon.id === NUCLEUS_ID
-        const isLose = polygon.id >= winCount
-        const popIndex = polygon.id - winCount
-        const owner = owners[polygon.id]
-        const mate = mates[polygon.id]
-        const split = Boolean(mate) && !isLose
-        const trailRank = _.indexOf(litIds, polygon.id)
-        const isLit = trailRank === 0
-        const isFlash = _.includes(flashIds, polygon.id)
-        const isSplitFlash = _.includes(splitIds, polygon.id)
-        let pieces = [{ owner, path: polygon.path, x: polygon.x, y: polygon.y, points: polygon.raw || polygon.points }]
-        if (split) {
-          const lobes = splitLobes(polygon)
-          if (lobes.length === 2) {
-            pieces = [
-              { owner, path: lobes[0].path, x: lobes[0].center[0], y: lobes[0].center[1], points: lobes[0].points },
-              { owner: mate, path: lobes[1].path, x: lobes[1].center[0], y: lobes[1].center[1], points: lobes[1].points }
-            ]
-          }
+        const trailRank = manyLit ? 0 : _.indexOf(litIds, polygon.id)
+        let isLit = trailRank === 0
+        if (manyLit) isLit = _.includes(litIds, polygon.id)
+        let isFlash = _.includes(flashIds, polygon.id)
+        if (!isFlash) isFlash = _.includes(flashIds, Number(polygon.id))
+        if (spinning) {
+          isLit = false
+          isFlash = false
         }
         return (
-          <g
+          <PolygonCellGroup
             key={polygon.id}
-            className={cn("polygons-map-cell-group", isNucleus && "polygons-map-cell-nucleus")}
-          >
-            {_.map(pieces, (piece, pieceIndex) => paintPiece({
-              key: `${polygon.id}-${pieceIndex}`,
-              clipId: `polygons-nucleus-${polygon.id}-${pieceIndex}`,
-              path: piece.path,
-              x: piece.x,
-              y: piece.y,
-              points: piece.points,
-              owner: piece.owner,
-              isLose,
-              isNucleus,
-              account,
-              isFocus: focusId === polygon.id,
-              isFlash,
-              isLit,
-              trailRank,
-              isSplitFlash,
-              celebrate,
-              housePop,
-              popIndex
-            }))}
-          </g>
+            polygon={polygon}
+            owner={owners[polygon.id]}
+            mate={mates[polygon.id]}
+            winCount={winCount}
+            mineAddr={mineAddr}
+            isFocus={focusId === polygon.id}
+            isFlash={isFlash}
+            isLit={isLit}
+            trailRank={trailRank}
+            isSplitFlash={_.includes(splitIds, polygon.id)}
+            spinning={spinning}
+            manyLit={manyLit}
+            celebrate={celebrate}
+            housePop={housePop}
+          />
         )
       })}
     </svg>
   )
 }
 
-export default React.memo(PolygonsMap)
 
-
-const paintPiece = ({
-  key,
-  clipId,
-  path,
-  x,
-  y,
-  points,
-  owner,
-  isLose,
-  isNucleus,
-  account,
-  isFocus,
-  isFlash,
-  isLit,
-  trailRank,
-  isSplitFlash,
-  celebrate,
-  housePop,
-  popIndex
-}) => {
-  const isMine = owner && account && ethers.getAddress(owner) === ethers.getAddress(account)
-  const isOccupied = Boolean(owner)
-  const isWinPulse = celebrate && owner && !isLose
-  const isHousePop = housePop && isLose
-  let fill = ownerFill(owner, isMine, isNucleus)
-  if (isLose) {
-    fill = LOSE_FILL
-    if (owner) fill = LIT_LOSE_FILL
+const mapEqual = (prev, next) => {
+  if (prev.spinning && next.spinning) {
+    return prev.address === next.address
+      && prev.polygonCount === next.polygonCount
+      && prev.loseCount === next.loseCount
   }
-  if (isHousePop) fill = LIT_LOSE_FILL
-  if (isLit && isLose && !isOccupied && !isHousePop) fill = SPIN_LOSE_FILL
-  if (isLit && !isLose && !isOccupied) fill = LIT_WIN_FILL
-  let glow = "var(--cs-accent)"
-  if (isLose) glow = "var(--cs-accent-2)"
-  const showGlow = isLit || trailRank > 0 || isFlash || isSplitFlash || isWinPulse || isHousePop
-  let stroke = BORDER_STROKE
-  let strokeWidth = BORDER_WIDTH
-  let popDelay = 0
-  if (isHousePop && popIndex > 0) popDelay = popIndex * 38
-  const popStyle = isHousePop ? { animationDelay: `${popDelay}ms` } : undefined
-  const cellClass = cn(
-    "polygons-map-cell",
-    isLose && "polygons-map-cell-lose",
-    isNucleus && "polygons-map-cell-nucleus-fill",
-    isMine && "polygons-map-cell-mine",
-    owner && "polygons-map-cell-owned",
-    isFocus && "polygons-map-cell-focus",
-    isLit && "polygons-map-cell-lit",
-    isLit && isOccupied && !isFlash && "polygons-map-cell-occupied animate-map-pass",
-    isFlash && "polygons-map-cell-taken animate-map-taken",
-    isSplitFlash && "polygons-map-cell-split animate-map-taken",
-    isWinPulse && !isFlash && "polygons-map-cell-win animate-map-win",
-    isHousePop && "polygons-map-cell-pop animate-map-pop"
-  )
-  return (
-    <g
-      key={key}
-      className={cn("polygons-map-sector", isLose && "polygons-map-sector-lose", isNucleus && "polygons-map-sector-nucleus")}
-      style={popStyle}
-    >
-      {showGlow &&
-        <path
-          className={cn(
-            "polygons-map-cell-glow",
-            "pointer-events-none",
-            isLit && "polygons-map-cell-glow-on",
-            trailRank === 1 && "polygons-map-cell-glow-1",
-            trailRank === 2 && "polygons-map-cell-glow-2",
-            trailRank === 3 && "polygons-map-cell-glow-3",
-            isFlash && "polygons-map-cell-glow-flash animate-map-glow-flash",
-            isWinPulse && !isFlash && "polygons-map-cell-glow-win animate-map-glow-win",
-            isHousePop && "polygons-map-cell-glow-pop animate-map-pop"
-          )}
-          d={path}
-          fill={glow}
-          style={popStyle}
-        />
-      }
-      <path
-        className={cellClass}
-        d={path}
-        fill={fill}
-        stroke={stroke}
-        strokeWidth={strokeWidth}
-        strokeLinejoin="miter"
-        strokeMiterlimit={2}
-        style={popStyle}
-      >
-        {isNucleus &&
-          <title>Nucleus · {NUCLEUS_WEIGHT}×</title>
-        }
-        {owner && !isNucleus &&
-          <title>{owner}</title>
-        }
-      </path>
-      {isNucleus && paintNucleus({
-        clipId,
-        path,
-        x,
-        y,
-        points,
-        isMine,
-        isFresh: isFlash || isSplitFlash
-      })}
-    </g>
-  )
+  return prev.address === next.address
+    && prev.owners === next.owners
+    && prev.mates === next.mates
+    && prev.polygonCount === next.polygonCount
+    && prev.loseCount === next.loseCount
+    && prev.account === next.account
+    && prev.focusId === next.focusId
+    && prev.flashIds === next.flashIds
+    && prev.litIds === next.litIds
+    && prev.manyLit === next.manyLit
+    && prev.splitIds === next.splitIds
+    && prev.spinning === next.spinning
+    && prev.celebrate === next.celebrate
+    && prev.housePop === next.housePop
 }
 
 
-const paintNucleus = ({ clipId, path, x, y, points, isMine, isFresh }) => {
-  const source = points || []
-  let inner
-  _.forEach(source, (cur, i) => {
-    const next = source[(i + 1) % source.length]
-    const dx = next[0] - cur[0]
-    const dy = next[1] - cur[1]
-    const len = Math.hypot(dx, dy)
-    if (len < 1e-12) return
-    const d = Math.abs((x - cur[0]) * dy - (y - cur[1]) * dx) / len
-    if (!_.isNumber(inner) || d < inner) inner = d
+export default React.memo(PolygonsMap, mapEqual)
+
+
+const GLOW_RANKS = ["polygons-map-cell-glow-on", "polygons-map-cell-glow-1", "polygons-map-cell-glow-2", "polygons-map-cell-glow-3"]
+const CHASE_WIN = [
+  "color-mix(in srgb, var(--cs-accent) 48%, var(--cs-bg))",
+  "color-mix(in srgb, var(--cs-accent) 28%, var(--cs-bg))",
+  "color-mix(in srgb, var(--cs-accent) 16%, var(--cs-bg))",
+  "color-mix(in srgb, var(--cs-accent) 8%, var(--cs-bg))"
+]
+const CHASE_LOSE = [
+  "color-mix(in srgb, var(--cs-accent-2) 48%, var(--cs-bg))",
+  "color-mix(in srgb, var(--cs-accent-2) 28%, var(--cs-bg))",
+  "color-mix(in srgb, var(--cs-accent-2) 16%, var(--cs-bg))",
+  "color-mix(in srgb, var(--cs-accent-2) 8%, var(--cs-bg))"
+]
+
+
+const collectNodes = (svg) => {
+  const nodes = {}
+  _.forEach(svg.querySelectorAll("[data-cell]"), (el) => {
+    const id = Number(el.getAttribute("data-cell"))
+    let row = nodes[id]
+    if (!row) {
+      row = { cells: [], idle: [], lose: false, occupied: false, glows: [] }
+      nodes[id] = row
+    }
+    row.cells.push(el)
+    row.idle.push(el.getAttribute("data-idle-fill"))
+    if (el.getAttribute("data-lose")) row.lose = true
+    if (el.getAttribute("data-occupied")) row.occupied = true
   })
-  if (!inner) return
-  const pad = BORDER_WIDTH / 2 + 0.006
-  let radius = inner * 0.22
-  if (radius > inner - pad) radius = inner - pad
-  if (radius <= 0) return
-  let fill = "var(--cs-accent)"
-  if (isMine) fill = "var(--cs-bg)"
-  const glowR = radius * 1.45
-  return (
-    <g className={cn("polygons-map-nucleus-wrap", "pointer-events-none")}>
-      <clipPath id={clipId}>
-        <path d={path} />
-      </clipPath>
-      <g clipPath={`url(#${clipId})`}>
-        <circle
-          className={cn(
-            "polygons-map-nucleus-glow",
-            isFresh && "polygons-map-nucleus-glow-fresh"
-          )}
-          cx={x}
-          cy={y}
-          r={glowR}
-          fill={fill}
-          opacity={0.22}
-        />
-        <circle
-          className={cn(
-            "polygons-map-nucleus",
-            isFresh && "polygons-map-nucleus-fresh",
-            !isFresh && "animate-nucleus"
-          )}
-          cx={x}
-          cy={y}
-          r={radius}
-          fill={fill}
-          stroke="var(--cs-bg)"
-          strokeWidth={0.006}
-        />
-      </g>
-    </g>
-  )
+  _.forEach(svg.querySelectorAll("[data-cell-glow]"), (el) => {
+    const id = Number(el.getAttribute("data-cell-glow"))
+    const row = nodes[id]
+    if (!row) return
+    row.glows.push(el)
+  })
+  return nodes
+}
+
+
+const restoreChase = (nodes, ids, held) => {
+  _.forEach(_.uniq(ids), (id) => {
+    if (_.includes(held, id)) return
+    const row = nodes[id]
+    if (!row) return
+    _.forEach(row.cells, (el, i) => {
+      el.setAttribute("fill", row.idle[i])
+      el.classList.remove("polygons-map-cell-lit")
+    })
+    _.forEach(row.glows, (el) => {
+      el.classList.remove(...GLOW_RANKS)
+    })
+  })
+}
+
+
+const lightChase = (nodes, ids, many) => {
+  _.forEach(ids, (id, i) => {
+    const row = nodes[id]
+    if (!row) return
+    let rank = i
+    if (many) rank = 0
+    let fills = CHASE_WIN
+    if (row.lose) fills = CHASE_LOSE
+    const fill = fills[rank] || fills[0]
+    _.forEach(row.cells, (el) => {
+      if (rank === 0) el.classList.add("polygons-map-cell-lit")
+      if (row.occupied) return
+      el.setAttribute("fill", fill)
+    })
+    const glowClass = GLOW_RANKS[rank]
+    _.forEach(row.glows, (el) => {
+      if (glowClass) el.classList.add(glowClass)
+    })
+  })
+}
+
+
+const lightHeld = (nodes, ids) => {
+  _.forEach(_.uniq(ids), (id) => {
+    const row = nodes[id]
+    if (!row) return
+    let fill = LIT_WIN_FILL
+    if (row.lose) fill = LIT_LOSE_FILL
+    _.forEach(row.cells, (el) => {
+      el.setAttribute("fill", fill)
+      el.classList.add("polygons-map-cell-lit", "polygons-map-cell-taken")
+    })
+    _.forEach(row.glows, (el) => {
+      el.classList.add("polygons-map-cell-glow-on", "polygons-map-cell-glow-flash")
+    })
+  })
+}
+
+
+const LAND_GAP_MS = 280
+
+
+const cwDist = (from, to, span) => (to - from + span) % span
+
+
+const runWheel = ({ wheel, getWinners, delay, onTick, onHold, onDone }) => {
+  const span = wheel.length
+  let index = 0
+  let queue = null
+  let raf = 0
+  let stopped = false
+  let finished = false
+  const held = []
+
+  const finish = () => {
+    if (finished || stopped) return
+    finished = true
+    if (raf) cancelAnimationFrame(raf)
+    raf = 0
+    onTick([wheel[index]])
+    onDone(held)
+  }
+
+  const schedule = (ms, next) => {
+    const due = performance.now() + ms
+    const wait = (now) => {
+      if (stopped || finished) return
+      if (now < due) {
+        raf = requestAnimationFrame(wait)
+        return
+      }
+      next()
+    }
+    raf = requestAnimationFrame(wait)
+  }
+
+  const loadQueue = () => {
+    if (queue) return
+    const winners = getWinners()
+    if (!winners || !winners.length) return
+    const seen = {}
+    queue = []
+    _.forEach(winners, (raw) => {
+      const id = Number(raw)
+      if (!_.isFinite(id)) return
+      if (seen[id]) return
+      if (_.indexOf(wheel, id) < 0) return
+      seen[id] = true
+      queue.push(id)
+    })
+    if (!queue.length) finish()
+  }
+
+  const landCurrent = () => {
+    const target = queue[0]
+    if (!_.includes(held, target)) {
+      held.push(target)
+      if (onHold) onHold(target)
+    }
+    queue.shift()
+    onTick([wheel[index]])
+    if (!queue.length) {
+      schedule(LAND_GAP_MS, finish)
+      return
+    }
+    schedule(LAND_GAP_MS, tick)
+  }
+
+  const tick = () => {
+    if (stopped || finished) return
+    loadQueue()
+    if (finished || stopped) return
+    const target = queue && queue[0]
+    if (_.isFinite(target) && wheel[index] === target) {
+      landCurrent()
+      return
+    }
+    index = (index + 1) % span
+    let wait = delay()
+    if (_.isFinite(target)) {
+      const at = _.indexOf(wheel, target)
+      if (at >= 0) {
+        const left = cwDist(index, at, span)
+        if (left <= SLOW_STEPS) {
+          const t = 1 - left / SLOW_STEPS
+          wait = SPIN_MS + t * t * t * 220
+        }
+      }
+    }
+    onTick([wheel[index]])
+    schedule(wait, tick)
+  }
+
+  onTick([wheel[index]])
+  schedule(delay(), tick)
+
+  return () => {
+    stopped = true
+    if (raf) cancelAnimationFrame(raf)
+    raf = 0
+  }
 }

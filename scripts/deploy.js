@@ -68,7 +68,7 @@ async function main() {
   const address = await factory.getAddress()
   const root = path.join(__dirname, "..")
   const logPath = path.join(root, "deploy.log")
-  const envPath = path.join(root, isLocal ? ".env.hardhat" : `.env.${hre.network.name}`)
+  const envPath = path.join(root, isLocal ? ".env.development" : `.env.${hre.network.name}`)
   const values = { VITE_FACTORY_ADDRESS: address }
   if (!isLocal) values.VITE_CHAIN_ID = String(hre.network.config.chainId)
 

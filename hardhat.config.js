@@ -1,30 +1,21 @@
 const fs = require("fs")
-const { readEnvFile, envFile, loadEnv, root } = require("./scripts/env")
+const path = require("path")
+const dotenv = require("dotenv")
 
-loadEnv(".env.hardhat")
-require("@nomicfoundation/hardhat-toolbox")
-require("events").EventEmitter.defaultMaxListeners = 32
+const root = __dirname
+const envFile = (name) => path.join(root, `.env.${name}`)
+const parseEnv = (name) => {
+  const file = envFile(name)
+  if (!fs.existsSync(file)) return {}
+  return dotenv.parse(fs.readFileSync(file))
+}
 
+dotenv.config({ path: envFile("development") })
+const amoy = parseEnv("amoy")
 const account = (key) => key && `0x${key.replace(/^0x/, "")}`
 
-const remoteNetworks = () => {
-  const networks = {}
-  for (const file of fs.readdirSync(root)) {
-    const match = file.match(/^\.env\.([a-z][a-z0-9]*)$/)
-    if (!match) continue
-    const name = match[1]
-    if (name === "hardhat") continue
-    const env = readEnvFile(envFile(name))
-    const key = account(env.PRIVATE_KEY)
-    networks[name] = {
-      url: env.RPC_URL,
-      chainId: Number(env.VITE_CHAIN_ID),
-      timeout: 120000,
-      accounts: key ? [key] : []
-    }
-  }
-  return networks
-}
+require("@nomicfoundation/hardhat-toolbox")
+require("events").EventEmitter.defaultMaxListeners = 32
 
 /** @type import('hardhat/config').HardhatUserConfig */
 module.exports = {
@@ -48,6 +39,11 @@ module.exports = {
       chainId: 1337,
       allowUnlimitedContractSize: true
     },
-    ...remoteNetworks()
+    amoy: {
+      url: amoy.RPC_URL,
+      chainId: Number(amoy.VITE_CHAIN_ID),
+      timeout: 120000,
+      accounts: account(amoy.PRIVATE_KEY) ? [account(amoy.PRIVATE_KEY)] : []
+    }
   }
 }

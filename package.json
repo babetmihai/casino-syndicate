@@ -1,10 +1,10 @@
 {
   "name": "casino-syndicate",
   "scripts": {
-    "hardhat": "node scripts/hardhat.js",
-    "hardhat:amoy": "node scripts/hardhat.js --amoy",
-    "vite": "vite --mode hardhat",
-    "pages:amoy": "node scripts/pages.js --amoy",
+    "chain": "node scripts/cli.js chain",
+    "start": "vite --mode development",
+    "deploy": "node scripts/cli.js deploy",
+    "pages": "node scripts/cli.js pages",
     "eslint": "eslint .",
     "eslint:fix": "eslint . --fix"
   },

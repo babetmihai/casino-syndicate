@@ -1,5 +1,5 @@
 import { useSelector } from "react-redux"
-import { actions } from "app/core/store"
+import { actions } from "./store"
 
 const loaderActions = actions.create("loaders")
 

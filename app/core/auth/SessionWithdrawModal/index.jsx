@@ -1,6 +1,6 @@
 import React from "react"
 import { Modal, Text, Button, Group, NumberInput } from "@mantine/core"
-import { hideModal } from "app/core/modals"
+import { hideModal, showModal } from "app/core/modals"
 import { useFormik } from "formik"
 import * as Yup from "yup"
 import { useTranslation } from "react-i18next"
@@ -8,7 +8,8 @@ import { MIN_BET, clampEth, ethLabel } from "app/games/roulette/chips"
 import { useSelector } from "react-redux"
 import { selectNativeSymbol } from "app/core/chain"
 import { cn } from "app/core"
-import { fetchWalletBalance, selectAuth, withdrawSession } from ".."
+import { fetchWalletBalance, selectAuth } from ".."
+import { submitWithdraw } from "./actions"
 
 
 const SessionWithdrawModal = () => {
@@ -29,15 +30,7 @@ const SessionWithdrawModal = () => {
     validationSchema: Yup.object({
       balance: Yup.number().moreThan(0, t("balance_required")).max(maxAmount, t("balance_required"))
     }),
-    onSubmit: async (values, form) => {
-      form.setSubmitting(true)
-      try {
-        await withdrawSession(clampEth(values.balance))
-        hideModal()
-      } finally {
-        form.setSubmitting(false)
-      }
-    }
+    onSubmit: (values, form) => submitWithdraw(values, form)
   })
 
   return (
@@ -51,7 +44,13 @@ const SessionWithdrawModal = () => {
       <Text className={cn("session-withdraw-modal-copy")} size="sm" c="dimmed">
         Send {symbol} from your play wallet back to your main account.
       </Text>
-      <Text className={cn("session-withdraw-modal-account-balance")} size="xs" c="dimmed" mt="xs" mb="md">
+      <Text
+        className={cn("session-withdraw-modal-account-balance")}
+        size="xs"
+        c="dimmed"
+        mt="xs"
+        mb="md"
+      >
         Account {ethLabel(accountBalance, symbol)}
       </Text>
       <NumberInput
@@ -69,7 +68,12 @@ const SessionWithdrawModal = () => {
           formik.setFieldValue("balance", value)
         }}
       />
-      <Group className={cn("session-withdraw-modal-actions")} justify="flex-end" gap="sm" mt="md">
+      <Group
+        className={cn("session-withdraw-modal-actions")}
+        justify="flex-end"
+        gap="sm"
+        mt="md"
+      >
         <Button
           className={cn("session-withdraw-modal-cancel")}
           variant="subtle"
@@ -90,5 +94,7 @@ const SessionWithdrawModal = () => {
     </Modal>
   )
 }
+
+export const showSessionWithdrawModal = () => showModal(SessionWithdrawModal)
 
 export default SessionWithdrawModal

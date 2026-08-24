@@ -45,12 +45,22 @@ const WithdrawModal = ({ onSubmit, max, lastWithdrawAt }) => {
       title={<Text className={cn("withdraw-modal-title")} fw={500}>{t("withdraw")}</Text>}
     >
       {canWithdraw &&
-        <Text className={cn("withdraw-modal-hint")} size="sm" c="dimmed" mb="md">
+        <Text
+          className={cn("withdraw-modal-hint")}
+          size="sm"
+          c="dimmed"
+          mb="md"
+        >
           You can withdraw once per day.
         </Text>
       }
       {!canWithdraw &&
-        <Text className={cn("withdraw-modal-hint", "withdraw-modal-hint-blocked")} size="sm" c="red" mb="md">
+        <Text
+          className={cn("withdraw-modal-hint", "withdraw-modal-hint-blocked")}
+          size="sm"
+          c="red"
+          mb="md"
+        >
           You can withdraw once per day.
         </Text>
       }
@@ -70,7 +80,12 @@ const WithdrawModal = ({ onSubmit, max, lastWithdrawAt }) => {
           formik.setFieldValue("balance", value)
         }}
       />
-      <Group className={cn("withdraw-modal-actions")} justify="flex-end" gap="sm" mt="md">
+      <Group
+        className={cn("withdraw-modal-actions")}
+        justify="flex-end"
+        gap="sm"
+        mt="md"
+      >
         <Button
           className={cn("withdraw-modal-cancel")}
           variant="subtle"

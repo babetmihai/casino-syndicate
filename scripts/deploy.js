@@ -50,7 +50,6 @@ const deployWithRetry = async (factory, args, fee) => {
 async function main() {
   const isLocal = hre.network.name === "localhost" || hre.network.name === "hardhat"
   const Roulette = await hre.ethers.getContractFactory("Roulette")
-  const Polygons = await hre.ethers.getContractFactory("Polygons")
   const Factory = await hre.ethers.getContractFactory("GameFactory")
 
   if (!isLocal) {
@@ -65,9 +64,7 @@ async function main() {
   const overrides = isLocal ? undefined : { gasPrice: minTip }
   const roulette = await deployWithRetry(Roulette, [], overrides)
   console.log(`Roulette implementation: ${await roulette.getAddress()}`)
-  const polygons = await deployWithRetry(Polygons, [], overrides)
-  console.log(`Polygons implementation: ${await polygons.getAddress()}`)
-  const factory = await deployWithRetry(Factory, [await roulette.getAddress(), await polygons.getAddress()], overrides)
+  const factory = await deployWithRetry(Factory, [await roulette.getAddress()], overrides)
   const address = await factory.getAddress()
   const root = path.join(__dirname, "..")
   const logPath = path.join(root, "deploy.log")
@@ -76,12 +73,10 @@ async function main() {
   if (!isLocal) values.VITE_CHAIN_ID = String(hre.network.config.chainId)
 
   fs.appendFileSync(logPath, `${new Date().toISOString()} ${hre.network.name} Roulette ${await roulette.getAddress()}\n`)
-  fs.appendFileSync(logPath, `${new Date().toISOString()} ${hre.network.name} Polygons ${await polygons.getAddress()}\n`)
   fs.appendFileSync(logPath, `${new Date().toISOString()} ${hre.network.name} GameFactory ${address}\n`)
   upsertEnv(envPath, values)
 
   console.log(`Roulette implementation: ${await roulette.getAddress()}`)
-  console.log(`Polygons implementation: ${await polygons.getAddress()}`)
   console.log(`GameFactory deployed to: ${address}`)
   console.log(`Saved to ${logPath}`)
   console.log(`Wrote ${Object.keys(values).join(" ")} to ${envPath}`)

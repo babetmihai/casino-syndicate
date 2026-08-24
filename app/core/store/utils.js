@@ -1,11 +1,14 @@
-import { applyMiddleware, compose } from "redux"
-import { storageMiddleware } from "./storage"
+/*
+  Redux store and actions
+  lodash _.get / _.set / _.unset / _.update syntax
+  https://lodash.com/docs/4.17.21#set
+*/
 import _ from "lodash"
 import setWith from "lodash/fp/setWith"
 import unset from "lodash/fp/unset"
 import updateWith from "lodash/fp/updateWith"
 import { legacy_createStore } from "redux"
-import { EMPTY_OBJECT } from "."
+import { EMPTY_OBJECT } from ".."
 
 
 const SET = "@@SET"
@@ -14,50 +17,67 @@ const UNSET = "@@UNSET"
 
 
 export const createStore = (middleware) => legacy_createStore(reducer, {}, middleware)
-export const createActions = (store, ...basePaths) => ({
-  get: (...args) => {
+
+
+export class StateActions {
+  store
+  basePaths = []
+
+  constructor(store) {
+    this.store = store
+  }
+
+  get(...args) {
     let _path
     let defaultValue = EMPTY_OBJECT
     if (args.length > 0) [_path, defaultValue] = args
-    const path = join(...basePaths, _path)
-    if (!path) return store.getState()
-    return _.get(store.getState(), path, defaultValue)
-  },
-  set: (...args) => {
+    const path = join(...this.basePaths, _path)
+    if (!path) return this.store.getState()
+    return _.get(this.store.getState(), path, defaultValue)
+  }
+
+  set(...args) {
     let _path
     let [payload] = args
     if (args.length > 1) [_path, payload] = args
-    const path = join(...basePaths, _path)
-    store.dispatch({
+    const path = join(...this.basePaths, _path)
+    this.store.dispatch({
       type: `Set ${stringify(path)}`,
       path,
       payload,
       method: SET
     })
-  },
-  update: (...args) => {
+  }
+
+  update(...args) {
     let _path
     let [payload] = args
     if (args.length > 1) [_path, payload] = args
-    const path = join(...basePaths, _path)
-    store.dispatch({
+    const path = join(...this.basePaths, _path)
+    this.store.dispatch({
       type: `Update ${stringify(path)}`,
       path,
       payload,
       method: UPDATE
     })
-  },
-  unset: (...args) => {
+  }
+
+  unset(...args) {
     const [_path] = args
-    const path = join(...basePaths, _path)
-    store.dispatch({
+    const path = join(...this.basePaths, _path)
+    this.store.dispatch({
       type: `Unset ${stringify(path)}`,
       path,
       method: UNSET
     })
-  },
-  create: (path) => createActions(store, ...basePaths, path)
-})
+  }
+
+  create(path) {
+    const clone = new StateActions(this.store)
+    clone.basePaths = [...this.basePaths, path]
+    return clone
+  }
+}
 
 
 const reducer = (state = {}, action) => {
@@ -111,19 +131,3 @@ const join = (...args) => {
 
 
 const stringify = (path) => _.castArray(path).filter(Boolean).join(".")
-
-
-const devToolsComposer = window.__REDUX_DEVTOOLS_EXTENSION_COMPOSE__
-const composeEnhancers = devToolsComposer
-  ? devToolsComposer({})
-  : compose
-
-const store = createStore(composeEnhancers(applyMiddleware(
-  storageMiddleware
-)))
-
-
-export const actions = createActions(store)
-
-
-export default store

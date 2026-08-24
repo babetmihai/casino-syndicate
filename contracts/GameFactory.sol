@@ -2,13 +2,11 @@
 pragma solidity ^0.8.0;
 
 import "./Roulette.sol";
-import "./Polygons.sol";
 
 
 contract GameFactory {
 	enum GameType {
-		Roulette,
-		Polygons
+		Roulette
 	}
 
 	struct GameInfo {
@@ -19,7 +17,6 @@ contract GameFactory {
 	}
 
 	address public immutable rouletteImpl;
-	address public immutable polygonsImpl;
 
 	GameInfo[] public games;
 	mapping(address => uint256[]) private gameIndexesByCreator;
@@ -27,10 +24,9 @@ contract GameFactory {
 	mapping(address => address) public sessionOf;
 	mapping(address => address) private sessionPrincipal;
 
-	constructor(address _rouletteImpl, address _polygonsImpl) {
-		require(_rouletteImpl != address(0) && _polygonsImpl != address(0), "Impl");
+	constructor(address _rouletteImpl) {
+		require(_rouletteImpl != address(0), "Impl");
 		rouletteImpl = _rouletteImpl;
-		polygonsImpl = _polygonsImpl;
 	}
 
 	function clone(address impl) private returns (address instance) {
@@ -76,18 +72,14 @@ contract GameFactory {
 		emit SessionAuthorized(msg.sender, session);
 	}
 
-	function createGame(GameType gameType, uint256 a, uint256 b, uint256 c) external payable returns (address game) {
+	function createGame(GameType gameType, uint256 a, uint256 b, uint256) external payable returns (address game) {
 		address creator = principalOf(msg.sender);
-		if (gameType == GameType.Roulette) {
-			require(msg.value >= 1 ether, "Min deposit 1");
-			game = clone(rouletteImpl);
-			Roulette(payable(game)).initialize{value: msg.value}(creator, a, b);
-		} else if (gameType == GameType.Polygons) {
-			game = clone(polygonsImpl);
-			Polygons(payable(game)).initialize{value: msg.value}(creator, a, b, c);
-		} else {
+		if (gameType != GameType.Roulette) {
 			revert("Unsupported game type");
 		}
+		require(msg.value >= 1 ether, "Min deposit 1");
+		game = clone(rouletteImpl);
+		Roulette(payable(game)).initialize{value: msg.value}(creator, a, b);
 		require(game.balance == msg.value, "Funding failed");
 
 		uint256 index = games.length;

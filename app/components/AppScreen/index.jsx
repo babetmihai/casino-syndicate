@@ -1,17 +1,12 @@
 import React from "react"
-import AppHeader from "../AppHeader"
 import { cn } from "app/core"
 
-const AppScreen = ({ children, header = true }) => {
+
+const AppScreen = ({ children }) => {
   return (
-    <>
-      {header &&
-        <AppHeader />
-      }
-      <div className={cn("app-screen", "relative flex min-h-0 flex-1 flex-col overflow-hidden")}>
-        {children}
-      </div>
-    </>
+    <div className={cn("app-screen", "relative flex min-h-0 flex-1 flex-col overflow-hidden")}>
+      {children}
+    </div>
   )
 }
 

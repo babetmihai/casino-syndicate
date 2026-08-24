@@ -4,18 +4,13 @@ import { useSelector } from "react-redux"
 import { useParams } from "react-router-dom"
 import { useTranslation } from "react-i18next"
 import RouletteAdmin from "app/games/roulette/RouletteAdmin"
-import PolygonsAdmin from "app/games/polygons/PolygonsAdmin"
-import { buyTableShares, selectRoulette, withdrawTableShares } from "app/games/roulette"
-import { depositPolygonsShares, selectPolygons, withdrawPolygonsShares } from "app/games/polygons"
+import { selectRoulette } from "app/games/roulette"
 import { clampEth } from "app/games/roulette/chips"
 import AppScreen from "app/components/AppScreen"
-import history from "app/core/history"
 import { selectAuth } from "app/core/auth"
 import { cn, labelClass, titleClass } from "app/core"
 import { Button } from "@mantine/core"
-import { showModal } from "app/core/modals"
-import DepositModal from "app/core/tables/DepositModal"
-import WithdrawModal from "app/core/tables/WithdrawModal"
+import { openDeposit, openPlay, openWithdraw } from "./actions"
 
 
 const AdminScreen = () => {
@@ -24,51 +19,17 @@ const AdminScreen = () => {
   const { account } = useSelector(() => selectAuth()) || {}
   const table = useSelector(() => selectTable(address))
   const roulette = useSelector(() => selectRoulette(address)) || {}
-  const polygons = useSelector(() => selectPolygons(address)) || {}
   const { memberShares, lastWithdrawAt } = roulette
-  const polygonsShares = polygons.memberShares
-  const polygonsWithdrawAt = polygons.lastWithdrawAt
   const { type } = table || {}
   const isRoulette = type === TABLE_TYPES.Roulette
-  const isPolygons = type === TABLE_TYPES.Polygons
-  let shareAmount = memberShares
-  let withdrawAt = lastWithdrawAt
-  if (isPolygons) {
-    shareAmount = polygonsShares
-    withdrawAt = polygonsWithdrawAt
-  }
+  const shareAmount = memberShares
+  const withdrawAt = lastWithdrawAt
   const hasShare = clampEth(shareAmount) > 0
 
   React.useEffect(() => {
     if (!address) return
     initTable(address)
   }, [address])
-
-  const openDeposit = () => {
-    showModal(DepositModal, {
-      onSubmit: async ({ balance }) => {
-        if (isPolygons) {
-          await depositPolygonsShares({ balance }, address)
-        } else {
-          await buyTableShares({ balance }, address)
-        }
-      }
-    })
-  }
-
-  const openWithdraw = () => {
-    showModal(WithdrawModal, {
-      max: clampEth(shareAmount),
-      lastWithdrawAt: withdrawAt,
-      onSubmit: async ({ balance }) => {
-        if (isPolygons) {
-          await withdrawPolygonsShares({ balance }, address)
-        } else {
-          await withdrawTableShares({ balance }, address)
-        }
-      }
-    })
-  }
 
   return (
     <AppScreen>
@@ -78,15 +39,15 @@ const AdminScreen = () => {
           {type || "Manage"}
         </h1>
         <div className={cn("admin-actions", "mb-3 flex shrink-0 flex-wrap gap-2")}>
-          <Button className={cn("admin-play")} onClick={() => history.push(`/tables/${address}`)}>
+          <Button className={cn("admin-play")} onClick={() => openPlay(address)}>
             Play
           </Button>
-          {(isRoulette || isPolygons) && account &&
+          {isRoulette && account &&
             <Button
               className={cn("admin-deposit")}
               variant="outline"
               color="gray"
-              onClick={openDeposit}
+              onClick={() => openDeposit(address)}
             >
               {t("fund_table")}
             </Button>
@@ -96,7 +57,7 @@ const AdminScreen = () => {
               className={cn("admin-withdraw")}
               variant="outline"
               color="gray"
-              onClick={openWithdraw}
+              onClick={() => openWithdraw(address, shareAmount, withdrawAt)}
             >
               Withdraw
             </Button>
@@ -104,9 +65,6 @@ const AdminScreen = () => {
         </div>
         {address && isRoulette &&
           <RouletteAdmin address={address} />
-        }
-        {address && isPolygons &&
-          <PolygonsAdmin address={address} />
         }
       </div>
     </AppScreen>

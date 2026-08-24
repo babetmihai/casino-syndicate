@@ -2,6 +2,8 @@ import { fetchRoulette, postRouletteBet, pushSpinHistory, rouletteActions, selec
 import { fetchBalance, selectAuth, setPendingBet } from "app/core/auth"
 import { addEth, clampEth, MIN_BET, tableMaxBet } from "../chips"
 import { betWins } from "../bets"
+import { showAuthModal } from "app/core/auth/AuthModal"
+import { showSessionModal } from "app/core/auth/SessionModal"
 import { ethers } from "ethers"
 import _ from "lodash"
 
@@ -154,3 +156,8 @@ export const unmountRouletteGame = (address) => {
   delete spins[ethers.getAddress(address)]
   setPendingBet(0)
 }
+
+export const openConnect = () => showAuthModal()
+
+export const openDeposit = () => showSessionModal()
+

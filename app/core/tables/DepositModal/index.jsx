@@ -55,7 +55,12 @@ const DepositModal = ({ onSubmit }) => {
           formik.setFieldValue("balance", value)
         }}
       />
-      <Group className={cn("deposit-modal-actions")} justify="flex-end" gap="sm" mt="md">
+      <Group
+        className={cn("deposit-modal-actions")}
+        justify="flex-end"
+        gap="sm"
+        mt="md"
+      >
         <Button
           className={cn("deposit-modal-cancel")}
           variant="subtle"

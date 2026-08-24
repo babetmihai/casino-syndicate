@@ -3,10 +3,8 @@ import { Button, UnstyledButton } from "@mantine/core"
 import { useSelector } from "react-redux"
 import { selectAuth } from "app/core/auth"
 import AuthMenu from "app/core/auth/AuthMenu"
-import { showModal } from "app/core/modals"
-import AuthModal from "app/core/auth/AuthModal"
-import history from "app/core/history"
 import { cn } from "app/core"
+import { goHome, openConnect } from "./actions"
 
 
 const AppHeader = () => {
@@ -25,7 +23,7 @@ const AppHeader = () => {
           "app-header-logo",
           "font-sans text-[0.875rem] font-semibold leading-normal tracking-[0.02em] text-cs-accent"
         )}
-        onClick={() => history.push("/")}
+        onClick={goHome}
       >
         casino<span className={cn("app-header-logo-mark", "text-cs-muted")}>·syndicate</span>
       </UnstyledButton>
@@ -36,7 +34,7 @@ const AppHeader = () => {
             className={cn("app-header-connect")}
             variant="subtle"
             color="gray"
-            onClick={() => showModal(AuthModal)}
+            onClick={openConnect}
           >
             Connect
           </Button>

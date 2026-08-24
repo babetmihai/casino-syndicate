@@ -4,7 +4,7 @@ import { hideModal, selectModals } from "."
 import _ from "lodash"
 
 
-export default function ModalDispatcher() {
+const ModalDispatcher = () => {
   const modals = useSelector(() => selectModals())
   return (
     <>
@@ -23,3 +23,5 @@ export default function ModalDispatcher() {
     </>
   )
 }
+
+export default ModalDispatcher

@@ -5,10 +5,7 @@ import { Button, Card, Text } from "@mantine/core"
 import { fetchRoulette, selectRoulette } from ".."
 import { useSelector } from "react-redux"
 import { fetchBalance, selectAuth } from "app/core/auth"
-import { showModal } from "app/core/modals"
 import { cn } from "app/core"
-import AuthModal from "app/core/auth/AuthModal"
-import SessionModal from "app/core/auth/SessionModal"
 import RouletteTable from "./RouletteTable"
 import { CHIP_VALUES, bankrollClass, chipLabel, clampEth, ethLabel, MIN_BET, tableMaxBet } from "../chips"
 import { BLACK_NUMBERS } from "../bets"
@@ -19,6 +16,8 @@ import {
   changeBet,
   finishReveal,
   moveChip,
+  openConnect,
+  openDeposit,
   resetHideResult,
   setChip,
   startSpinHold,
@@ -150,12 +149,12 @@ const RouletteGame = React.memo(({ address }) => {
       </Card>
       <div className={cn("roulette-controls", "flex w-full shrink-0 items-center gap-2")}>
         {!account &&
-          <Button className={cn("roulette-connect", "flex-1")} onClick={() => showModal(AuthModal)}>
+          <Button className={cn("roulette-connect", "flex-1")} onClick={openConnect}>
             Connect
           </Button>
         }
         {account && !authorized &&
-          <Button className={cn("roulette-deposit", "flex-1")} onClick={() => showModal(SessionModal)}>
+          <Button className={cn("roulette-deposit", "flex-1")} onClick={openDeposit}>
             Deposit
           </Button>
         }

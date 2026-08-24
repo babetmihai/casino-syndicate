@@ -1,5 +1,4 @@
 import { actions } from "../store"
-import { EMPTY_OBJECT } from ".."
 import _ from "lodash"
 
 let modalSeq = 0

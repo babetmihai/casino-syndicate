@@ -1,8 +1,9 @@
 import React from "react"
 import _ from "lodash"
 import { cn } from "app/core"
-import { CHIP_COLORS, chipLabel, toChips } from "../chips"
-import { BLACK_NUMBERS, INSIDE, OUTSIDE, betWins } from "../bets"
+import { toChips } from "../../chips"
+import { BLACK_NUMBERS, INSIDE, OUTSIDE, betWins } from "../../bets"
+import ChipMark, { CHIP_R } from "./ChipMark"
 
 const CELL_W = 84
 const CELL_H = 56
@@ -148,7 +149,6 @@ const SPOTS = [
 ]
 
 
-const CHIP_R = 14
 const DRAG_THRESHOLD = 8
 
 const toSvgPoint = (svg, clientX, clientY) => {
@@ -195,32 +195,6 @@ const chipHit = (point, bets) => {
     return dx * dx + dy * dy <= CHIP_R * CHIP_R
   })
 }
-
-const ChipMark = ({ value, className }) => {
-  const color = CHIP_COLORS[value]
-  return (
-    <g className={cn("roulette-chip-mark", "animate-chip-drop cursor-grab", className)}>
-      <circle className={cn("roulette-chip-mark-fill")} r={CHIP_R} fill={color.fill} />
-      <circle
-        className={cn("roulette-chip-mark-ring")}
-        r={CHIP_R - 3}
-        fill="none"
-        stroke={color.stroke}
-        strokeWidth={1.5}
-      />
-      <text
-        className={cn("roulette-chip-mark-label", "pointer-events-none font-sans font-medium")}
-        fill={color.text}
-        fontSize={11}
-        textAnchor="middle"
-        dy="0.35em"
-      >
-        {chipLabel(value)}
-      </text>
-    </g>
-  )
-}
-
 
 const RouletteTable = React.memo(({ bets, winningNumber, landingNumber, spinning, holding, disabled, onSpotClick, onChipMove, onChipRemove, onReveal }) => {
   const svgRef = React.useRef(null)

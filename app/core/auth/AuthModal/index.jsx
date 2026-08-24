@@ -1,11 +1,10 @@
 import React from "react"
 import { Modal, Text, Button, Group } from "@mantine/core"
-import { showModal, hideModal } from "../../modals"
+import { hideModal, showModal } from "../../modals"
 import { useTranslation } from "react-i18next"
-import { login, selectAuth } from ".."
-import SessionModal from "../SessionModal"
 import { chainFromId, targetChainId } from "app/core/chain"
 import { cn } from "app/core"
+import { connectMetamask } from "./actions"
 
 
 const AuthModal = () => {
@@ -19,7 +18,12 @@ const AuthModal = () => {
       onClose={hideModal}
       title={<Text className={cn("auth-modal-title")} fw={500}>{t("connect_wallet")}</Text>}
     >
-      <Text className={cn("auth-modal-copy")} size="sm" c="dimmed" mb="md">
+      <Text
+        className={cn("auth-modal-copy")}
+        size="sm"
+        c="dimmed"
+        mb="md"
+      >
         Use MetaMask on {name}.
       </Text>
       <Group className={cn("auth-modal-actions")} justify="flex-end" gap="sm">
@@ -33,13 +37,7 @@ const AuthModal = () => {
         </Button>
         <Button
           className={cn("auth-modal-metamask")}
-          onClick={async () => {
-            await login()
-            hideModal()
-            const { session } = selectAuth() || {}
-            const { authorized } = session || {}
-            if (!authorized) showModal(SessionModal)
-          }}
+          onClick={connectMetamask}
         >
           MetaMask
         </Button>
@@ -47,5 +45,7 @@ const AuthModal = () => {
     </Modal>
   )
 }
+
+export const showAuthModal = () => showModal(AuthModal)
 
 export default AuthModal

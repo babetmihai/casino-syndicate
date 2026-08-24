@@ -1,5 +1,7 @@
 import React from "react"
+import AppHeader from "app/components/AppHeader"
 import { cn } from "app/core"
+
 
 const AppLayout = ({ children }) => {
   return (
@@ -29,7 +31,10 @@ const AppLayout = ({ children }) => {
         />
       </div>
       <div className={cn("app-layout-content", "relative z-[1] flex min-h-0 flex-1 flex-col overflow-hidden")}>
-        {children}
+        <AppHeader />
+        <div className={cn("app-layout-main", "relative flex min-h-0 flex-1 flex-col overflow-hidden")}>
+          {children}
+        </div>
       </div>
     </div>
   )

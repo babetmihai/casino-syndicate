@@ -27,33 +27,12 @@ export const selectSession = () => {
   return session || EMPTY_OBJECT
 }
 
-
-export const logout = () => authActions.unset()
-
 export const selectPendingBet = () => pendingBetActions.get(undefined, 0)
-
-export const setPendingBet = (amount) => {
-  pendingBetActions.set(clampEth(amount))
-}
 
 const playAddress = () => {
   const { session } = selectAuth() || {}
   const { address } = session || {}
   return address
-}
-
-export const fetchBalance = async () => {
-  const address = playAddress()
-  if (!address) return
-  const balance = await getBalance(address)
-  authActions.set("balance", formatEth(balance))
-}
-
-export const fetchWalletBalance = async () => {
-  const { account } = selectAuth()
-  if (!account) return
-  const balance = await getBalance(account)
-  authActions.set("walletBalance", formatEth(balance))
 }
 
 const sessionKey = (account) => ethers.getAddress(account)
@@ -74,6 +53,21 @@ const localSession = (account) => {
   return record
 }
 
+
+export const fetchBalance = async () => {
+  const address = playAddress()
+  if (!address) return
+  const balance = await getBalance(address)
+  authActions.set("balance", formatEth(balance))
+}
+
+export const fetchWalletBalance = async () => {
+  const { account } = selectAuth()
+  if (!account) return
+  const balance = await getBalance(account)
+  authActions.set("walletBalance", formatEth(balance))
+}
+
 export const syncSession = async () => {
   const { account } = selectAuth()
   if (!account) return
@@ -85,6 +79,13 @@ export const syncSession = async () => {
     session: { id: address, address, authorized }
   })
 }
+
+
+export const setPendingBet = (amount) => {
+  pendingBetActions.set(clampEth(amount))
+}
+
+export const logout = () => authActions.unset()
 
 export const login = async () => {
   const signer = await getWalletSigner()

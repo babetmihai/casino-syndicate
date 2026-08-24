@@ -1,14 +1,12 @@
 import React from "react"
 import { Menu, Text, UnstyledButton } from "@mantine/core"
 import { ArrowUpIcon, SignOutIcon, VaultIcon, WalletIcon } from "@phosphor-icons/react"
-import { selectAuth, selectPendingBet, logout, fetchBalance, requestTestEth } from "app/core/auth"
-import SessionModal from "app/core/auth/SessionModal"
-import SessionWithdrawModal from "app/core/auth/SessionWithdrawModal"
-import { showModal } from "app/core/modals"
+import { selectAuth, selectPendingBet, fetchBalance } from "app/core/auth"
 import { clampEth, ethLabel } from "app/games/roulette/chips"
 import { cn } from "app/core"
 import { useSelector } from "react-redux"
 import { isLocalChain, selectChain } from "app/core/chain"
+import { openDeposit, openWithdraw, requestFunds, signOut } from "./actions"
 
 
 const AuthMenu = () => {
@@ -56,7 +54,7 @@ const AuthMenu = () => {
       <Menu.Dropdown>
         <Menu.Item
           className={cn("auth-menu-deposit")}
-          onClick={() => showModal(SessionModal)}
+          onClick={openDeposit}
           leftSection={<VaultIcon size={16} />}
         >
           Deposit
@@ -64,7 +62,7 @@ const AuthMenu = () => {
         {showWithdraw &&
           <Menu.Item
             className={cn("auth-menu-withdraw")}
-            onClick={() => showModal(SessionWithdrawModal)}
+            onClick={openWithdraw}
             leftSection={<ArrowUpIcon size={16} />}
           >
             Withdraw
@@ -73,7 +71,7 @@ const AuthMenu = () => {
         {showTestFunds &&
           <Menu.Item
             className={cn("auth-menu-test-funds")}
-            onClick={() => requestTestEth()}
+            onClick={requestFunds}
             leftSection={<WalletIcon size={16} />}
           >
             Get test {symbol}
@@ -81,7 +79,7 @@ const AuthMenu = () => {
         }
         <Menu.Item
           className={cn("auth-menu-logout")}
-          onClick={() => logout()}
+          onClick={signOut}
           leftSection={<SignOutIcon size={16} />}
         >
           Log out

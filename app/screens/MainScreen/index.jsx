@@ -1,20 +1,14 @@
 import React from "react"
 import AppScreen from "app/components/AppScreen"
 import { useSelector } from "react-redux"
-import { createTable, fetchTables, selectTables, TABLE_TYPES } from "app/core/tables"
-import { Button, Text } from "@mantine/core"
-import { showModal } from "app/core/modals"
-import TableModal from "app/core/tables/TableModal"
-import AuthModal from "app/core/auth/AuthModal"
-import history from "app/core/history"
-import _ from "lodash"
+import { fetchTables, selectTables } from "app/core/tables"
+import { Button } from "@mantine/core"
 import { cn, labelClass, titleClass } from "app/core"
 import { selectAuth } from "app/core/auth"
-import { selectRoulette } from "app/games/roulette"
-import { selectPolygons } from "app/games/polygons"
-import { bankrollClass, clampEth, ethLabel, MIN_BET, tableMaxBet } from "app/games/roulette/chips"
 import { ethers } from "ethers"
-import { selectNativeSymbol } from "app/core/chain"
+import TableCard from "./TableCard"
+import { openConnect, openCreate } from "./actions"
+import _ from "lodash"
 
 
 const MainScreen = () => {
@@ -31,12 +25,6 @@ const MainScreen = () => {
   })
   const isEmpty = _.isEmpty(ownedTables)
   const showHero = !account || isEmpty
-
-  const openCreate = () => showModal(TableModal, {
-    onSubmit: async (values) => {
-      await createTable(values)
-    }
-  })
 
   return (
     <AppScreen>
@@ -63,7 +51,7 @@ const MainScreen = () => {
                 </Button>
               }
               {!account &&
-                <Button className={cn("main-connect")} onClick={() => showModal(AuthModal)}>
+                <Button className={cn("main-connect")} onClick={openConnect}>
                   Connect
                 </Button>
               }
@@ -101,64 +89,5 @@ const MainScreen = () => {
     </AppScreen>
   )
 }
-
-const TableCard = React.memo(({ table, index }) => {
-  const { address, type } = table || {}
-  const roulette = useSelector(() => selectRoulette(address)) || {}
-  const polygons = useSelector(() => selectPolygons(address)) || {}
-  const symbol = useSelector(() => selectNativeSymbol())
-  const isPolygons = type === TABLE_TYPES.Polygons
-  const { minBet, maxBet, totalBalance } = roulette
-  const { claimedCount, polygonCount, ticketPrice, totalBalance: polygonsBalance } = polygons
-  const shortAddress = `${address.slice(0, 6)}…${address.slice(-4)}`
-  const bankroll = clampEth(totalBalance)
-  const polygonsBankroll = clampEth(polygonsBalance)
-  const minBetAmount = clampEth(minBet) || MIN_BET
-  const maxBetAmount = tableMaxBet(maxBet)
-  let stats = roulette
-  if (isPolygons) stats = polygons
-  const hasStats = !_.isEmpty(stats)
-  const order = String(index + 1).padStart(2, "0")
-
-  return (
-    <button
-      type="button"
-      className={cn(
-        "table-card",
-        "group relative flex w-full shrink-0 appearance-none items-center gap-3 rounded-[0.75rem]",
-        "border border-cs-border bg-cs-surface px-3 py-2.5 text-left font-sans text-inherit",
-        "cursor-pointer transition-[border-color,transform] duration-[250ms]",
-        "hover:border-cs-border-hover active:scale-[0.99]"
-      )}
-      onClick={() => history.push(`/tables/${address}/admin`)}
-    >
-      <div className={cn("table-card-order", "text-[0.75rem] tracking-[0.1em] text-cs-accent")}>{order}</div>
-      <div className={cn("table-card-body", "flex min-w-0 flex-1 flex-col gap-0.5")}>
-        <h3 className={cn("table-card-type", titleClass, "m-0 truncate text-base")}>{type}</h3>
-        <Text className={cn("table-card-address")} size="xs" c="dimmed">{shortAddress}</Text>
-      </div>
-      {hasStats && isPolygons &&
-        <div className={cn("table-card-stats", "flex shrink-0 flex-col items-end gap-0.5 text-right")}>
-          <span className={cn("table-card-bankroll", titleClass, "text-base", bankrollClass(polygonsBankroll, ticketPrice))}>
-            {ethLabel(polygonsBankroll, symbol)}
-          </span>
-          <Text className={cn("table-card-limits")} size="xs" c="dimmed">
-            {claimedCount || 0}/{polygonCount || 0}
-          </Text>
-        </div>
-      }
-      {hasStats && !isPolygons &&
-        <div className={cn("table-card-stats", "flex shrink-0 flex-col items-end gap-0.5 text-right")}>
-          <span className={cn("table-card-bankroll", titleClass, "text-base", bankrollClass(bankroll, maxBet))}>
-            {ethLabel(bankroll, symbol)}
-          </span>
-          <Text className={cn("table-card-limits")} size="xs" c="dimmed">
-            {ethLabel(minBetAmount, symbol)}–{ethLabel(maxBetAmount, symbol)}
-          </Text>
-        </div>
-      }
-    </button>
-  )
-})
 
 export default MainScreen

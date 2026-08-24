@@ -8,16 +8,9 @@ import { MIN_BET, clampEth, ethLabel } from "app/games/roulette/chips"
 import { useSelector } from "react-redux"
 import { selectNativeSymbol } from "app/core/chain"
 import { cn } from "app/core"
-import { depositSession, fetchWalletBalance, selectAuth } from ".."
+import { fetchWalletBalance, selectAuth } from ".."
+import { submitDeposit } from "./actions"
 
-
-export const requirePlayWallet = () => {
-  const { session } = selectAuth() || {}
-  const { authorized } = session || {}
-  if (authorized) return true
-  showModal(SessionModal)
-  return false
-}
 
 const SessionModal = () => {
   const { t } = useTranslation()
@@ -37,17 +30,7 @@ const SessionModal = () => {
     validationSchema: Yup.object({
       balance: Yup.number().moreThan(0, t("balance_required"))
     }),
-    onSubmit: async (values, form) => {
-      form.setSubmitting(true)
-      try {
-        let amount = clampEth(values.balance)
-        if (amount > accountBalance) amount = accountBalance
-        await depositSession(amount)
-        hideModal()
-      } finally {
-        form.setSubmitting(false)
-      }
-    }
+    onSubmit: (values, form) => submitDeposit(values, accountBalance, form)
   })
 
   let copy = `Deposit ${symbol} into your play wallet. Bets are paid from this balance without MetaMask prompts.`
@@ -64,7 +47,13 @@ const SessionModal = () => {
       <Text className={cn("session-modal-copy")} size="sm" c="dimmed">
         {copy}
       </Text>
-      <Text className={cn("session-modal-account-balance")} size="xs" c="dimmed" mt="xs" mb="md">
+      <Text
+        className={cn("session-modal-account-balance")}
+        size="xs"
+        c="dimmed"
+        mt="xs"
+        mb="md"
+      >
         Account {ethLabel(accountBalance, symbol)}
       </Text>
       <NumberInput
@@ -81,7 +70,12 @@ const SessionModal = () => {
           formik.setFieldValue("balance", value)
         }}
       />
-      <Group className={cn("session-modal-actions")} justify="flex-end" gap="sm" mt="md">
+      <Group
+        className={cn("session-modal-actions")}
+        justify="flex-end"
+        gap="sm"
+        mt="md"
+      >
         <Button
           className={cn("session-modal-cancel")}
           variant="subtle"
@@ -100,6 +94,16 @@ const SessionModal = () => {
       </Group>
     </Modal>
   )
+}
+
+export const showSessionModal = () => showModal(SessionModal)
+
+export const requirePlayWallet = () => {
+  const { session } = selectAuth() || {}
+  const { authorized } = session || {}
+  if (authorized) return true
+  showSessionModal()
+  return false
 }
 
 export default SessionModal

@@ -4,7 +4,7 @@ import { useSelector } from "react-redux"
 import { useParams } from "react-router-dom"
 import AppScreen from "app/components/AppScreen"
 import RouletteGame from "app/games/roulette/RouletteGame"
-import PolygonsGame from "app/games/polygons/PolygonsGame"
+import { cn } from "app/core"
 
 
 const GameScreen = () => {
@@ -20,12 +20,11 @@ const GameScreen = () => {
 
   return (
     <AppScreen>
-      {type === TABLE_TYPES.Roulette &&
-        <RouletteGame address={address} />
-      }
-      {type === TABLE_TYPES.Polygons &&
-        <PolygonsGame address={address} />
-      }
+      <div className={cn("game-screen", "flex min-h-0 flex-1 flex-col overflow-hidden")}>
+        {type === TABLE_TYPES.Roulette &&
+          <RouletteGame address={address} />
+        }
+      </div>
     </AppScreen>
   )
 }

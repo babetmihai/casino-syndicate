@@ -1,20 +1,20 @@
 import localforage from "localforage"
-import { actions } from "./store"
+import { actions } from "./index"
 import _ from "lodash"
 
-const VERSION = 1
+
+const STORE_VERSION = 1
 const PERSISTENT_PATHS = [
   "auth",
   "language",
-  "sessions",
-  "dealers"
+  "sessions"
 ]
 
 localforage.config({
   driver: localforage.INDEXEDDB,
   name: "casino_syndicate",
   storeName: "persistent_state",
-  version: VERSION
+  version: STORE_VERSION
 })
 
 
@@ -41,5 +41,6 @@ export const loadStorage = async () => {
       .catch(_.noop)
   }
 }
+
 
 export default localforage

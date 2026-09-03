@@ -1,0 +1,45 @@
+import localforage from "localforage"
+import { actions } from "./index"
+import _ from "lodash"
+
+
+const STORE_VERSION = 1
+const PERSISTENT_PATHS = [
+  "auth",
+  "language"
+]
+
+localforage.config({
+  driver: localforage.INDEXEDDB,
+  name: "casino_syndicate_admin",
+  storeName: "persistent_state",
+  version: STORE_VERSION
+})
+
+
+export const storageMiddleware = (store) => (next) => (action) => {
+  const prevState = store.getState()
+  next(action)
+  const state = store.getState()
+
+  for (const path of PERSISTENT_PATHS) {
+    const value = _.get(state, path)
+    const prevValue = _.get(prevState, path)
+    if (value !== prevValue) {
+      localforage.setItem(path, value)
+    }
+  }
+}
+
+export const loadStorage = async () => {
+  for (const path of PERSISTENT_PATHS) {
+    await localforage.getItem(path)
+      .then((value) => {
+        if (value != null) actions.set(path, value)
+      })
+      .catch(_.noop)
+  }
+}
+
+
+export default localforage

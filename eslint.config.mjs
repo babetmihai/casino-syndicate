@@ -6,9 +6,9 @@ const reactJsxRuntimeRules = pluginReact.configs.flat["jsx-runtime"].rules
 const reactHooksRecommended = reactHooks.configs["recommended-latest"]
 
 export default [
-  { ignores: ["dist/**", "artifacts/**", "cache/**", "contracts/**", "vite.config.mjs", "eslint.config.mjs"] },
+  { ignores: ["**/dist/**", "**/artifacts/**", "**/cache/**", "**/contracts/**", "**/vite.config.mjs", "eslint.config.mjs"] },
   {
-    files: ["app/**/*.{js,mjs,jsx}", "scripts/**/*.js", "test/**/*.js", "hardhat.config.js"],
+    files: ["admin-app/**/*.{js,mjs,jsx}", "client-app/**/*.{js,mjs,jsx}", "blockchain/scripts/**/*.js", "blockchain/test/**/*.js", "blockchain/hardhat.config.js"],
     plugins: {
       ...pluginReact.configs.flat.recommended.plugins,
       ...reactHooksRecommended.plugins
@@ -181,7 +181,7 @@ export default [
     }
   },
   {
-    files: ["scripts/**/*.js", "hardhat.config.js", "test/**/*.js"],
+    files: ["blockchain/scripts/**/*.js", "blockchain/hardhat.config.js", "blockchain/test/**/*.js"],
     rules: {
       "no-console": "off"
     }

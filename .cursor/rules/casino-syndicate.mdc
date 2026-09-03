@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Casino Syndicate
 
-Vite/React/Redux UI (`app`), Hardhat contracts (`contracts`). `GameFactory` creates games by `GameType`; roulette is the type. Redux via `app/core/store`.
+Hardhat in `blockchain` (`contracts`, `scripts`, `test`). Env files stay at the repo root. Two Vite/React/Redux UIs: `client-app` (player table by URL, session deposits) and `admin-app` (factory + table admin, no deposits). `GameFactory` creates games by `GameType`; roulette is the type. Redux via each app's `app/core/store`.
 
 ## Style
 
@@ -20,7 +20,7 @@ Vite/React/Redux UI (`app`), Hardhat contracts (`contracts`). `GameFactory` crea
 - React UI state via `actions` so handlers live in `actions.js`
 - Scope store paths with `actions.create(path | () => path)`
 
-## UI (`app`)
+## UI (`client-app`, `admin-app`)
 
 - Imports from `app/`: `core/`, `screens/`, `components/`, `games/`
 - `actions`/`store` from `app/core/store`
@@ -34,6 +34,8 @@ Vite/React/Redux UI (`app`), Hardhat contracts (`contracts`). `GameFactory` crea
 - Numbered section labels, bordered surface cards, in-page / header actions — not FABs
 - Mantine components over custom chrome; no extra frames, docks, or ornamental UI
 - Mantine `NumberInput` for numeric values (amounts, min, max) — not `TextInput`. Keep stepper controls; do not `hideControls`. Clamp on submit, not on each keystroke
+- Player app (`client-app`): table by URL only, session deposits, no factory lists
+- Admin app (`admin-app`): factory create/list and table admin, no session deposits
 
 ## Contracts
 

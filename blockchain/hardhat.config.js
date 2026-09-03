@@ -2,8 +2,8 @@ const fs = require("fs")
 const path = require("path")
 const dotenv = require("dotenv")
 
-const root = __dirname
-const envFile = (name) => path.join(root, `.env.${name}`)
+const repoRoot = path.join(__dirname, "..")
+const envFile = (name) => path.join(repoRoot, `.env.${name}`)
 const parseEnv = (name) => {
   const file = envFile(name)
   if (!fs.existsSync(file)) return {}

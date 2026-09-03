@@ -4,8 +4,9 @@ const path = require("path")
 const { spawn, spawnSync } = require("child_process")
 const dotenv = require("dotenv")
 
-const root = path.join(__dirname, "..")
-const envPath = (name) => path.join(root, `.env.${name}`)
+const blockchainRoot = path.join(__dirname, "..")
+const repoRoot = path.join(blockchainRoot, "..")
+const envPath = (name) => path.join(repoRoot, `.env.${name}`)
 
 const loadEnv = (name) => {
   const file = envPath(name)
@@ -26,7 +27,7 @@ const readEnv = (name) => {
 
 const run = (command, args, opts = {}) => {
   const result = spawnSync(command, args, {
-    cwd: opts.cwd || root,
+    cwd: opts.cwd || blockchainRoot,
     env: { ...process.env, ...opts.env },
     encoding: "utf8",
     stdio: opts.capture ? ["ignore", "pipe", "pipe"] : "inherit"
@@ -116,7 +117,7 @@ const chain = async () => {
     console.log(`Using existing Hardhat node at ${rpcUrl}`)
   } catch {
     console.log("Starting Hardhat node...")
-    const child = spawn("npx", ["hardhat", "node"], { cwd: root, stdio: "inherit", env: process.env })
+    const child = spawn("npx", ["hardhat", "node"], { cwd: blockchainRoot, stdio: "inherit", env: process.env })
     children.push(child)
     started = true
     child.on("exit", (code) => {
@@ -127,7 +128,7 @@ const chain = async () => {
   }
 
   deploy("development", "localhost")
-  console.log("Run npm start in another terminal.")
+  console.log("Run npm run client and npm run admin in other terminals.")
   if (!started) return
   console.log("Hardhat running. Press Ctrl+C to stop.")
 }
@@ -138,42 +139,56 @@ const pages = () => {
   const factory = readEnv(name).VITE_FACTORY_ADDRESS
   if (!factory) throw new Error(`Missing VITE_FACTORY_ADDRESS in .env.${name}. Run npm run deploy -- --amoy first`)
 
+  const remote = run("git", ["remote", "get-url", "origin"], { cwd: repoRoot, capture: true })
+  const match = remote.match(/github\.com[:/](.+?)\/(.+?)(?:\.git)?$/)
+  const url = match ? `https://${match[1]}.github.io/${match[2]}/` : undefined
+  if (!url) throw new Error("Cannot derive GitHub Pages URL from origin")
+
   run("npx", ["hardhat", "compile"])
+  const buildEnv = {
+    VITE_FACTORY_ADDRESS: factory,
+    VITE_CHAIN_ID: process.env.VITE_CHAIN_ID
+  }
   run("npx", ["vite", "build", "--mode", name], {
+    cwd: path.join(repoRoot, "client-app"),
+    env: buildEnv
+  })
+  run("npx", ["vite", "build", "--mode", name], {
+    cwd: path.join(repoRoot, "admin-app"),
     env: {
-      VITE_FACTORY_ADDRESS: factory,
-      VITE_CHAIN_ID: process.env.VITE_CHAIN_ID
+      ...buildEnv,
+      VITE_CLIENT_APP_URL: url
     }
   })
 
-  const worktree = path.join(root, ".gh-pages")
-  const distDir = path.join(root, "dist")
-  if (fs.existsSync(worktree)) run("git", ["worktree", "remove", "--force", worktree])
-  run("git", ["fetch", "origin"])
-  const remotePages = run("git", ["ls-remote", "--heads", "origin", "gh-pages"], { capture: true })
+  const worktree = path.join(repoRoot, ".gh-pages")
+  const clientDist = path.join(repoRoot, "client-app", "dist")
+  const adminDist = path.join(repoRoot, "admin-app", "dist")
+  if (fs.existsSync(worktree)) run("git", ["worktree", "remove", "--force", worktree], { cwd: repoRoot })
+  run("git", ["fetch", "origin"], { cwd: repoRoot })
+  const remotePages = run("git", ["ls-remote", "--heads", "origin", "gh-pages"], { cwd: repoRoot, capture: true })
   if (remotePages) {
-    run("git", ["worktree", "add", "--force", "-B", "gh-pages", worktree, "origin/gh-pages"])
+    run("git", ["worktree", "add", "--force", "-B", "gh-pages", worktree, "origin/gh-pages"], { cwd: repoRoot })
   } else {
-    run("git", ["worktree", "add", "--force", "-B", "gh-pages", worktree, "HEAD"])
+    run("git", ["worktree", "add", "--force", "-B", "gh-pages", worktree, "HEAD"], { cwd: repoRoot })
   }
 
-  for (const name of fs.readdirSync(worktree)) {
-    if (name === ".git") continue
-    fs.rmSync(path.join(worktree, name), { recursive: true, force: true })
+  for (const entry of fs.readdirSync(worktree)) {
+    if (entry === ".git") continue
+    fs.rmSync(path.join(worktree, entry), { recursive: true, force: true })
   }
-  fs.cpSync(distDir, worktree, { recursive: true })
+  fs.cpSync(clientDist, worktree, { recursive: true })
+  fs.cpSync(adminDist, path.join(worktree, "admin"), { recursive: true })
   fs.writeFileSync(path.join(worktree, ".nojekyll"), "")
   run("git", ["add", "-A"], { cwd: worktree })
   const dirty = run("git", ["status", "--porcelain"], { cwd: worktree, capture: true })
   if (dirty) run("git", ["commit", "-m", "Publish GitHub Pages"], { cwd: worktree })
   run("git", ["push", "origin", "gh-pages"], { cwd: worktree })
-  run("git", ["worktree", "remove", "--force", worktree])
+  run("git", ["worktree", "remove", "--force", worktree], { cwd: repoRoot })
 
-  const remote = run("git", ["remote", "get-url", "origin"], { capture: true })
-  const match = remote.match(/github\.com[:/](.+?)\/(.+?)(?:\.git)?$/)
-  const url = match ? `https://${match[1]}.github.io/${match[2]}/` : "GitHub Pages (gh-pages branch)"
   console.log(`GameFactory ${factory}`)
-  console.log(`App ${url}`)
+  console.log(`Client ${url}`)
+  console.log(`Admin ${url}admin/`)
 }
 
 const command = process.argv[2]

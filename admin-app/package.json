@@ -1,0 +1,39 @@
+{
+  "name": "admin-app",
+  "private": true,
+  "scripts": {
+    "start": "vite --mode development",
+    "build": "vite build"
+  },
+  "dependencies": {
+    "@mantine/core": "^9.5.1",
+    "@mantine/hooks": "^9.5.1",
+    "@phosphor-icons/react": "^2.1.10",
+    "@tailwindcss/vite": "^4.3.3",
+    "@vitejs/plugin-react": "^4.3.4",
+    "clsx": "^2.1.1",
+    "d3-shape": "^3.2.0",
+    "ethers": "^6.13.5",
+    "formik": "^2.4.6",
+    "i18next": "^24.2.2",
+    "localforage": "^1.10.0",
+    "lodash": "^4.17.21",
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0",
+    "react-i18next": "^15.4.1",
+    "react-redux": "^9.2.0",
+    "react-router": "^5.3.4",
+    "react-router-dom": "^5.3.4",
+    "redux": "^5.0.1",
+    "tailwind-merge": "^3.6.0",
+    "tailwind-preset-mantine": "^4.1.0",
+    "tailwindcss": "^4.3.3",
+    "vite": "^6.2.0",
+    "yup": "^1.6.1"
+  },
+  "devDependencies": {
+    "postcss": "^8.5.26",
+    "postcss-preset-mantine": "^1.18.0",
+    "postcss-simple-vars": "^7.0.1"
+  }
+}

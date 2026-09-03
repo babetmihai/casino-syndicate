@@ -66,10 +66,12 @@ async function main() {
   console.log(`Roulette implementation: ${await roulette.getAddress()}`)
   const factory = await deployWithRetry(Factory, [await roulette.getAddress()], overrides)
   const address = await factory.getAddress()
-  const root = path.join(__dirname, "..")
-  const logPath = path.join(root, "deploy.log")
-  const envPath = path.join(root, isLocal ? ".env.development" : `.env.${hre.network.name}`)
+  const blockchainRoot = path.join(__dirname, "..")
+  const repoRoot = path.join(blockchainRoot, "..")
+  const logPath = path.join(blockchainRoot, "deploy.log")
+  const envPath = path.join(repoRoot, isLocal ? ".env.development" : `.env.${hre.network.name}`)
   const values = { VITE_FACTORY_ADDRESS: address }
+  if (isLocal) values.VITE_CLIENT_APP_URL = "http://localhost:3000"
   if (!isLocal) values.VITE_CHAIN_ID = String(hre.network.config.chainId)
 
   fs.appendFileSync(logPath, `${new Date().toISOString()} ${hre.network.name} Roulette ${await roulette.getAddress()}\n`)

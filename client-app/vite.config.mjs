@@ -5,8 +5,7 @@ import tailwindcss from "@tailwindcss/vite"
 import path from "path"
 
 
-export default defineConfig(({ command }) => ({
-  base: command === "build" ? "./" : "/",
+export default defineConfig({
   envDir: path.resolve(__dirname, ".."),
   plugins: [react(), tailwindcss()],
   publicDir: "./app/public",
@@ -19,4 +18,4 @@ export default defineConfig(({ command }) => ({
   server: {
     port: 3000
   }
-}))
+})

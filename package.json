@@ -9,7 +9,6 @@
   "scripts": {
     "chain": "npm run chain -w blockchain",
     "deploy": "npm run deploy -w blockchain",
-    "pages": "npm run pages -w blockchain",
     "admin": "npm start -w admin-app",
     "client": "npm start -w client-app",
     "eslint": "eslint .",

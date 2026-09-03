@@ -30,13 +30,11 @@ const run = (command, args, opts = {}) => {
     cwd: opts.cwd || blockchainRoot,
     env: { ...process.env, ...opts.env },
     encoding: "utf8",
-    stdio: opts.capture ? ["ignore", "pipe", "pipe"] : "inherit"
+    stdio: "inherit"
   })
   if (result.status) {
-    const detail = opts.capture ? result.stderr : ""
-    throw new Error(`${[command, ...args].join(" ")} exited ${result.status}${detail ? `\n${detail}` : ""}`)
+    throw new Error(`${[command, ...args].join(" ")} exited ${result.status}`)
   }
-  if (opts.capture) return (result.stdout || "").trim()
 }
 
 const requireAmoy = () => {
@@ -133,76 +131,16 @@ const chain = async () => {
   console.log("Hardhat running. Press Ctrl+C to stop.")
 }
 
-const pages = () => {
-  const name = requireAmoy()
-  loadEnv(name)
-  const factory = readEnv(name).VITE_FACTORY_ADDRESS
-  if (!factory) throw new Error(`Missing VITE_FACTORY_ADDRESS in .env.${name}. Run npm run deploy -- --amoy first`)
-
-  const remote = run("git", ["remote", "get-url", "origin"], { cwd: repoRoot, capture: true })
-  const match = remote.match(/github\.com[:/](.+?)\/(.+?)(?:\.git)?$/)
-  const url = match ? `https://${match[1]}.github.io/${match[2]}/` : undefined
-  if (!url) throw new Error("Cannot derive GitHub Pages URL from origin")
-
-  run("npx", ["hardhat", "compile"])
-  const buildEnv = {
-    VITE_FACTORY_ADDRESS: factory,
-    VITE_CHAIN_ID: process.env.VITE_CHAIN_ID
-  }
-  run("npx", ["vite", "build", "--mode", name], {
-    cwd: path.join(repoRoot, "client-app"),
-    env: buildEnv
-  })
-  run("npx", ["vite", "build", "--mode", name], {
-    cwd: path.join(repoRoot, "admin-app"),
-    env: {
-      ...buildEnv,
-      VITE_CLIENT_APP_URL: url
-    }
-  })
-
-  const worktree = path.join(repoRoot, ".gh-pages")
-  const clientDist = path.join(repoRoot, "client-app", "dist")
-  const adminDist = path.join(repoRoot, "admin-app", "dist")
-  if (fs.existsSync(worktree)) run("git", ["worktree", "remove", "--force", worktree], { cwd: repoRoot })
-  run("git", ["fetch", "origin"], { cwd: repoRoot })
-  const remotePages = run("git", ["ls-remote", "--heads", "origin", "gh-pages"], { cwd: repoRoot, capture: true })
-  if (remotePages) {
-    run("git", ["worktree", "add", "--force", "-B", "gh-pages", worktree, "origin/gh-pages"], { cwd: repoRoot })
-  } else {
-    run("git", ["worktree", "add", "--force", "-B", "gh-pages", worktree, "HEAD"], { cwd: repoRoot })
-  }
-
-  for (const entry of fs.readdirSync(worktree)) {
-    if (entry === ".git") continue
-    fs.rmSync(path.join(worktree, entry), { recursive: true, force: true })
-  }
-  fs.cpSync(clientDist, worktree, { recursive: true })
-  fs.cpSync(adminDist, path.join(worktree, "admin"), { recursive: true })
-  fs.writeFileSync(path.join(worktree, ".nojekyll"), "")
-  run("git", ["add", "-A"], { cwd: worktree })
-  const dirty = run("git", ["status", "--porcelain"], { cwd: worktree, capture: true })
-  if (dirty) run("git", ["commit", "-m", "Publish GitHub Pages"], { cwd: worktree })
-  run("git", ["push", "origin", "gh-pages"], { cwd: worktree })
-  run("git", ["worktree", "remove", "--force", worktree], { cwd: repoRoot })
-
-  console.log(`GameFactory ${factory}`)
-  console.log(`Client ${url}`)
-  console.log(`Admin ${url}admin/`)
-}
-
 const command = process.argv[2]
 const commands = {
   chain,
   deploy: () => {
     deploy(requireAmoy(), "amoy")
-    console.log("UI: npm run pages -- --amoy")
-  },
-  pages
+  }
 }
 
 if (!commands[command]) {
-  console.error("Usage: node scripts/cli.js chain|deploy|pages")
+  console.error("Usage: node scripts/cli.js chain|deploy")
   process.exit(1)
 }
 

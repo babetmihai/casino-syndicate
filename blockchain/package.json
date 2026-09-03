@@ -4,7 +4,6 @@
   "scripts": {
     "chain": "node scripts/cli.js chain",
     "deploy": "node scripts/cli.js deploy",
-    "pages": "node scripts/cli.js pages",
     "test": "hardhat test"
   },
   "dependencies": {

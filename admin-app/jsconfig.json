@@ -3,7 +3,7 @@
     "baseUrl": ".",
     "paths": {
       "app/*": [
-        "./app/*"
+        "./src/*"
       ],
       "artifacts/*": [
         "../blockchain/artifacts/*"

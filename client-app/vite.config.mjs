@@ -8,10 +8,9 @@ import path from "path"
 export default defineConfig({
   envDir: path.resolve(__dirname, ".."),
   plugins: [react(), tailwindcss()],
-  publicDir: "./app/public",
   resolve: {
     alias: {
-      "app": path.resolve(__dirname, "./app"),
+      "app": path.resolve(__dirname, "./src"),
       "artifacts": path.resolve(__dirname, "../blockchain/artifacts")
     }
   },

@@ -5,7 +5,7 @@ alwaysApply: true
 
 # Casino Syndicate
 
-Hardhat in `blockchain` (`contracts`, `scripts`, `test`). Env files stay at the repo root. Two Vite/React/Redux UIs: `client-app` (player table by URL, session deposits) and `admin-app` (factory + table admin, no deposits). `GameFactory` creates games by `GameType`; roulette is the type. Redux via each app's `app/core/store`.
+Hardhat in `blockchain` (`contracts`, `scripts`, `test`). Env files stay at the repo root. Two Vite/React/Redux UIs: `client-app` (player table by URL, session deposits) and `admin-app` (factory + table admin, no deposits). Source lives in `src/`. `GameFactory` creates games by `GameType`; roulette is the type. Redux via each app's `app/core/store`.
 
 ## Style
 
@@ -22,7 +22,7 @@ Hardhat in `blockchain` (`contracts`, `scripts`, `test`). Env files stay at the 
 
 ## UI (`client-app`, `admin-app`)
 
-- Imports from `app/`: `core/`, `screens/`, `components/`, `games/`
+- Imports from `app/` (alias of `src/`): `core/`, `screens/`, `components/`, `games/`
 - `actions`/`store` from `app/core/store`
 - `React.useState` etc. — never destructure built-ins from `"react"` (third-party hooks unprefixed)
 - Redux only: `actions.get/set/update/unset`; `useSelector(() => selectX())`; fetch then select
